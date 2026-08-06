@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
-const { join } = require('node:path');
+const { join, resolve } = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { mkdirSync } = require('node:fs');
 const { LocalTestServer } = require('./local-test-server.cjs');
@@ -11,6 +11,19 @@ const { GitHubReadOnlyAdapter } = require('./github-readonly-adapter.cjs');
 const { GitHubStateObserver } = require('./github-state-observer.cjs');
 
 app.enableSandbox();
+
+function configuredTestPort() {
+  const raw = process.env.AI_EXE_OS_TEST_PORT || '43119';
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+    throw new RangeError('AI_EXE_OS_TEST_PORT must be an integer from 1024 to 65535');
+  }
+  return port;
+}
+
+if (process.env.AI_EXE_OS_USER_DATA_DIR) {
+  app.setPath('userData', resolve(process.env.AI_EXE_OS_USER_DATA_DIR));
+}
 
 let mainWindow;
 let testServer;
@@ -127,7 +140,10 @@ app.whenReady().then(async () => {
   eventStore = new JsonlEventStore(join(runtimeRoot, 'events.jsonl'));
   taskRepository = new TaskRepository({ eventStore });
   taskRepository.recoverUncertain();
-  testServer = new LocalTestServer({ rootDirectory: join(__dirname, '..', '..', 'test-pages') });
+  testServer = new LocalTestServer({
+    rootDirectory: join(__dirname, '..', '..', 'test-pages'),
+    port: configuredTestPort(),
+  });
   const testBaseUrl = await testServer.start();
   workerManager = new BrowserWorkerManager({
     profilesRoot: join(runtimeRoot, 'profiles'),
