@@ -5,6 +5,14 @@ class GitHubStateObserver {
     this.adapter = adapter;
     this.eventStore = eventStore;
     this.signatures = new Map();
+    this.rehydrate();
+  }
+
+  rehydrate() {
+    for (const event of this.eventStore.readAll()) {
+      if (event.type !== 'github.pull_request_state_changed' || !event.key || !event.snapshot) continue;
+      this.signatures.set(event.key, signatureFor(event.snapshot));
+    }
   }
 
   async observePullRequest({ owner, repo, number }) {
@@ -14,14 +22,7 @@ class GitHubStateObserver {
 
     const snapshot = await this.adapter.getPullRequest({ owner, repo, number });
     const key = `${owner}/${repo}#${number}`;
-    const signature = JSON.stringify([
-      snapshot.state,
-      snapshot.draft,
-      snapshot.merged,
-      snapshot.headSha,
-      snapshot.baseSha,
-      snapshot.updatedAt,
-    ]);
+    const signature = signatureFor(snapshot);
     const changed = this.signatures.get(key) !== signature;
     if (changed) {
       this.signatures.set(key, signature);
@@ -35,4 +36,15 @@ class GitHubStateObserver {
   }
 }
 
-module.exports = { GitHubStateObserver };
+function signatureFor(snapshot) {
+  return JSON.stringify([
+    snapshot.state,
+    snapshot.draft,
+    snapshot.merged,
+    snapshot.headSha,
+    snapshot.baseSha,
+    snapshot.updatedAt,
+  ]);
+}
+
+module.exports = { GitHubStateObserver, signatureFor };
