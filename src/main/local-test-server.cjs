@@ -2,10 +2,18 @@ const http = require('node:http');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 
+function validatePort(port) {
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new RangeError('Local test server port must be an integer from 0 to 65535');
+  }
+  return port;
+}
+
 class LocalTestServer {
-  constructor({ rootDirectory, host = '127.0.0.1' }) {
+  constructor({ rootDirectory, host = '127.0.0.1', port = 0 }) {
     this.rootDirectory = rootDirectory;
     this.host = host;
+    this.requestedPort = validatePort(port);
     this.server = null;
     this.port = null;
   }
@@ -35,7 +43,7 @@ class LocalTestServer {
 
     await new Promise((resolve, reject) => {
       this.server.once('error', reject);
-      this.server.listen(0, this.host, resolve);
+      this.server.listen(this.requestedPort, this.host, resolve);
     });
     this.port = this.server.address().port;
     return this.baseUrl();
@@ -55,4 +63,4 @@ class LocalTestServer {
   }
 }
 
-module.exports = { LocalTestServer };
+module.exports = { LocalTestServer, validatePort };
