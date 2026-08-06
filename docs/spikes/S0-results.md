@@ -16,6 +16,7 @@ persistent task snapshots
 worker registry rehydration
 cross-restart GitHub observation deduplication
 human-confirmed local test submission
+uncertain submission containment to waiting_human
 project-owned deterministic test page
 read-only GitHub adapter
 unit and syntax tests
@@ -35,7 +36,7 @@ The browser worker navigates only to the local project-owned test server in the 
 
 ```text
 source syntax validation: PASS
-Node unit tests: 15 / 15 PASS
+Node unit tests: 16 / 16 PASS
 task transitions and same-state idempotency
 identifier path-traversal and markup rejection
 profile exclusivity, release, and stale recovery
@@ -46,6 +47,7 @@ GitHub deduplication after process restart
 task snapshot rehydration
 active-task recovery to waiting_human
 worker registry rehydration as stopped
+injected browser submission failure containment
 local test-server provider boundary
 ```
 
@@ -54,6 +56,7 @@ local test-server provider boundary
 ```text
 latest task snapshot is reconstructed from the append-only event log
 an uncertain active task becomes waiting_human after application restart
+browser submission errors immediately move worker and task to waiting_human
 previous GitHub observation signatures are reconstructed from events
 an unchanged PR state does not create a duplicate event after restart
 known worker definitions are reconstructed from worker.created events
