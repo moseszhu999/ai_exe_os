@@ -10,6 +10,33 @@ class BrowserWorkerManager {
     this.playwrightLoader = playwrightLoader;
     this.workers = new Map();
     this.contexts = new Map();
+    this.rehydrate();
+  }
+
+  rehydrate() {
+    const records = new Map();
+    for (const event of this.eventStore.readAll()) {
+      if (event.type === 'worker.created' && event.workerId) {
+        const profilePath = require('node:path').join(this.profilesRoot, event.workerId);
+        records.set(event.workerId, createWorkerRecord({
+          id: event.workerId,
+          projectId: event.projectId,
+          role: event.role,
+          profilePath,
+          browserChannel: event.browserChannel || 'chrome',
+        }));
+      }
+      if (!event.workerId || !records.has(event.workerId)) continue;
+      const current = records.get(event.workerId);
+      if (event.type === 'worker.stopped') records.set(event.workerId, setWorkerStatus(current, 'stopped'));
+      if (event.type === 'worker.failed') records.set(event.workerId, setWorkerStatus(current, 'failed'));
+    }
+    for (const [workerId, record] of records) {
+      if (!['stopped', 'failed'].includes(record.status)) {
+        records.set(workerId, setWorkerStatus(record, 'stopped'));
+      }
+    }
+    this.workers = records;
   }
 
   list() {
