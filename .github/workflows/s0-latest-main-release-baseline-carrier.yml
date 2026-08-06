@@ -3,6 +3,7 @@ name: S0 latest-main immutable baseline carrier
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - .github/workflows/s0-latest-main-release-baseline-carrier.yml
   workflow_dispatch:
