@@ -121,24 +121,39 @@ class BrowserWorkerManager {
     this.workers.set(workerId, active);
     this.eventStore.append({ type: 'task.submission_started', workerId, taskId, target: 'local-test-page' });
 
-    await session.page.goto(`${this.testBaseUrl}/task-form.html`);
-    await session.page.fill('#task-input', payload);
-    await session.page.click('#submit-task');
-    await session.page.waitForSelector('#result[data-ready="true"]');
-    const result = await session.page.textContent('#result');
+    try {
+      await session.page.goto(`${this.testBaseUrl}/task-form.html`);
+      await session.page.fill('#task-input', payload);
+      await session.page.click('#submit-task');
+      await session.page.waitForSelector('#result[data-ready="true"]');
+      const result = await session.page.textContent('#result');
 
-    const waiting = setWorkerStatus(active, 'waiting_human', {
-      activeTaskId: taskId,
-      lastKnownUrl: session.page.url(),
-    });
-    this.workers.set(workerId, waiting);
-    this.eventStore.append({
-      type: 'task.local_result_observed',
-      workerId,
-      taskId,
-      evidence: { resultText: result, provider: 'local-project-owned-test-surface' },
-    });
-    return { worker: { ...waiting }, result };
+      const waiting = setWorkerStatus(active, 'waiting_human', {
+        activeTaskId: taskId,
+        lastKnownUrl: session.page.url(),
+      });
+      this.workers.set(workerId, waiting);
+      this.eventStore.append({
+        type: 'task.local_result_observed',
+        workerId,
+        taskId,
+        evidence: { resultText: result, provider: 'local-project-owned-test-surface' },
+      });
+      return { worker: { ...waiting }, result };
+    } catch (error) {
+      const uncertain = setWorkerStatus(active, 'waiting_human', {
+        activeTaskId: taskId,
+        lastKnownUrl: session.page.url(),
+      });
+      this.workers.set(workerId, uncertain);
+      this.eventStore.append({
+        type: 'task.local_submission_uncertain',
+        workerId,
+        taskId,
+        message: error.message,
+      });
+      throw error;
+    }
   }
 
   async stop(workerId) {
