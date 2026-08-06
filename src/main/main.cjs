@@ -85,13 +85,18 @@ function registerIpc() {
     assertSender(event);
     const value = safeInputObject(input);
     const active = taskRepository.transition(value.taskId, 'active', { reason: 'human_confirmed' });
-    const execution = await workerManager.submitAuthorizedLocalTask({
-      workerId: value.workerId,
-      taskId: active.id,
-      payload: String(value.payload || ''),
-    });
-    const waiting = taskRepository.transition(active.id, 'waiting_human', { reason: 'local_result_requires_review' });
-    return { task: waiting, execution };
+    try {
+      const execution = await workerManager.submitAuthorizedLocalTask({
+        workerId: value.workerId,
+        taskId: active.id,
+        payload: String(value.payload || ''),
+      });
+      const waiting = taskRepository.transition(active.id, 'waiting_human', { reason: 'local_result_requires_review' });
+      return { task: waiting, execution };
+    } catch (error) {
+      taskRepository.transition(active.id, 'waiting_human', { reason: 'local_submission_uncertain' });
+      throw error;
+    }
   });
 }
 
