@@ -2,38 +2,59 @@
 
 ## Purpose
 
-Prove or disprove the core product assumption before building the full scheduler.
+Prove or disprove the local orchestration kernel before building the full product.
 
-The spike validates whether an Electron control plane can create, observe, pause, resume, and recover multiple persistent real-browser workers while preserving user-controlled sign-in state.
+This spike validates whether an Electron control plane can create, observe, pause, resume, and recover multiple persistent browser workers while preserving user-controlled session state.
 
-## Time-boxed scope
+It does **not** validate ChatGPT web automation and must not programmatically extract ChatGPT output.
 
-The spike implements one narrow vertical slice:
+## Normative provider gate
+
+The spike is governed by:
+
+```text
+docs/compliance/000-provider-terms-and-supported-paths-gate.md
+```
+
+Only these target surfaces are allowed:
+
+```text
+local test pages
+project-owned test services
+explicitly authorized test surfaces
+read-only GitHub state through supported GitHub tooling
+```
+
+Unknown provider status means automation is blocked.
+
+## Time-boxed vertical slice
 
 ```text
 Electron operator console
-→ create two managed Chrome workers
-→ user signs in manually
-→ persist profile state
+→ create two managed Chrome/Chromium workers
+→ use separate dedicated profile directories
+→ open local or project-owned test pages
+→ persist worker state
 → restart application
 → recover both workers
-→ assign one bounded task to each worker
-→ observe completion evidence
-→ read one GitHub PR state
+→ assign one bounded test task to each worker
+→ require human confirmation before submission
+→ observe local test evidence
+→ read one GitHub PR/check state
 → unlock the next local task
 ```
 
 ## Required worker model
 
-Each worker uses a dedicated profile path.
+Each worker owns a dedicated profile path:
 
 ```text
 .runtime/profiles/<session-id>/
 ```
 
-The application must never launch two live browser processes against the same profile path.
+The normal default Chrome profile must not be automated. The application must never launch two live browser processes against the same profile path.
 
-Suggested worker record:
+Suggested record:
 
 ```ts
 type WorkerStatus =
@@ -43,6 +64,7 @@ type WorkerStatus =
   | "waiting_for_login"
   | "idle"
   | "active"
+  | "paused"
   | "waiting_for_human"
   | "blocked"
   | "stopped"
@@ -63,91 +85,90 @@ interface BrowserWorkerRecord {
 
 ## Required scenarios
 
-### Scenario A — Persistent manual login
+### Scenario A — Persistent isolated profiles
 
-1. Create worker A.
-2. Open a visible Chrome window.
-3. User signs in manually to the target service.
-4. Record only a `login_confirmed` checkpoint; do not store credentials or cookies separately.
-5. Stop the browser and Electron app.
-6. Restart the app and worker.
-7. Confirm the browser profile remains signed in.
-
-Repeat for worker B with a different profile.
+1. Create worker A with profile A.
+2. Create worker B with profile B.
+3. Open a project-owned page in each worker.
+4. Store harmless local test state in each browser profile.
+5. Stop both browsers and the Electron app.
+6. Restart the app and both workers.
+7. Confirm that A restores only A's state and B restores only B's state.
 
 Pass condition:
 
 ```text
-A and B retain their own session state after restart;
-A cannot see B's profile data;
-no password, cookie, OAuth code, or token appears in logs or SQLite.
+state survives restart;
+profiles remain isolated;
+no password, cookie, authorization code, or copied provider token appears in logs or application storage.
 ```
 
-### Scenario B — Concurrent isolation
+### Scenario B — Concurrent worker control
 
-1. Launch workers A and B at the same time.
-2. Navigate them to different approved target pages.
-3. Focus A, then focus B from Electron.
-4. Pause A while B remains active.
-5. Resume A.
+1. Launch A and B simultaneously.
+2. Focus A, then B from Electron.
+3. Pause A while B remains active.
+4. Resume A.
+5. Stop B without affecting A.
 
 Pass condition:
 
 ```text
-worker controls affect only the selected worker;
+controls affect only the selected worker;
 profile leases remain unique;
-no browser is killed by an unrelated task transition.
+worker lifecycle events are idempotent.
 ```
 
-### Scenario C — User-approved prompt execution
+### Scenario C — Human-approved local task execution
 
-The spike may perform one harmless, user-approved prompt in each signed-in AI session.
+Use a local or project-owned HTML task form.
 
 Required flow:
 
 ```text
 task prepared
-→ exact rendered prompt shown in Electron
+→ exact payload shown in Electron
 → user confirms
-→ prompt inserted and submitted through normal visible browser interaction
-→ response-presence evidence observed
-→ task marked waiting_review
+→ payload submitted to the authorized local test page
+→ local deterministic response observed
+→ evidence recorded
+→ task moves to waiting_review
 ```
 
 Restrictions:
 
 ```text
-no hidden API calls
+no hidden provider API calls
 no credential access
+no ChatGPT web automation
+no programmatic extraction of provider output
 no CAPTCHA handling
 no anti-bot bypass
-no user-agent spoofing
+no user-agent, fingerprint, TCP, TLS, or protocol impersonation
 no background submission without confirmation
-no claim that the answer is correct merely because a response appeared
 ```
 
 Pass condition:
 
 ```text
-both workers can execute independent approved prompts;
-the scheduler associates each response evidence item with the correct task and session.
+both workers execute independent authorized test tasks;
+each result is associated with the correct task and worker;
+no duplicate submission occurs.
 ```
 
 ### Scenario D — GitHub state unlock
 
-Use one public test repository or a harmless Draft PR.
-
-Example:
+Use a harmless Draft PR or test repository.
 
 ```text
-Task A waits for PR check conclusion.
-GitHub adapter reads the PR state.
+Task A waits for a PR/check conclusion.
 PASS unlocks Task B.
-FAIL creates a bounded repair task.
+FAIL creates one bounded repair task.
 PENDING leaves the graph unchanged.
+Repeated observations do not create duplicate events.
 ```
 
-The first adapter may use `gh` or the GitHub API. Browser scraping is not required for this step.
+The adapter may use supported GitHub APIs or `gh`. Browser scraping is not required.
 
 Pass condition:
 
@@ -157,24 +178,22 @@ one real PR/check transition produces exactly one idempotent scheduler event.
 
 ### Scenario E — Crash recovery
 
-1. Start a worker and task.
-2. Kill the Electron process before task completion.
+1. Start a worker and an authorized local task.
+2. Terminate Electron before completion.
 3. Restart.
-4. Inspect the browser process, profile lease, and last checkpoint.
-5. Require human confirmation before resubmitting any uncertain external action.
+4. Inspect browser process, profile lease, and last confirmed checkpoint.
+5. Require human confirmation before retrying any uncertain submission.
 
 Pass condition:
 
 ```text
-no duplicate prompt submission;
+no duplicate submission;
 no duplicate GitHub write;
 profile ownership recovered safely;
 uncertain actions become waiting_human rather than completed.
 ```
 
 ## Minimal UI
-
-The spike UI contains only:
 
 ```text
 Project selector
@@ -184,15 +203,15 @@ Create worker
 Start / stop
 Focus
 Pause / resume
-Open login window
-Rendered prompt preview
+Open authorized test page
+Payload preview
 Confirm / reject
 Event log
 ```
 
 No design system, marketplace, analytics dashboard, cloud sync, or multi-user collaboration is required.
 
-## Technical choices to validate
+## Technical probes
 
 ### Electron
 
@@ -201,37 +220,38 @@ current stable Electron
 contextIsolation = true
 sandbox = true
 nodeIntegration = false for remote content
+webSecurity = true
 ```
 
 ### Browser control
 
-Preferred first probe:
+Preferred:
 
-```text
+```ts
 playwright.chromium.launchPersistentContext(profilePath, {
   channel: "chrome",
-  headless: false
-})
+  headless: false,
+});
 ```
 
-Fallback probes:
+Alternatives:
 
 ```text
-Chromium persistent context
-Chrome launched with a dedicated user-data directory plus CDP
+Playwright-managed Chromium persistent context
+Chrome/Chromium launched with a dedicated user-data directory plus bounded CDP connection
 ```
 
-Electron's Playwright `_electron` API may be used for application tests, but the product architecture must not depend solely on an experimental API.
+The default personal Chrome profile is out of scope. Electron's Playwright `_electron` API may test the console but must not be the sole product dependency because it is experimental.
 
-### Storage
+### State
 
-Use SQLite or a simple append-only JSON event store for the spike.
+Use SQLite or an append-only local event store.
 
 Never store:
 
 ```text
 raw passwords
-session cookies
+session cookies copied from browser storage
 OAuth authorization codes
 provider access tokens copied from browser storage
 password-manager data
@@ -239,29 +259,27 @@ password-manager data
 
 ## Evidence required
 
-The spike report must include:
-
 ```text
 operating system
 Electron version
-Chrome / Chromium version
+Chrome/Chromium version
 Playwright version
-worker profile paths with sensitive user path removed
-session isolation result
+redacted profile paths
+profile isolation result
 restart persistence result
 concurrent worker result
-prompt confirmation result
+human confirmation result
+local task submission result
 GitHub event result
 crash recovery result
 resource usage snapshot
-known provider-specific failures
+all provider surfaces contacted
+provider-gate status for each contacted surface
 ```
 
-Screenshots must redact personal account information.
+Screenshots must redact personal and account information.
 
-## Verdicts
-
-Only these final verdicts are allowed:
+## Final verdicts
 
 ```text
 GO
@@ -269,19 +287,9 @@ GO WITH ARCHITECTURE CHANGE
 NO-GO
 ```
 
-### GO
+A technical `GO` does not authorize any provider adapter.
 
-All required scenarios pass without bypassing provider security controls.
-
-### GO WITH ARCHITECTURE CHANGE
-
-The orchestration model works, but the browser substrate or login path must change. The exact change must be recorded.
-
-### NO-GO
-
-The core signed-in persistent-session workflow cannot be achieved safely or reliably under the permanent boundaries.
-
-## Files allowed in the future spike PR
+## Future spike PR allowed files
 
 ```text
 package.json
@@ -293,18 +301,23 @@ src/domain/**
 src/adapters/browser/**
 src/adapters/github/**
 tests/spike/**
+test-pages/**
 docs/spikes/S0-results.md
 ```
 
-## Forbidden in the future spike PR
+## Forbidden
 
 ```text
+ChatGPT web prompt/output automation
+automated provider-output extraction
+circumvention of pricing, metering, usage limits, rate limits, concurrency limits, or restrictions
 cloud database integration
 Supabase / Neon production configuration
 Vercel / Netlify production deployment
 credential import
-browser fingerprint manipulation
-provider-specific anti-abuse bypass
+browser fingerprint or user-agent manipulation
+TCP/TLS/protocol impersonation
+CAPTCHA or anti-abuse bypass
 automatic PR merge
 automatic production mutation
 payment, settlement, wallet, token, or legal execution
