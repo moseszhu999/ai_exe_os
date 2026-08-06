@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AI Execution OS local test surface</title>
+  <style>
+    body{font-family:system-ui;background:#f4f7fb;color:#142033;margin:0;padding:40px}
+    main{max-width:720px;margin:auto;background:white;border:1px solid #ccd7e3;border-radius:16px;padding:24px}
+    textarea,button{width:100%;padding:12px;margin-top:10px}
+    #result{margin-top:18px;padding:14px;background:#eaf5ff;border-radius:10px;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Project-owned S0 test page</h1>
+  <p>This page is local and deterministic. It is not a third-party AI provider.</p>
+  <textarea id="task-input" aria-label="Task payload"></textarea>
+  <button id="submit-task">Submit authorized local task</button>
+  <div id="result" data-ready="false">Waiting for an authorized local task.</div>
+</main>
+<script>
+  document.getElementById('submit-task').addEventListener('click', () => {
+    const value = document.getElementById('task-input').value;
+    const result = document.getElementById('result');
+    result.textContent = `LOCAL_TEST_ACCEPTED\nlength=${value.length}\nvalue=${value}`;
+    result.dataset.ready = 'true';
+    localStorage.setItem('last-authorized-local-task', value);
+  });
+</script>
+</body>
+</html>
