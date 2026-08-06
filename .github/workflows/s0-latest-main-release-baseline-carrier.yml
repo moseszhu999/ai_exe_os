@@ -1,0 +1,209 @@
+name: S0 latest-main immutable baseline carrier
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/s0-latest-main-release-baseline-carrier.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BASELINE_SHA: ade022ed75e3c8c98df20a59f6ef38ff6c708466
+
+jobs:
+  exact-main-source:
+    name: Exact-main source and stacked-tree audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out immutable accepted main
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.BASELINE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Prove exact checkout
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$BASELINE_SHA" "$actual"
+          test "$actual" = "$BASELINE_SHA"
+
+      - name: Prove accepted stacked diff widths
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          check_width() {
+            local label="$1" base="$2" head="$3" expected="$4"
+            local actual
+            actual="$(git diff --name-only "$base..$head" | sort -u | wc -l | tr -d ' ')"
+            printf '%s expected=%s actual=%s\n' "$label" "$expected" "$actual"
+            test "$actual" = "$expected"
+          }
+          check_width '#2' 1c95fd9cd553aa10f915a5a14e9bdf2c9bac4002 f174e46fdd4264c2ce997ed24630834e492c35d0 31
+          check_width '#3' f174e46fdd4264c2ce997ed24630834e492c35d0 369be52f0b211eb840cf98294f5a34d0bad91655 2
+          check_width '#6' 369be52f0b211eb840cf98294f5a34d0bad91655 8122d0bd478fddea536dc9b49b9151de5e91e81c 5
+          check_width '#7' 8122d0bd478fddea536dc9b49b9151de5e91e81c d959ee5b72af351ff8ba3903db4ef101f00f056c 5
+          check_width '#5' d959ee5b72af351ff8ba3903db4ef101f00f056c 985bcd7ac959b9b3058b2c381928256f2a8d1638 1
+          check_width '#9' 985bcd7ac959b9b3058b2c381928256f2a8d1638 ade022ed75e3c8c98df20a59f6ef38ff6c708466 2
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Resolve pinned dependencies without lifecycle scripts
+        run: npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+
+      - name: Run exact-main validation
+        run: npm run validate
+
+      - name: Enforce provider boundary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if grep -RInE 'chatgpt\.com|api\.openai\.com|openai\.com' src test-pages package.json; then
+            echo 'Blocked provider target found in S0 runtime scope.' >&2
+            exit 1
+          fi
+          echo 'Provider boundary scan: PASS'
+
+  native-arm64-smoke:
+    name: Native arm64 bounded Electron Chrome Chromium smoke
+    needs: exact-main-source
+    runs-on: macos-15
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out immutable accepted main
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.BASELINE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Initialize evidence directory and prove native arm64
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/s0-latest-main-$BASELINE_SHA"
+          mkdir -p "$EVIDENCE"
+          echo "EVIDENCE=$EVIDENCE" >> "$GITHUB_ENV"
+          git rev-parse HEAD | tee "$EVIDENCE/head.txt"
+          uname -m | tee "$EVIDENCE/uname.txt"
+          node -p 'process.arch' | tee "$EVIDENCE/node-arch.txt"
+          (/usr/sbin/sysctl -in sysctl.proc_translated || true) 2>&1 | tee "$EVIDENCE/rosetta.txt"
+          test "$(git rev-parse HEAD)" = "$BASELINE_SHA"
+          test "$(uname -m)" = arm64
+          test "$(node -p 'process.arch')" = arm64
+          test "$(cat "$EVIDENCE/rosetta.txt" | tr -d '[:space:]')" != 1
+
+      - name: Ensure installed native Chrome exists
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+          if test ! -x "$CHROME"; then
+            brew install --cask google-chrome
+          fi
+          test -x "$CHROME"
+          file "$CHROME" | tee "$EVIDENCE/chrome-file.txt"
+          lipo -archs "$CHROME" | tee "$EVIDENCE/chrome-architectures.txt"
+
+      - name: Install exact-main runtime dependencies
+        shell: bash
+        run: |
+          set -o pipefail
+          npm install --no-package-lock --no-audit --no-fund 2>&1 | tee "$EVIDENCE/npm-install.log"
+          npx playwright install chromium 2>&1 | tee "$EVIDENCE/playwright-install.log"
+
+      - name: Run exact-main syntax and unit validation
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run validate 2>&1 | tee "$EVIDENCE/validate.log"
+
+      - name: Run bounded Electron IPC and Playwright Chromium smoke
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE/ipc"
+          set -o pipefail
+          AI_EXE_OS_PROBE_OUTPUT="$EVIDENCE/ipc" npm run probe:ipc 2>&1 | tee "$EVIDENCE/ipc-smoke.log"
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const evidence = process.env.EVIDENCE;
+          const result = JSON.parse(fs.readFileSync(path.join(evidence, 'ipc', 'probe-result.json'), 'utf8'));
+          if (result.status !== 'PASS') throw new Error(`IPC probe status: ${result.status}`);
+          if (!Number.isInteger(result.persistedEventCount) || result.persistedEventCount < 1) {
+            throw new Error(`Invalid persisted event count: ${result.persistedEventCount}`);
+          }
+          if (!Array.isArray(result.pageErrors) || result.pageErrors.length !== 0) {
+            throw new Error(`Renderer page errors: ${JSON.stringify(result.pageErrors)}`);
+          }
+          console.log(JSON.stringify({
+            status: result.status,
+            persistedEventCount: result.persistedEventCount,
+            rendererPageErrors: result.pageErrors.length,
+          }, null, 2));
+          NODE
+
+      - name: Run installed Chrome native-architecture smoke
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE/chrome-arch"
+          set -o pipefail
+          AI_EXE_OS_CHROME_ARCH_OUTPUT="$EVIDENCE/chrome-arch" npm run probe:chrome-arch 2>&1 | tee "$EVIDENCE/chrome-arch.log"
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const evidence = process.env.EVIDENCE;
+          const result = JSON.parse(fs.readFileSync(path.join(evidence, 'chrome-arch', 'chrome-architecture-result.json'), 'utf8'));
+          if (result.status !== 'PASS') throw new Error(`Chrome architecture probe status: ${result.status}`);
+          if (result.hostArchitecture !== 'arm64') throw new Error(`Host architecture: ${result.hostArchitecture}`);
+          const nativeChannel = result.attempts.find((attempt) =>
+            attempt.launchKind === 'channel' && attempt.status === 'PASS' && attempt.processArch === 'arm64');
+          if (!nativeChannel) throw new Error('No native-arm64 installed Chrome channel PASS attempt');
+          console.log(JSON.stringify({
+            status: result.status,
+            hostArchitecture: result.hostArchitecture,
+            nativeChromeChannel: 'PASS',
+          }, null, 2));
+          NODE
+
+      - name: Prove clean tracked tree and no scoped residual process
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sleep 5
+          git status --short | tee "$EVIDENCE/git-status.txt"
+          test ! -s "$EVIDENCE/git-status.txt"
+          ps -axo pid=,ppid=,command= | tee "$EVIDENCE/processes-after.txt"
+          grep -F "$EVIDENCE" "$EVIDENCE/processes-after.txt" | grep -v grep > "$EVIDENCE/residual-scoped-processes.txt" || true
+          if test -s "$EVIDENCE/residual-scoped-processes.txt"; then
+            cat "$EVIDENCE/residual-scoped-processes.txt" >&2
+            exit 1
+          fi
+          find "$EVIDENCE" -type f -print | sort > "$EVIDENCE/manifest.txt"
+          find "$EVIDENCE" -type f ! -name SHA256SUMS.txt -exec shasum -a 256 {} \; | sort > "$EVIDENCE/SHA256SUMS.txt"
+
+      - name: Upload immutable latest-main smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s0-latest-main-${{ env.BASELINE_SHA }}
+          path: ${{ env.EVIDENCE }}
+          if-no-files-found: error
+          retention-days: 90
