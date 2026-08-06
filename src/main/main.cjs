@@ -6,7 +6,7 @@ const { LocalTestServer } = require('./local-test-server.cjs');
 const { JsonlEventStore } = require('./event-store.cjs');
 const { ProfileLeaseManager } = require('./profile-lease-manager.cjs');
 const { BrowserWorkerManager } = require('./browser-worker-manager.cjs');
-const { createTask, transitionTask } = require('../domain/task-state.cjs');
+const { TaskRepository } = require('./task-repository.cjs');
 const { GitHubReadOnlyAdapter } = require('./github-readonly-adapter.cjs');
 const { GitHubStateObserver } = require('./github-state-observer.cjs');
 
@@ -17,7 +17,7 @@ let testServer;
 let eventStore;
 let workerManager;
 let githubObserver;
-const tasks = new Map();
+let taskRepository;
 
 function rendererPath() {
   return join(__dirname, '..', 'renderer', 'index.html');
@@ -42,7 +42,7 @@ function safeInputObject(input) {
 function registerIpc() {
   ipcMain.handle('state:list', (event) => {
     assertSender(event);
-    return { workers: workerManager.list(), tasks: [...tasks.values()], events: eventStore.readAll().slice(-100) };
+    return { workers: workerManager.list(), tasks: taskRepository.list(), events: eventStore.readAll().slice(-100) };
   });
 
   ipcMain.handle('worker:create', (event, input) => {
@@ -73,14 +73,7 @@ function registerIpc() {
 
   ipcMain.handle('task:create', (event, input) => {
     assertSender(event);
-    const value = safeInputObject(input);
-    let task = createTask(value);
-    task = transitionTask(task, 'queued', { reason: 'operator_created' });
-    task = transitionTask(task, 'ready', { reason: 'no_dependencies' });
-    if (tasks.has(task.id)) throw new Error(`Task already exists: ${task.id}`);
-    tasks.set(task.id, task);
-    eventStore.append({ type: 'task.ready', taskId: task.id, projectId: task.projectId });
-    return task;
+    return taskRepository.create(safeInputObject(input));
   });
 
   ipcMain.handle('github:observe-pr', async (event, input) => {
@@ -91,17 +84,13 @@ function registerIpc() {
   ipcMain.handle('task:confirm-local', async (event, input) => {
     assertSender(event);
     const value = safeInputObject(input);
-    const current = tasks.get(value.taskId);
-    if (!current) throw new Error(`Unknown task: ${value.taskId}`);
-    const active = transitionTask(current, 'active', { reason: 'human_confirmed' });
-    tasks.set(active.id, active);
+    const active = taskRepository.transition(value.taskId, 'active', { reason: 'human_confirmed' });
     const execution = await workerManager.submitAuthorizedLocalTask({
       workerId: value.workerId,
       taskId: active.id,
       payload: String(value.payload || ''),
     });
-    const waiting = transitionTask(active, 'waiting_human', { reason: 'local_result_requires_review' });
-    tasks.set(waiting.id, waiting);
+    const waiting = taskRepository.transition(active.id, 'waiting_human', { reason: 'local_result_requires_review' });
     return { task: waiting, execution };
   });
 }
@@ -131,6 +120,8 @@ app.whenReady().then(async () => {
   const runtimeRoot = join(app.getPath('userData'), 's0-runtime');
   mkdirSync(runtimeRoot, { recursive: true });
   eventStore = new JsonlEventStore(join(runtimeRoot, 'events.jsonl'));
+  taskRepository = new TaskRepository({ eventStore });
+  taskRepository.recoverUncertain();
   testServer = new LocalTestServer({ rootDirectory: join(__dirname, '..', '..', 'test-pages') });
   const testBaseUrl = await testServer.start();
   workerManager = new BrowserWorkerManager({
