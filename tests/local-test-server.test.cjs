@@ -14,6 +14,10 @@ test('local test server exposes only the project-owned test surface', async (t) 
   const page = await fetch(`${baseUrl}/task-form.html`).then((response) => response.text());
   assert.match(page, /Project-owned S0 test page/);
   assert.match(page, /not a third-party AI provider/);
+  assert.match(page, /last-authorized-local-task/);
+  assert.match(page, /previous=\$\{previous\}/);
+  assert.match(page, /S0_DELAY_MS/);
+  assert.match(page, /Math\.min\(Number\(delayed\[1\]\), 15000\)/);
 });
 
 test('configured port preserves a stable loopback origin across restarts', async () => {

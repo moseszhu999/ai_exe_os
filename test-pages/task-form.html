@@ -21,11 +21,26 @@
 </main>
 <script>
   document.getElementById('submit-task').addEventListener('click', () => {
-    const value = document.getElementById('task-input').value;
+    const rawValue = document.getElementById('task-input').value;
+    const delayed = /^S0_DELAY_MS=(\d{1,5})\n([\s\S]*)$/.exec(rawValue);
+    const delayMs = delayed ? Math.min(Number(delayed[1]), 15000) : 0;
+    const value = delayed ? delayed[2] : rawValue;
     const result = document.getElementById('result');
-    result.textContent = `LOCAL_TEST_ACCEPTED\nlength=${value.length}\nvalue=${value}`;
-    result.dataset.ready = 'true';
-    localStorage.setItem('last-authorized-local-task', value);
+    const previous = localStorage.getItem('last-authorized-local-task') || '<none>';
+
+    result.dataset.ready = 'false';
+    result.textContent = delayMs > 0
+      ? `LOCAL_TEST_PENDING\ndelayMs=${delayMs}`
+      : 'LOCAL_TEST_PROCESSING';
+
+    const finish = () => {
+      result.textContent = `LOCAL_TEST_ACCEPTED\nlength=${value.length}\nvalue=${value}\nprevious=${previous}`;
+      result.dataset.ready = 'true';
+      localStorage.setItem('last-authorized-local-task', value);
+    };
+
+    if (delayMs > 0) setTimeout(finish, delayMs);
+    else finish();
   });
 </script>
 </body>
