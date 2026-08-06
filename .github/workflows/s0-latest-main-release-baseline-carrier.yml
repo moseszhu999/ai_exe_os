@@ -1,3 +1,4 @@
+# Non-merge carrier for Issue #18. Every validation step checks out the immutable accepted main SHA.
 name: S0 latest-main immutable baseline carrier
 
 on:
