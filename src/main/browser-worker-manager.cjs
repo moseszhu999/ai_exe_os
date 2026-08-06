@@ -59,6 +59,7 @@ class BrowserWorkerManager {
     this.workers.set(workerId, setWorkerStatus(current, 'starting'));
     this.leaseManager.acquire({ profilePath: current.profilePath, workerId });
 
+    let context = null;
     try {
       const { chromium } = this.playwrightLoader();
       const options = {
@@ -67,25 +68,59 @@ class BrowserWorkerManager {
         chromiumSandbox: true,
       };
       if (current.browserChannel) options.channel = current.browserChannel;
-      const context = await chromium.launchPersistentContext(current.profilePath, options);
+      context = await chromium.launchPersistentContext(current.profilePath, options);
       const pages = context.pages();
       const page = pages[0] || await context.newPage();
+      this.contexts.set(workerId, { context, page });
+      this.bindContextLifecycle(workerId, context);
       await page.goto(`${this.testBaseUrl}/task-form.html`);
       const next = setWorkerStatus(current, 'idle', {
         processId: process.pid,
         lastKnownUrl: page.url(),
       });
-      this.contexts.set(workerId, { context, page });
       this.workers.set(workerId, next);
       this.eventStore.append({ type: 'worker.ready', workerId, url: page.url() });
       return { ...next };
     } catch (error) {
+      this.contexts.delete(workerId);
+      if (context) await context.close().catch(() => {});
       this.leaseManager.release({ profilePath: current.profilePath, workerId });
       const failed = setWorkerStatus(current, 'failed');
       this.workers.set(workerId, failed);
       this.eventStore.append({ type: 'worker.failed', workerId, message: error.message });
       throw error;
     }
+  }
+
+  bindContextLifecycle(workerId, context) {
+    if (!context || typeof context.on !== 'function') return;
+    context.on('close', () => {
+      const session = this.contexts.get(workerId);
+      if (!session || session.context !== context) return;
+
+      this.contexts.delete(workerId);
+      const current = this.workers.get(workerId);
+      if (!current) return;
+
+      let releaseError = null;
+      try {
+        this.leaseManager.release({ profilePath: current.profilePath, workerId });
+      } catch (error) {
+        releaseError = error;
+      }
+
+      const stopped = setWorkerStatus(current, 'stopped', {
+        processId: null,
+        activeTaskId: null,
+      });
+      this.workers.set(workerId, stopped);
+      this.eventStore.append({
+        type: 'worker.stopped',
+        workerId,
+        reason: 'browser_context_closed',
+        ...(releaseError ? { leaseReleaseError: releaseError.message } : {}),
+      });
+    });
   }
 
   async focus(workerId) {
@@ -159,14 +194,40 @@ class BrowserWorkerManager {
   async stop(workerId) {
     const current = this.requireWorker(workerId);
     const session = this.contexts.get(workerId);
+    let closeError = null;
+    let releaseError = null;
+
     if (session) {
-      await session.context.close();
       this.contexts.delete(workerId);
+      try {
+        await session.context.close();
+      } catch (error) {
+        closeError = error;
+      }
     }
-    this.leaseManager.release({ profilePath: current.profilePath, workerId });
+
+    try {
+      this.leaseManager.release({ profilePath: current.profilePath, workerId });
+    } catch (error) {
+      releaseError = error;
+    }
+
     const next = setWorkerStatus(current, 'stopped', { processId: null, activeTaskId: null });
     this.workers.set(workerId, next);
-    this.eventStore.append({ type: 'worker.stopped', workerId });
+    this.eventStore.append({
+      type: 'worker.stopped',
+      workerId,
+      reason: 'operator_stop',
+      ...(closeError ? { contextCloseError: closeError.message } : {}),
+      ...(releaseError ? { leaseReleaseError: releaseError.message } : {}),
+    });
+
+    if (closeError || releaseError) {
+      throw new AggregateError(
+        [closeError, releaseError].filter(Boolean),
+        `Worker ${workerId} stopped with cleanup errors`,
+      );
+    }
     return { ...next };
   }
 
