@@ -10,7 +10,8 @@
     "validate": "npm run check && npm test",
     "start": "electron .",
     "probe:ipc": "node scripts/s0-runtime-ipc-probe.cjs",
-    "probe:recovery": "node scripts/s0-runtime-recovery-matrix-probe.cjs"
+    "probe:recovery": "node scripts/s0-runtime-recovery-matrix-probe.cjs",
+    "probe:chrome-arch": "node scripts/s0-macos-chrome-architecture-probe.cjs"
   },
   "engines": {
     "node": ">=22"
