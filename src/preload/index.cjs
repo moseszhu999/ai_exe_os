@@ -14,6 +14,13 @@ function s3Input(input) {
   return input;
 }
 
+function s4Input(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('S4 console command payload must be a plain object');
+  }
+  return input;
+}
+
 const s2Mission = Object.freeze({
   queryState: (workspaceId) => ipcRenderer.invoke('s2:mission:query-state', workspaceId || null),
   createMission: (input) => ipcRenderer.invoke('s2:mission:create', s2Input(input)),
@@ -34,6 +41,14 @@ const s3Github = Object.freeze({
   bindPullRequest: (input) => ipcRenderer.invoke('s3:github:pr:bind', s3Input(input)),
   observeDelivery: (input) => ipcRenderer.invoke('s3:github:delivery:observe', s3Input(input)),
   createRepairProposal: (input) => ipcRenderer.invoke('s3:github:repair:propose', s3Input(input)),
+});
+
+const s4Console = Object.freeze({
+  query: (workspaceId) => ipcRenderer.invoke('s4:console:query', workspaceId || null),
+  focusWorker: (input) => ipcRenderer.invoke('s4:console:worker:focus', s4Input(input)),
+  stopWorker: (input) => ipcRenderer.invoke('s4:console:worker:stop', s4Input(input)),
+  pauseWorker: (input) => ipcRenderer.invoke('s4:console:worker:pause', s4Input(input)),
+  resumeWorker: (input) => ipcRenderer.invoke('s4:console:worker:resume', s4Input(input)),
 });
 
 contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
@@ -57,4 +72,5 @@ contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   }),
   s2: Object.freeze({ mission: s2Mission }),
   s3: Object.freeze({ github: s3Github }),
+  s4: Object.freeze({ console: s4Console }),
 }));
