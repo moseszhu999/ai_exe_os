@@ -55,7 +55,7 @@ jobs:
         run: npm run validate
 
       - name: Run real Chrome plus Chromium Mission matrix
-        run: node scripts/s2-acceptance-native-mac.cjs
+        run: node scripts/s2-acceptance-favicon-safe.cjs
 
       - name: Verify immutable evidence digest
         run: |
