@@ -71,7 +71,7 @@ test('S4 IPC registers exactly five sender-validated local control/query channel
   await handlers.get('s4:console:worker:stop')(event, { workspaceId: 'workspace-a', workerId: 'worker-a' });
   assert.equal(senderChecks.length, 2);
   assert.deepEqual(calls, [['query', 'workspace-a'], ['stop', { workspaceId: 'workspace-a', workerId: 'worker-a' }]]);
-  await assert.rejects(() => handlers.get('s4:console:worker:focus')(event, null), /object payload/);
+  assert.throws(() => handlers.get('s4:console:worker:focus')(event, null), /object payload/);
 });
 
 test('integrated cockpit reuses the existing Workspace selector and exposes nine explainability surfaces', () => {
