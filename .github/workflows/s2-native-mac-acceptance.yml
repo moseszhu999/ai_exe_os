@@ -1,0 +1,73 @@
+name: S2 native Apple Silicon acceptance
+
+on:
+  pull_request:
+    branches:
+      - agent/s2-application-integration-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-arm64-mission-acceptance:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      S2_PRODUCT_SHA: 5981b0ba3bbc3d730d5c345d5f164826e647e7c7
+      S2_ACCEPTANCE_OUTPUT: runtime/s2-acceptance
+    steps:
+      - name: Check out acceptance branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Verify native Apple Silicon runner
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "arm64"
+          test "$(node -p 'process.arch')" = "arm64"
+          if [[ "$(sysctl -in sysctl.proc_translated 2>/dev/null || echo 0)" = "1" ]]; then
+            echo "Rosetta-translated runner is not accepted" >&2
+            exit 1
+          fi
+
+      - name: Install pinned dependencies and Playwright Chromium
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npx playwright install chromium
+
+      - name: Install Google Chrome
+        run: |
+          set -euo pipefail
+          if [[ ! -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
+            brew install --cask google-chrome
+          fi
+          file "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+      - name: Run full source and contract validation on native arm64
+        run: npm run validate
+
+      - name: Run real Chrome plus Chromium Mission matrix
+        run: node scripts/s2-acceptance-native-mac.cjs
+
+      - name: Verify immutable evidence digest
+        run: |
+          set -euo pipefail
+          cd runtime/s2-acceptance
+          shasum -a 256 -c matrix-result.sha256
+
+      - name: Upload portable immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s2-native-mac-${{ github.sha }}
+          path: runtime/s2-acceptance
+          if-no-files-found: warn
+          retention-days: 30
