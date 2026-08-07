@@ -9,6 +9,7 @@ const CHANNELS = Object.freeze({
   resumeMission: 's2:mission:resume',
   cancelMission: 's2:mission:cancel',
   retryStepAfterReview: 's2:mission:retry-step-after-review',
+  recordCheckpoint: 's2:mission:record-checkpoint',
 });
 
 function plainObject(value) {
@@ -27,6 +28,7 @@ function createS2BridgeContract(ipcRenderer) {
     resumeMission(input) { return ipcRenderer.invoke(CHANNELS.resumeMission, plainObject(input)); },
     cancelMission(input) { return ipcRenderer.invoke(CHANNELS.cancelMission, plainObject(input)); },
     retryStepAfterReview(input) { return ipcRenderer.invoke(CHANNELS.retryStepAfterReview, plainObject(input)); },
+    recordCheckpoint(input) { return ipcRenderer.invoke(CHANNELS.recordCheckpoint, plainObject(input)); },
   });
 }
 
