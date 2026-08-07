@@ -20,6 +20,10 @@ class S4ApplicationService extends S3ApplicationService {
 
   queryOperatorCockpit(workspaceId) {
     if (typeof workspaceId !== 'string' || !workspaceId.trim()) throw new TypeError('workspaceId is required');
+    if (!this.workspace.get(workspaceId)) {
+      const empty = createOperatorCockpitSnapshot({ workspaceId, missionState: { workspaces: [] }, githubState: {}, workers: [] });
+      return Object.freeze({ ...empty, attention: Object.freeze([]), lineage: Object.freeze({}) });
+    }
     const githubState = this.queryGitHubDeliveryState(workspaceId);
     const missionState = githubState.s2;
     const base = createOperatorCockpitSnapshot({
@@ -28,7 +32,6 @@ class S4ApplicationService extends S3ApplicationService {
       githubState,
       workers: this.workerManager.list(),
     });
-    if (!base.found) return Object.freeze({ ...base, attention: Object.freeze([]), lineage: Object.freeze({}) });
     const attention = aggregateAttention({ workspaceId, missionState, githubState });
     const lineage = Object.fromEntries(attention.map((item) => [item.id, createEvidenceLineage({ attentionItem: item, missionState, githubState })]));
     return Object.freeze({ ...base, attention, lineage: Object.freeze(lineage) });
