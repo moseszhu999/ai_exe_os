@@ -1,18 +1,50 @@
 'use strict';
 
-// Acceptance-only browser plumbing: the project-owned test page intentionally has no favicon.
-// Route only /favicon.ico to 204 so Chromium does not turn that non-product resource miss into
-// a console error. No other request, console message, page error, or product path is suppressed.
-const { BrowserWorkerManager } = require('../src/main/browser-worker-manager.cjs');
+// Acceptance-only loopback server. It mirrors the product LocalTestServer surface and adds only
+// /favicon.ico -> 204 so browser console auditing remains strict without changing product code.
+const http = require('node:http');
+const { readFileSync } = require('node:fs');
+const { join } = require('node:path');
+const localServerModule = require('../src/main/local-test-server.cjs');
+const ProductLocalTestServer = localServerModule.LocalTestServer;
 
-const originalStart = BrowserWorkerManager.prototype.start;
-BrowserWorkerManager.prototype.start = async function startWithAcceptanceFaviconRoute(workerId) {
-  const result = await originalStart.call(this, workerId);
-  const session = this.contexts.get(workerId);
-  if (session?.page) {
-    await session.page.route('**/favicon.ico', (route) => route.fulfill({ status: 204, body: '' }));
+class AcceptanceLocalTestServer extends ProductLocalTestServer {
+  async start() {
+    if (this.server) return this.baseUrl();
+    this.server = http.createServer((request, response) => {
+      const path = new URL(request.url, 'http://localhost').pathname;
+      if (path === '/favicon.ico') {
+        response.writeHead(204, { 'Cache-Control': 'no-store' });
+        response.end();
+        return;
+      }
+      if (path === '/' || path === '/task-form.html') {
+        const body = readFileSync(join(this.rootDirectory, 'task-form.html'));
+        response.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Content-Security-Policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
+          'Cache-Control': 'no-store',
+        });
+        response.end(body);
+        return;
+      }
+      if (path === '/health') {
+        response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        response.end(JSON.stringify({ ok: true, scope: 'local-project-owned-test-surface' }));
+        return;
+      }
+      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Not found');
+    });
+
+    await new Promise((resolve, reject) => {
+      this.server.once('error', reject);
+      this.server.listen(this.requestedPort, this.host, resolve);
+    });
+    this.port = this.server.address().port;
+    return this.baseUrl();
   }
-  return result;
-};
+}
 
+localServerModule.LocalTestServer = AcceptanceLocalTestServer;
 require('./s2-acceptance-native-mac.cjs');
