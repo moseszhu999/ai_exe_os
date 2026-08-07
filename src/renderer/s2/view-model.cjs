@@ -27,6 +27,17 @@ const BLOCKER_LABELS = Object.freeze({
   terminal_evidence_unsatisfied: 'Terminal evidence requirement is unsatisfied',
 });
 
+const PROCESS_LOCAL_KEY = /^(profilePath|profileDir|profileDirectory|userData|userDataDir|processId|pid|ppid)$/i;
+
+function sanitizeS2(value, key = '') {
+  if (PROCESS_LOCAL_KEY.test(key)) return '[redacted]';
+  if (Array.isArray(value)) return value.map((item) => sanitizeS2(item));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([nestedKey, nested]) => [nestedKey, sanitizeS2(nested, nestedKey)]));
+  }
+  return sanitizeForDisplay(value, key);
+}
+
 function inWorkspace(items, workspaceId) {
   return (Array.isArray(items) ? items : []).filter((item) => item.workspaceId === workspaceId);
 }
@@ -61,7 +72,7 @@ function createS2ViewModel(state, activeWorkspaceId, selectedMissionId = null) {
     stepId: attempt.stepId,
     code: blocker.code,
     label: BLOCKER_LABELS[blocker.code] || blocker.code,
-    detail: sanitizeForDisplay(blocker.detail),
+    detail: sanitizeS2(blocker.detail),
   })));
   const outputById = new Map(outputs.map((output) => [output.id, output]));
   const lineage = handoffs.map((handoff) => Object.freeze({
@@ -69,26 +80,26 @@ function createS2ViewModel(state, activeWorkspaceId, selectedMissionId = null) {
     fromStepAttemptId: handoff.fromStepAttemptId,
     toStepId: handoff.toStepId,
     inputName: handoff.inputName,
-    output: sanitizeForDisplay(outputById.get(handoff.outputId) || { id: handoff.outputId }),
+    output: sanitizeS2(outputById.get(handoff.outputId) || { id: handoff.outputId }),
   }));
   return Object.freeze({
     navigation: NAVIGATION,
-    activeWorkspace,
-    workspaces,
-    missions: missions.map((item) => sanitizeForDisplay(item)),
-    selectedMission: sanitizeForDisplay(selectedMission),
-    revisions: revisions.map((item) => sanitizeForDisplay(item)),
-    missionRuns: runs.map((item) => sanitizeForDisplay(item)),
-    selectedRun: sanitizeForDisplay(selectedRun),
-    plan: sanitizeForDisplay(selectedPlan),
+    activeWorkspace: sanitizeS2(activeWorkspace),
+    workspaces: workspaces.map((item) => sanitizeS2(item)),
+    missions: missions.map((item) => sanitizeS2(item)),
+    selectedMission: sanitizeS2(selectedMission),
+    revisions: revisions.map((item) => sanitizeS2(item)),
+    missionRuns: runs.map((item) => sanitizeS2(item)),
+    selectedRun: sanitizeS2(selectedRun),
+    plan: sanitizeS2(selectedPlan),
     graph: buildGraph(selectedPlan),
-    stepAttempts: attempts.map((item) => sanitizeForDisplay(item)),
-    stepOutputs: outputs.map((item) => sanitizeForDisplay(item)),
+    stepAttempts: attempts.map((item) => sanitizeS2(item)),
+    stepOutputs: outputs.map((item) => sanitizeS2(item)),
     handoffs: Object.freeze(lineage),
-    humanGates: workspaceId ? inWorkspace(state.humanGates, workspaceId).map((item) => sanitizeForDisplay(item)) : [],
-    checkpoints: checkpoints.map((item) => sanitizeForDisplay(item)),
-    timeline: workspaceId ? inWorkspace(state.missionEvents, workspaceId).filter((item) => !selectedRun || item.missionRunId === selectedRun.id).map((item) => sanitizeForDisplay(item)) : [],
-    evidence: workspaceId ? inWorkspace(state.evidence, workspaceId).filter((item) => !selectedRun || item.missionRunId === selectedRun.id).map((item) => sanitizeForDisplay(item)) : [],
+    humanGates: workspaceId ? inWorkspace(state.humanGates, workspaceId).map((item) => sanitizeS2(item)) : [],
+    checkpoints: checkpoints.map((item) => sanitizeS2(item)),
+    timeline: workspaceId ? inWorkspace(state.missionEvents, workspaceId).filter((item) => !selectedRun || item.missionRunId === selectedRun.id).map((item) => sanitizeS2(item)) : [],
+    evidence: workspaceId ? inWorkspace(state.evidence, workspaceId).filter((item) => !selectedRun || item.missionRunId === selectedRun.id).map((item) => sanitizeS2(item)) : [],
     blockers: Object.freeze(blockers),
     controls: Object.freeze({
       canPause: selectedRun?.state === 'running',
@@ -98,4 +109,4 @@ function createS2ViewModel(state, activeWorkspaceId, selectedMissionId = null) {
   });
 }
 
-module.exports = { BLOCKER_LABELS, NAVIGATION, buildGraph, createS2ViewModel };
+module.exports = { BLOCKER_LABELS, NAVIGATION, buildGraph, createS2ViewModel, sanitizeS2 };
