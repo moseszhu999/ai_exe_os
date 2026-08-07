@@ -92,13 +92,17 @@ class ExecutionCoordinator {
   }
 
   async approve(gateId) {
-    const decision = this.gates.approve(gateId);
-    let run = this.runs.get(decision.gate.executionRunId);
+    const currentGate = this.gates.repository.get(gateId);
+    if (!currentGate) throw new Error(`Unknown Human Gate: ${gateId}`);
+    let run = this.runs.get(currentGate.executionRunId);
     if (['active', 'result_observed', 'completed'].includes(run.state)) {
-      return Object.freeze({ changed: false, run, gate: decision.gate, execution: run.execution || null });
+      return Object.freeze({ changed: false, run, gate: currentGate, execution: run.execution || null });
     }
     if (run.state !== 'waiting_human') throw new Error(`Execution is not waiting for approval: ${run.state}`);
+
+    // Revalidate immediately before consuming the human approval or causing an effect.
     this.providerRevalidator(run.providerSnapshot, run.currentProviderDigest, run.capabilityAction);
+    const decision = this.gates.approve(gateId);
     this.events.append({ type: 'human_gate.approved', idempotencyKey: `gate-approve:${gateId}`, runId: run.id, gateId });
     this.events.append({ type: 'execution.started', idempotencyKey: `start:${run.id}`, runId: run.id });
     run = Object.freeze({ ...run, state: 'active', startedAt: this.clock() });
@@ -114,6 +118,8 @@ class ExecutionCoordinator {
       const completed = Object.freeze({ ...run, state: 'result_observed', execution, completedAt: this.clock() });
       this.runs.save(completed);
       this.events.append({ type: 'execution.result_observed', idempotencyKey: `result:${run.id}`, runId: run.id, execution });
+      const released = this.locks.releaseAll(run.id, this.clock());
+      this.events.append({ type: 'resource.released', idempotencyKey: `release:${run.id}`, runId: run.id, locks: released });
       return Object.freeze({ changed: true, run: completed, gate: decision.gate, execution });
     } catch (error) {
       const uncertain = Object.freeze({ ...run, state: 'waiting_human', recoveryReason: 'execution_uncertain_requires_review' });
