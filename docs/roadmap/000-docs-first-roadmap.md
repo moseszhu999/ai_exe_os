@@ -4,197 +4,238 @@
 
 AI Execution OS is an execution-control product, not a collection of browser scripts.
 
-Durable product assets:
+Durable product assets include:
 
 ```text
 Workspace authorization boundary
 Marketplace capability contracts
 Agent grants
-Task and ExecutionGraph model
-worker/session lifecycle
+Mission / ExecutionPlan orchestration
+Worker/session lifecycle
 resource ownership
 Human Gates
 evidence and recovery
 provider-use contracts
 provider adapters
+engineering-delivery evidence
 ```
 
 Technical feasibility and provider-authorized use remain separate gates.
 
-## Current status
+## Canonical stage registry
+
+This file is the current stage-number authority. Earlier versions of the roadmap had reserved `S2` for a GitHub-native workflow. During execution, the accepted product sequence inserted the more foundational durable Mission orchestration milestone as S2. The registry is reconciled here without renaming any accepted S0/S1/S2 artifact or result retroactively.
 
 ```text
-S0 real-workstation verdict: GO
-S0 implementation and final evidence: merged to main
-current stage: S1 Local Execution Kernel
-canonical S1 issue: #10
+S0  Technical feasibility and provider boundary                  COMPLETE — GO
+S1  Local Execution Kernel and Workspace Interconnect           COMPLETE — GO
+S2  Durable Multi-Step Mission Orchestration                    COMPLETE — GO
+S3  GitHub-Native Engineering Workflow                          CURRENT
+S4  Multi-Session Operator Console                              PLANNED
+S5  Approved Provider Adapters                                  PLANNED
+S6  Scheduling Policy                                           PLANNED
+S7  Optional Collaboration and Sync                             FUTURE
 ```
 
-S0 proved:
+Current baseline:
+
+```text
+current main at S3 Gate 0 start: 2c42919d24c8a24f4abfbae03c1ca209e9828fd1
+S0 results: docs/spikes/S0-results.md
+S1 results: docs/results/S1-results.md
+S2 results: docs/results/S2-results.md
+canonical S3 issue: #43
+```
+
+## S0 — Technical feasibility and provider boundary
+
+Status: **COMPLETED — GO**
+
+Proved:
 
 ```text
 Electron operator control plane
 persistent Chrome / Chromium Workers
 profile lease exclusivity
-renderer → preload → IPC → browser → event-store path
-stable loopback origin
-cross-restart localStorage
+renderer → sandbox preload → IPC → browser execution
+stable loopback project-owned test surface
 unexpected-close reconciliation
 forced-crash recovery
 no automatic duplicate submission
-native Apple Silicon workstation operation
+native Apple Silicon operation
+provider boundary separation
 ```
 
-## Stage map
+Permanent S0 evidence does not include ChatGPT website automation or unsupported third-party AI output extraction.
 
-### S0 — Technical feasibility and provider boundary
+## S1 — Local Execution Kernel and Workspace Interconnect
 
 Status: **COMPLETED — GO**
 
-Accepted architecture:
-
-```text
-Electron control plane
-+ dedicated visible browser profiles
-+ bounded Playwright control
-+ append-only recovery evidence
-+ Human Gate before local execution
-```
-
-Allowed validation targets:
-
-```text
-local test pages
-project-owned services
-explicitly authorized test surfaces
-read-only GitHub state
-```
-
-ChatGPT website automation and programmatic third-party AI output extraction were not and are not S0 evidence paths.
-
-### S1 — Local Execution Kernel and Workspace Interconnect
-
-Goal:
+Accepted path:
 
 ```text
 Marketplace capability
 → install into Workspace
 → authorize for Agent
-→ bind to Task / ExecutionGraph
+→ bind task/execution
 → reserve Worker/resources
 → persisted Human Gate
-→ execute
-→ store evidence and recover safely
+→ execute bounded effect
+→ canonical SQLite event/projection
+→ evidence / recovery
 ```
 
-Deliverables:
+Major durable assets:
 
 ```text
-local SQLite canonical events and projections
-bounded S0 JSONL import
-Project and Workspace model
-CapabilityPackage / Version / Installation
-Agent and AgentCapabilityGrant
-TaskNode / DependencyEdge / ExecutionGraph
-ResourceLock
-persisted HumanGate
-ExecutionRun / ExecutionEvent
-integrated Electron UI
-```
-
-Acceptance:
-
-```text
+SQLite canonical events/projections
 Workspace isolation
-Agent grant enforcement
-idempotent transactional transitions
-rebuildable projections
-no duplicate external action
-no credential or cookie storage
-provider gate enforced before navigation/submission
-one integrated real-workstation user story
+CapabilityPackage / Version / Installation
+Agent / AgentCapabilityGrant
+Task / ExecutionGraph
+ResourceLock
+HumanGate
+ExecutionRun / Evidence
+integrated secure Electron UI
 ```
 
-Normative S1 documents:
+Normative documents:
 
 ```text
 docs/contracts/S1-workspace-marketplace-agent-interconnect.md
 docs/architecture/002-s1-local-execution-kernel.md
 docs/testing/S1-acceptance-matrix.md
+docs/results/S1-results.md
 ```
 
-### S2 — GitHub-native engineering workflow
+## S2 — Durable Multi-Step Mission Orchestration
+
+Status: **COMPLETED — GO**
+
+Accepted path:
+
+```text
+Mission objective
+→ immutable MissionRevision / ExecutionPlan DAG
+→ same-Workspace Agent/capability bindings
+→ deterministic ready-set
+→ local step OR S1 authorization/runtime
+→ typed StepOutput
+→ declared AgentHandoff
+→ pause/resume/cancel/recovery/checkpoint
+→ terminal evidence
+→ Mission completion
+```
+
+Major assets:
+
+```text
+Mission / MissionRevision
+ExecutionPlan / PlanStep / StepBinding
+MissionRun / StepAttempt
+StepOutput / AgentHandoff
+MissionCheckpoint
+S2 IPC + integrated Electron Mission UI
+```
+
+S2 final real Electron acceptance found and closed a sandbox-preload defect before GO. The accepted preload remains sandboxed and self-contained.
+
+Normative documents:
+
+```text
+docs/contracts/S2-durable-mission-orchestration.md (or canonical S2 contract documents in repository)
+docs/testing/S2-acceptance-matrix.md
+docs/results/S2-results.md
+```
+
+## S3 — GitHub-Native Engineering Workflow
+
+Status: **CURRENT — GATE 0**
 
 Goal:
 
 ```text
-turn supported GitHub branches, PRs, reviews, checks, and merge commits into scheduler evidence
+turn registered GitHub repository, branch/path ownership, PR exact-head,
+checks, review threads, base freshness, merge order and merge observation
+into durable evidence for S2 Mission delivery dependencies
 ```
 
 Deliverables:
 
 ```text
-repository registry
-branch and path ownership
-PR task binding
-status-check watcher
-review-thread watcher
-stale-base invalidation
+RepositoryRegistration / RepositoryBinding
+BranchReservation / PathOwnershipClaim
+PullRequestBinding / PullRequestSnapshot
+CheckObservation
+ReviewThreadObservation
+MergeOrderConstraint
+DeliveryGate
+DeliveryEvidence
+RepairProposal (proposal-only)
+canonical SQLite observation events/projections
+integrated Electron repository/PR/CI/review evidence UI
+```
+
+S3 provider authority is read-only. GitHub writes are not part of S3 and require a future separately accepted write contract.
+
+Acceptance includes:
+
+```text
+Workspace repository isolation
+exclusive path conflict detection
+exact-head invalidation on head movement
+required check/review evidence
+fail-closed stale-base handling
 merge-order constraints
-bounded repair-task generation
+immutable merge/delivery evidence
+restart idempotency
+S2 Mission dependency release only from declared evidence
+real Electron explanation UI
+bounded live read-only GitHub acceptance
+no provider writes
+privacy-safe portable artifact
 ```
 
-Acceptance:
+Normative Gate 0 documents:
 
 ```text
-one PR observation produces one scheduler event
-stale branches cannot silently continue
-conflicting ownership is blocked
-write actions remain separately Human-Gated
+docs/contracts/S3-github-native-engineering-workflow.md
+docs/architecture/004-s3-github-native-engineering-workflow.md
+docs/testing/S3-acceptance-matrix.md
 ```
 
-### S3 — Multi-session operator console
+## S4 — Multi-Session Operator Console
 
-Goal:
+Status: **PLANNED**
 
-```text
-make parallel execution understandable and controllable
-```
+Goal: make parallel execution understandable and controllable across Workspaces, Missions, delivery evidence, Workers, Human Gates, blockers and recovery.
 
-Deliverables:
+Expected surfaces:
 
 ```text
 project/workspace cockpit
-Marketplace and Agent views
-ExecutionGraph view
+Marketplace / Agent views
+Mission / ExecutionPlan graph
 Worker/session inventory
-Task payload preview
 provider-use status
 Human Gate inbox
-blocker and recovery views
-PR/CI evidence view
+blocker/recovery views
+GitHub delivery evidence view
 ```
 
-Acceptance:
+Acceptance requires the operator to explain every active Worker, authorization, dependency, blocker and recovery state, and to stop one Worker without affecting unrelated Workers.
 
-```text
-operator can explain every active Worker
-operator can stop one Worker without affecting others
-operator can see every authorization and blocker reason
-```
+## S5 — Approved Provider Adapters
 
-### S4 — Approved provider adapters
+Status: **PLANNED**
 
-Goal:
-
-```text
-observe or act on external delivery surfaces only through accepted paths
-```
+Goal: observe or act on external delivery surfaces only through explicitly accepted provider paths.
 
 Possible adapters:
 
 ```text
-GitHub
+GitHub write contract (only if separately accepted)
 Vercel
 Netlify
 Supabase
@@ -202,121 +243,71 @@ Neon
 other explicitly approved surfaces
 ```
 
-The first version of every adapter is read-only unless a separate write contract is accepted.
+Every new provider adapter starts read-only unless a separate write contract is accepted. No ChatGPT website adapter may be created while that provider gate remains blocked.
 
-No ChatGPT website adapter may be created while the provider gate remains blocked.
+## S6 — Scheduling Policy
 
-### S5 — Scheduling policy
+Status: **PLANNED**
 
-Goal:
+Goal: optimize long-lived Worker and Mission utilization under bounded concurrency, evidence dependencies and provider rules.
 
-```text
-optimize long-lived Worker utilization under bounded concurrency and provider rules
-```
-
-Deliverables:
+Potential work:
 
 ```text
 priority policy
-resource locks
-session reuse policy
-local cost and throughput metrics
-retry policy
-waiting-human policy
+resource/session reuse policy
+local cost / throughput metrics
+retry / waiting-human policy
 Worker health scoring
 provider quota awareness
 ```
 
 The scheduler must not invent work, expand task scope, or circumvent pricing, metering, usage, rate, concurrency, or product restrictions.
 
-### S6 — Optional collaboration and sync
+## S7 — Optional Collaboration and Sync
 
-Goal:
+Status: **FUTURE**
 
-```text
-support multiple devices/operators only after local correctness is proven
-```
-
-Possible future work:
+Possible work only after local correctness remains proven:
 
 ```text
 cloud event replication
 team roles
-shared Project/Workspace state
+shared Workspace/Mission state
 remote Worker inventory
 organization policy
 ```
 
-Online databases are not required for S0–S3.
-
-## S1 implementation sequence
-
-### Contract gate
-
-```text
-S1-C0 docs-only domain / architecture / acceptance contract
-```
-
-### Parallel implementation owners
-
-After S1-C0 is accepted and merged, start each owner from the latest independent `main`:
-
-```text
-S1-B storage owner
-  src/storage/**
-  migrations/**
-  tests/storage/**
-
-S1-C Workspace / Marketplace / Agent owner
-  src/domain/workspace*.cjs
-  src/domain/capability*.cjs
-  src/domain/agent*.cjs
-  tests/domain/**
-
-S1-D scheduler / resource locks / Human Gate owner
-  src/main/scheduler/**
-  src/main/human-gate/**
-  tests/scheduler/**
-
-S1-E integrated UI owner
-  src/renderer/s1/**
-  src/preload/s1*.cjs
-  tests/ui-contract/**
-
-S1-F independent exact-head and real-Mac acceptance owner
-  read-only product review
-  test/evidence tooling only
-```
-
-Sibling implementation owners may not import unmerged sibling branches.
+Online databases are not required for S0–S4.
 
 ## Parallelism rules
 
-Before execution, reserve:
+Before execution, reserve the relevant subset of:
 
 ```text
 Workspace
 repository
 branch
 allowed file paths
+Mission / PlanStep owner
 browser profile
 provider surface
 PR metadata target
 local/cloud target when applicable
 ```
 
-Two Workers may run concurrently only when their write sets and exclusive resources do not overlap.
+Two writers may run concurrently only when their write sets and exclusive resources do not overlap. Sibling implementation owners may not import unmerged sibling branches.
 
 ## Documentation required before each implementation wave
 
 ```text
 goal
 allowed files
-forbidden files
+forbidden/shared files
 state transitions
 provider-use status
 Human Gates
-failure and recovery behavior
+failure/recovery behavior
 acceptance evidence
 stop conditions
 ```
@@ -330,16 +321,16 @@ No automated third-party AI output extraction where terms prohibit it.
 No circumvention of pricing, metering, usage, rate, concurrency, or restrictions.
 No hidden external writes.
 No automatic production deployment or production database migration by default.
-No financial, payment, wallet, token, settlement, or legal execution in the initial product.
+No financial, payment, wallet, token, settlement, or legal irreversible execution in the initial product.
 ```
 
 ## Current next action
 
 ```text
-review and merge S1-C0 docs-only contract
-→ launch disjoint S1-B / S1-C / S1-D implementation owners from latest main
-→ integrate after independent exact-head validation
-→ build S1-E unified Electron UI
-→ execute S1-F real-workstation acceptance matrix
+accept and merge S3 Gate 0 docs-only contract
+→ launch disjoint S3-B / S3-C / S3-D / S3-E owners from one exact latest main
+→ merge each independently after exact-head validation
+→ start S3-I shared integration only after B/C/D/E are merged
+→ execute S3-F frozen-head + live read-only GitHub + real Electron acceptance
 → issue GO / GO WITH ARCHITECTURE CHANGE / NO-GO
 ```
