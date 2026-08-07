@@ -114,7 +114,7 @@ test('rejecting a persisted Human Gate performs no submission and releases resou
   assert.equal(h.coordinator.reject('gate-a').changed, false);
 });
 
-test('approval starts exactly once and repeated approval is idempotent', async () => {
+test('approval starts exactly once, releases resources, and repeated approval is idempotent', async () => {
   const h = harness();
   h.coordinator.request({
     ...context(), executionRunId: 'run-a', gateId: 'gate-a', workerId: 'worker-a', payload: 'hello',
@@ -127,9 +127,11 @@ test('approval starts exactly once and repeated approval is idempotent', async (
   assert.equal(h.submissionCount, 1);
   assert.equal(h.events.list().filter((event) => event.type === 'execution.started').length, 1);
   assert.equal(h.events.list().filter((event) => event.type === 'execution.result_observed').length, 1);
+  assert.equal(h.events.list().filter((event) => event.type === 'resource.released').length, 1);
+  assert.equal(h.lockManager.list().length, 0);
 });
 
-test('provider contract change after request blocks before runtime effect', async () => {
+test('provider contract change after request blocks before consuming approval or runtime effect', async () => {
   const h = harness();
   h.coordinator.request({
     ...context(), executionRunId: 'run-a', gateId: 'gate-a', workerId: 'worker-a', payload: 'hello',
@@ -139,6 +141,8 @@ test('provider contract change after request blocks before runtime effect', asyn
   await assert.rejects(() => h.coordinator.approve('gate-a'), /Provider contract changed or expired/);
   assert.equal(h.submissionCount, 0);
   assert.equal(h.runs.get('run-a').state, 'waiting_human');
+  assert.equal(h.gates.get('gate-a').state, 'requested');
+  assert.equal(h.lockManager.list().length, 1);
 });
 
 test('runtime uncertainty returns to waiting_human and is never automatically replayed', async () => {
