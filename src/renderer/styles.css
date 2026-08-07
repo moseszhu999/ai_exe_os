@@ -1,21 +1,30 @@
-:root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background:#08111d; color:#eaf4ff; }
-* { box-sizing:border-box; }
-body { margin:0; background:linear-gradient(145deg,#07101c,#0d2438); min-height:100vh; }
-main { max-width:1180px; margin:auto; padding:28px; }
-header { display:flex; justify-content:space-between; gap:24px; align-items:flex-start; }
-h1 { margin:.2rem 0; font-size:2.4rem; }
-h2 { margin-top:0; }
-.eyebrow { color:#65d8ff; font-weight:700; text-transform:uppercase; letter-spacing:.09em; }
-.notice { border-left:4px solid #ffd06d; background:#2c2514; padding:14px 16px; margin:22px 0; border-radius:10px; }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
-article,.cards>div,section>pre { background:#0d1d2d; border:1px solid #29445e; border-radius:14px; padding:16px; }
-label { display:block; margin:10px 0; }
-input,select,textarea,button { width:100%; padding:10px; border-radius:9px; border:1px solid #355570; background:#07111c; color:#edf6ff; }
-button { cursor:pointer; background:#1d7898; font-weight:700; }
-button.secondary { background:#29445e; }
-button.danger { background:#883940; }
-.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:12px; }
-.card-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:12px; }
-pre { overflow:auto; max-height:300px; white-space:pre-wrap; }
-#status { position:fixed; right:22px; bottom:22px; max-width:420px; padding:12px 15px; background:#11283d; border:1px solid #65d8ff; border-radius:10px; display:none; }
-small { color:#9db4c8; }
+:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #07101f; color: #edf4ff; }
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(circle at top, #172554, #07101f 54%); }
+main { width: min(1380px, 100%); margin: 0 auto; padding: 28px; }
+header, .s1-workspace-bar { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+header h1 { margin: 0; }
+.eyebrow { color: #65d8ff; text-transform: uppercase; letter-spacing: .14em; font-size: 12px; }
+.notice { margin: 18px 0; padding: 14px; border: 1px solid #334155; border-radius: 12px; background: #0f172a; }
+.surface-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.surface-nav span { padding: 7px 10px; border: 1px solid #334155; border-radius: 999px; background: #101c34; }
+.s1-workspace-bar { margin: 18px 0; padding: 14px; background: #101c34; border-radius: 12px; border: 1px solid #334155; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+article, section > details { background: rgba(15, 23, 42, .92); border: 1px solid #334155; border-radius: 14px; padding: 16px; }
+label { display: grid; gap: 6px; margin: 10px 0; }
+input, select, textarea, button { font: inherit; }
+input, select, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #475569; background: #020617; color: #edf4ff; }
+textarea { min-height: 90px; resize: vertical; }
+button { border: 0; border-radius: 8px; padding: 10px 14px; background: #65d8ff; color: #04111d; font-weight: 700; cursor: pointer; }
+button.secondary { background: #94a3b8; }
+button.danger { background: #ff858b; }
+.cards { display: grid; gap: 10px; }
+.cards > div { border: 1px solid #475569; border-radius: 10px; padding: 12px; background: #0b1328; }
+.card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 340px; overflow: auto; background: #020617; border-radius: 10px; padding: 12px; }
+details { margin-top: 26px; }
+summary { cursor: pointer; font-weight: 800; margin-bottom: 12px; }
+#status { display: none; position: fixed; right: 22px; bottom: 22px; max-width: 520px; padding: 14px 18px; border: 2px solid #65d8ff; border-radius: 10px; background: #0f172a; }
+small { color: #9db4c8; }
+@media (max-width: 900px) { .grid, .grid.three { grid-template-columns: 1fr; } header, .s1-workspace-bar { align-items: stretch; flex-direction: column; } }

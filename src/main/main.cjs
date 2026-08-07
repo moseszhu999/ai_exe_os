@@ -9,6 +9,8 @@ const { BrowserWorkerManager } = require('./browser-worker-manager.cjs');
 const { TaskRepository } = require('./task-repository.cjs');
 const { GitHubReadOnlyAdapter } = require('./github-readonly-adapter.cjs');
 const { GitHubStateObserver } = require('./github-state-observer.cjs');
+const { S1ApplicationService } = require('../application/index.cjs');
+const { registerS1Ipc } = require('../application/s1-ipc.cjs');
 
 app.enableSandbox();
 
@@ -31,6 +33,7 @@ let eventStore;
 let workerManager;
 let githubObserver;
 let taskRepository;
+let s1Service;
 
 function rendererPath() {
   return join(__dirname, '..', 'renderer', 'index.html');
@@ -60,8 +63,7 @@ function registerIpc() {
 
   ipcMain.handle('worker:create', (event, input) => {
     assertSender(event);
-    const value = safeInputObject(input);
-    return workerManager.create(value);
+    return workerManager.create(safeInputObject(input));
   });
   ipcMain.handle('worker:start', async (event, workerId) => {
     assertSender(event);
@@ -111,12 +113,14 @@ function registerIpc() {
       throw error;
     }
   });
+
+  registerS1Ipc({ ipcMain, assertSender, service: s1Service });
 }
 
 async function createMainWindow() {
   mainWindow = new BrowserWindow({
-    width: 1220,
-    height: 820,
+    width: 1380,
+    height: 940,
     show: false,
     webPreferences: {
       preload: join(__dirname, '..', 'preload', 'index.cjs'),
@@ -135,11 +139,13 @@ async function createMainWindow() {
 }
 
 app.whenReady().then(async () => {
-  const runtimeRoot = join(app.getPath('userData'), 's0-runtime');
+  const userDataRoot = app.getPath('userData');
+  const runtimeRoot = join(userDataRoot, 's0-runtime');
   mkdirSync(runtimeRoot, { recursive: true });
   eventStore = new JsonlEventStore(join(runtimeRoot, 'events.jsonl'));
   taskRepository = new TaskRepository({ eventStore });
   taskRepository.recoverUncertain();
+
   testServer = new LocalTestServer({
     rootDirectory: join(__dirname, '..', '..', 'test-pages'),
     port: configuredTestPort(),
@@ -151,6 +157,15 @@ app.whenReady().then(async () => {
     eventStore,
     testBaseUrl,
   });
+
+  const s1RuntimeRoot = join(userDataRoot, 's1-runtime');
+  mkdirSync(s1RuntimeRoot, { recursive: true });
+  s1Service = new S1ApplicationService({
+    databasePath: join(s1RuntimeRoot, 'state.sqlite'),
+    workerManager,
+    localTarget: `${testBaseUrl}/task-form.html`,
+  });
+
   githubObserver = new GitHubStateObserver({
     adapter: new GitHubReadOnlyAdapter({ token: process.env.AI_EXE_OS_GITHUB_TOKEN || null }),
     eventStore,
@@ -165,6 +180,7 @@ app.on('before-quit', async (event) => {
   try {
     await workerManager.stopAll();
     await testServer?.stop();
+    s1Service?.close();
   } finally {
     app.exit(0);
   }
