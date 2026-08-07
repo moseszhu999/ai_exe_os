@@ -170,8 +170,8 @@ async function main() {
   try {
     const baseUrl = await server.start();
     manager = new BrowserWorkerManager({ profilesRoot: join(runtimeRoot, 'profiles'), leaseManager: new ProfileLeaseManager(), eventStore: events, testBaseUrl: baseUrl });
-    manager.create({ id: 's1-worker-chrome', projectId: 's2-acceptance', role: 'isolation', browserChannel: 'chrome' });
-    manager.create({ id: 's1-worker-chromium', projectId: 's2-acceptance', role: 'mission', browserChannel: 'chromium' });
+    manager.create({ id: 's1-worker-chrome', projectId: 's2-acceptance', role: 'review', browserChannel: 'chrome' });
+    manager.create({ id: 's1-worker-chromium', projectId: 's2-acceptance', role: 'implementation', browserChannel: 'chromium' });
     await manager.start('s1-worker-chrome');
     await manager.start('s1-worker-chromium');
     await attachAudit(manager, 's1-worker-chrome', audit).reload();
