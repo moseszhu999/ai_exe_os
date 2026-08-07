@@ -4,70 +4,108 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
-  <title>AI Execution OS · S0</title>
+  <title>AI Execution OS · S1</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main>
     <header>
       <div>
-        <p class="eyebrow">Provider-safe technical spike</p>
-        <h1>AI Execution OS · S0</h1>
-        <p>Local control plane for dedicated browser profiles, human-gated test tasks, and GitHub-native evidence.</p>
+        <p class="eyebrow">Local execution kernel</p>
+        <h1>AI Execution OS · S1</h1>
+        <p>Workspace-scoped Marketplace capabilities, Agent grants, persistent Human Gates, workers, evidence, and recovery.</p>
       </div>
-      <button id="refresh">Refresh</button>
+      <button id="refresh">Refresh all</button>
     </header>
 
     <section class="notice">
-      <strong>Boundary:</strong> this spike uses a local project-owned test page. It does not automate ChatGPT or extract provider output.
+      <strong>Boundary:</strong> execution is limited to the project-owned loopback test surface. No third-party AI website automation or credential copying.
+    </section>
+
+    <nav id="s1-navigation" class="surface-nav" aria-label="S1 product surfaces">
+      <span>Projects</span><span>Workspaces</span><span>Marketplace</span><span>Agents</span><span>Workers</span>
+      <span>Tasks</span><span>Execution Graph</span><span>Human Gates</span><span>Evidence</span><span>Events / Recovery</span>
+    </nav>
+
+    <section class="s1-workspace-bar">
+      <label>Active Workspace <select id="s1-workspace"></select></label>
+      <strong id="s1-workspace-summary"></strong>
+    </section>
+
+    <section class="grid three">
+      <article>
+        <h2>Marketplace install</h2>
+        <p id="s1-marketplace"></p>
+        <button id="s1-install">Install local.form-submit</button>
+      </article>
+      <article>
+        <h2>Agent grant</h2>
+        <p id="s1-agent-summary"></p>
+        <button id="s1-grant">Grant submit_payload</button>
+      </article>
+      <article>
+        <h2>Worker provision</h2>
+        <label>Worker <select id="s1-worker"></select></label>
+        <button id="s1-provision">Provision + Start</button>
+      </article>
     </section>
 
     <section class="grid">
       <article>
-        <h2>Create worker</h2>
-        <label>Worker ID <input id="worker-id" value="worker-a"></label>
-        <label>Role
-          <select id="worker-role"><option>implementation</option><option>controller</option><option>review</option></select>
-        </label>
-        <label>Browser
-          <select id="browser-channel"><option value="chrome">Chrome</option><option value="chromium">Playwright Chromium</option></select>
-        </label>
-        <button id="create-worker">Create</button>
+        <h2>Create S1 task</h2>
+        <label>Task ID <input id="s1-task-id" value="s1-task-001"></label>
+        <label>Payload <textarea id="s1-task-payload">hello from Workspace A</textarea></label>
+        <button id="s1-create-task">Create / schedule</button>
       </article>
-
       <article>
-        <h2>Create local task</h2>
-        <label>Task ID <input id="task-id" value="task-001"></label>
-        <label>Title <input id="task-title" value="Verify local worker isolation"></label>
-        <label>Payload <textarea id="task-payload">hello from an authorized local test task</textarea></label>
-        <button id="create-task">Create task</button>
+        <h2>Blockers & recovery</h2>
+        <div id="s1-blockers" class="cards"></div>
       </article>
     </section>
 
     <section class="grid">
-      <article>
-        <h2>Observe GitHub PR</h2>
-        <p>Read-only, idempotent state observation.</p>
-        <label>Repository <input id="github-repository" value="moseszhu999/ai_exe_os"></label>
-        <label>PR number <input id="github-pr-number" type="number" min="1" value="1"></label>
-        <button id="observe-pr">Observe PR state</button>
-      </article>
+      <article><h2>Tasks & graph</h2><div id="s1-tasks" class="cards"></div></article>
+      <article><h2>Human Gates</h2><div id="s1-gates" class="cards"></div></article>
+    </section>
+    <section class="grid">
+      <article><h2>Evidence</h2><div id="s1-evidence" class="cards"></div></article>
+      <article><h2>Events</h2><pre id="s1-events"></pre></article>
     </section>
 
-    <section>
-      <h2>Workers</h2>
-      <div id="workers" class="cards"></div>
-    </section>
-
-    <section>
-      <h2>Tasks</h2>
-      <div id="tasks" class="cards"></div>
-    </section>
-
-    <section>
-      <h2>Recent events</h2>
-      <pre id="events"></pre>
-    </section>
+    <details>
+      <summary>S0 compatibility controls</summary>
+      <section class="grid">
+        <article>
+          <h2>Create worker</h2>
+          <label>Worker ID <input id="worker-id" value="worker-a"></label>
+          <label>Role
+            <select id="worker-role"><option>implementation</option><option>controller</option><option>review</option></select>
+          </label>
+          <label>Browser
+            <select id="browser-channel"><option value="chrome">Chrome</option><option value="chromium">Playwright Chromium</option></select>
+          </label>
+          <button id="create-worker">Create</button>
+        </article>
+        <article>
+          <h2>Create local task</h2>
+          <label>Task ID <input id="task-id" value="task-001"></label>
+          <label>Title <input id="task-title" value="Verify local worker isolation"></label>
+          <label>Payload <textarea id="task-payload">hello from an authorized local test task</textarea></label>
+          <button id="create-task">Create task</button>
+        </article>
+      </section>
+      <section class="grid">
+        <article>
+          <h2>Observe GitHub PR</h2>
+          <label>Repository <input id="github-repository" value="moseszhu999/ai_exe_os"></label>
+          <label>PR number <input id="github-pr-number" type="number" min="1" value="1"></label>
+          <button id="observe-pr">Observe PR state</button>
+        </article>
+      </section>
+      <section><h2>Workers</h2><div id="workers" class="cards"></div></section>
+      <section><h2>Tasks</h2><div id="tasks" class="cards"></div></section>
+      <section><h2>Recent events</h2><pre id="events"></pre></section>
+    </details>
 
     <div id="status" role="status"></div>
   </main>
