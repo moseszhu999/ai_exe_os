@@ -18,20 +18,21 @@ evidence and recovery
 provider-use contracts
 provider adapters
 engineering-delivery evidence
+operator cockpit / explainability
 ```
 
 Technical feasibility and provider-authorized use remain separate gates.
 
 ## Canonical stage registry
 
-This file is the current stage-number authority. Earlier versions of the roadmap had reserved `S2` for a GitHub-native workflow. During execution, the accepted product sequence inserted the more foundational durable Mission orchestration milestone as S2. The registry is reconciled here without renaming any accepted S0/S1/S2 artifact or result retroactively.
+This file is the current stage-number authority. Earlier versions of the roadmap had reserved `S2` for a GitHub-native workflow. During execution, the accepted product sequence inserted the more foundational durable Mission orchestration milestone as S2. The registry remains reconciled without renaming accepted S0/S1/S2 artifacts retroactively.
 
 ```text
 S0  Technical feasibility and provider boundary                  COMPLETE — GO
 S1  Local Execution Kernel and Workspace Interconnect           COMPLETE — GO
 S2  Durable Multi-Step Mission Orchestration                    COMPLETE — GO
-S3  GitHub-Native Engineering Workflow                          CURRENT
-S4  Multi-Session Operator Console                              PLANNED
+S3  GitHub-Native Engineering Workflow                          COMPLETE — GO
+S4  Multi-Session Operator Console                              CURRENT — GATE 0
 S5  Approved Provider Adapters                                  PLANNED
 S6  Scheduling Policy                                           PLANNED
 S7  Optional Collaboration and Sync                             FUTURE
@@ -40,11 +41,12 @@ S7  Optional Collaboration and Sync                             FUTURE
 Current baseline:
 
 ```text
-current main at S3 Gate 0 start: 2c42919d24c8a24f4abfbae03c1ca209e9828fd1
+current main at S4 Gate 0 start: 91d01473c8bddc3ffe818e92656a903e57e73a11
 S0 results: docs/spikes/S0-results.md
 S1 results: docs/results/S1-results.md
 S2 results: docs/results/S2-results.md
-canonical S3 issue: #43
+S3 results: docs/results/S3-results.md
+canonical S4 issue: #58
 ```
 
 ## S0 — Technical feasibility and provider boundary
@@ -151,17 +153,21 @@ docs/results/S2-results.md
 
 ## S3 — GitHub-Native Engineering Workflow
 
-Status: **CURRENT — GATE 0**
+Status: **COMPLETED — GO**
 
-Goal:
+Accepted path:
 
 ```text
-turn registered GitHub repository, branch/path ownership, PR exact-head,
-checks, review threads, base freshness, merge order and merge observation
-into durable evidence for S2 Mission delivery dependencies
+registered repository
+→ branch/path ownership
+→ exact-head PR binding
+→ GET-only PR/check/review/base observation
+→ fail-closed delivery gate
+→ immutable merge evidence
+→ declared S2 Mission continuation release
 ```
 
-Deliverables:
+Major durable assets:
 
 ```text
 RepositoryRegistration / RepositoryBinding
@@ -173,58 +179,65 @@ MergeOrderConstraint
 DeliveryGate
 DeliveryEvidence
 RepairProposal (proposal-only)
-canonical SQLite observation events/projections
+canonical SQLite GitHub observation events/projections
 integrated Electron repository/PR/CI/review evidence UI
 ```
 
-S3 provider authority is read-only. GitHub writes are not part of S3 and require a future separately accepted write contract.
+S3 provider authority remains read-only. GitHub writes are not part of S3 and require a future separately accepted write contract.
 
-Acceptance includes:
+Final acceptance proved exact-head invalidation, stale-base fail-closed behavior, required check/review evidence, ownership and merge-order constraints, restart idempotency, merge-only Mission dependency release, native Electron UI, live private-repository GET-only GitHub observation, and privacy-safe immutable evidence.
 
-```text
-Workspace repository isolation
-exclusive path conflict detection
-exact-head invalidation on head movement
-required check/review evidence
-fail-closed stale-base handling
-merge-order constraints
-immutable merge/delivery evidence
-restart idempotency
-S2 Mission dependency release only from declared evidence
-real Electron explanation UI
-bounded live read-only GitHub acceptance
-no provider writes
-privacy-safe portable artifact
-```
-
-Normative Gate 0 documents:
+Normative documents:
 
 ```text
 docs/contracts/S3-github-native-engineering-workflow.md
 docs/architecture/004-s3-github-native-engineering-workflow.md
 docs/testing/S3-acceptance-matrix.md
+docs/results/S3-results.md
 ```
 
 ## S4 — Multi-Session Operator Console
 
-Status: **PLANNED**
+Status: **CURRENT — GATE 0**
 
-Goal: make parallel execution understandable and controllable across Workspaces, Missions, delivery evidence, Workers, Human Gates, blockers and recovery.
+Goal: make parallel execution understandable and controllable across Workspaces, Missions, delivery evidence, Workers, Human Gates, blockers and recovery without introducing a second execution authority.
+
+Accepted architectural direction:
+
+```text
+S0 Worker/session state
++ S1 authorization / HumanGate / canonical events
++ S2 Mission state
++ S3 GitHub delivery evidence
+→ derived Workspace-scoped OperatorCockpitSnapshot
+→ explanation / attention / lineage
+→ bounded selected-Worker controls delegated to existing runtime
+→ secure Electron cockpit
+```
 
 Expected surfaces:
 
 ```text
-project/workspace cockpit
-Marketplace / Agent views
-Mission / ExecutionPlan graph
-Worker/session inventory
-provider-use status
-Human Gate inbox
-blocker/recovery views
-GitHub delivery evidence view
+Cockpit / Overview
+Projects & Workspaces
+Missions / Execution Graph
+Workers & Sessions
+Agents / Capabilities / Provider Use
+Human Gate Inbox
+Blockers & Recovery
+GitHub Delivery
+Evidence & Event Lineage
 ```
 
-Acceptance requires the operator to explain every active Worker, authorization, dependency, blocker and recovery state, and to stop one Worker without affecting unrelated Workers.
+Acceptance requires the operator to explain every active Worker, authorization, dependency, blocker and recovery state, and to stop one selected Worker without affecting unrelated Workers.
+
+Normative Gate 0 documents:
+
+```text
+docs/contracts/S4-multi-session-operator-console.md
+docs/architecture/005-s4-multi-session-operator-console.md
+docs/testing/S4-acceptance-matrix.md
+```
 
 ## S5 — Approved Provider Adapters
 
@@ -327,10 +340,10 @@ No financial, payment, wallet, token, settlement, or legal irreversible executio
 ## Current next action
 
 ```text
-accept and merge S3 Gate 0 docs-only contract
-→ launch disjoint S3-B / S3-C / S3-D / S3-E owners from one exact latest main
+accept and merge S4 Gate 0 docs-only contract
+→ launch disjoint S4-B / S4-C / S4-D / S4-E owners from one exact latest main
 → merge each independently after exact-head validation
-→ start S3-I shared integration only after B/C/D/E are merged
-→ execute S3-F frozen-head + live read-only GitHub + real Electron acceptance
+→ start S4-I shared integration only after B/C/D/E are merged
+→ execute S4-F frozen-head + native multi-session Electron acceptance
 → issue GO / GO WITH ARCHITECTURE CHANGE / NO-GO
 ```
