@@ -17,7 +17,7 @@ function indexOfOrFail(source, pattern) {
   return index;
 }
 
-test('S2 service initializes on canonical SQLite before both IPC groups and BrowserWindow', () => {
+test('S3 service extends the accepted S2 chain and initializes on canonical SQLite before all IPC groups and BrowserWindow', () => {
   const service = indexOfOrFail(main, 's1Service = new S1ApplicationService');
   const registerIpcCall = main.lastIndexOf('registerIpc();');
   const window = indexOfOrFail(main, 'await createMainWindow();');
@@ -25,7 +25,8 @@ test('S2 service initializes on canonical SQLite before both IPC groups and Brow
   assert.ok(service < registerIpcCall && registerIpcCall < window);
   assert.match(main, /registerS1Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
   assert.match(main, /registerS2Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
-  assert.match(main, /S2ApplicationService: S1ApplicationService/);
+  assert.match(main, /registerS3Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
+  assert.match(main, /S3ApplicationService: S1ApplicationService/);
   assert.match(main, /databasePath: join\(s1RuntimeRoot, 'state\.sqlite'\)/);
   for (const security of ['contextIsolation: true', 'nodeIntegration: false', 'sandbox: true', 'webSecurity: true']) assert.ok(main.includes(security), security);
 });
