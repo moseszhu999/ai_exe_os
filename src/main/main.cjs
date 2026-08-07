@@ -9,7 +9,7 @@ const { BrowserWorkerManager } = require('./browser-worker-manager.cjs');
 const { TaskRepository } = require('./task-repository.cjs');
 const { GitHubReadOnlyAdapter } = require('./github-readonly-adapter.cjs');
 const { GitHubStateObserver } = require('./github-state-observer.cjs');
-const { S1ApplicationService } = require('../application/s1-application-service.cjs');
+const { S1ApplicationService } = require('../application/index.cjs');
 const { registerS1Ipc } = require('../application/s1-ipc.cjs');
 
 app.enableSandbox();
@@ -163,6 +163,7 @@ app.whenReady().then(async () => {
   s1Service = new S1ApplicationService({
     databasePath: join(s1RuntimeRoot, 'state.sqlite'),
     workerManager,
+    localTarget: `${testBaseUrl}/task-form.html`,
   });
 
   githubObserver = new GitHubStateObserver({
