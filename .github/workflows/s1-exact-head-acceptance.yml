@@ -1,0 +1,162 @@
+name: S1 exact-head native workstation acceptance
+
+on:
+  push:
+    branches:
+      - qa/s1-exact-head-acceptance-b378
+    paths:
+      - .github/workflows/s1-exact-head-acceptance.yml
+      - scripts/s1-acceptance-real-workstation.cjs
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - .github/workflows/s1-exact-head-acceptance.yml
+      - scripts/s1-acceptance-real-workstation.cjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TARGET_SHA: b378389929c8fce91d219f8179ea175995b19e2d
+
+jobs:
+  exact-source:
+    name: Exact S1 source and carrier boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out non-merge acceptance carrier
+        uses: actions/checkout@v6
+        with:
+          path: carrier
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check out frozen product exact head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          path: target
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Prove immutable target and carrier-only scope
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C target rev-parse HEAD)" = "$TARGET_SHA"
+          mapfile -t changed < <(git -C carrier diff --name-only "$TARGET_SHA..HEAD" | sort)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" = 2
+          test "${changed[0]}" = ".github/workflows/s1-exact-head-acceptance.yml"
+          test "${changed[1]}" = "scripts/s1-acceptance-real-workstation.cjs"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Validate frozen product source
+        working-directory: target
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+          npm run validate
+          ! grep -RInE 'chatgpt\.com|api\.openai\.com|openai\.com' src test-pages package.json
+
+      - name: Validate acceptance controller syntax
+        shell: bash
+        run: node --check carrier/scripts/s1-acceptance-real-workstation.cjs
+
+  native-arm64-s1:
+    name: Native arm64 S1 Workspace Agent recovery matrix
+    needs: exact-source
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - name: Check out non-merge acceptance carrier
+        uses: actions/checkout@v6
+        with:
+          path: carrier
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check out frozen product exact head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          path: target
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Prove native Apple Silicon environment
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C target rev-parse HEAD)" = "$TARGET_SHA"
+          test "$(uname -m)" = arm64
+          test "$(node -p 'process.arch')" = arm64
+          translated="$(/usr/sbin/sysctl -in sysctl.proc_translated 2>/dev/null || echo 0)"
+          test "$translated" != 1
+          CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+          test -x "$CHROME" || brew install --cask google-chrome
+          file "$CHROME"
+          lipo -archs "$CHROME"
+
+      - name: Install frozen product runtime dependencies
+        working-directory: target
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm install --no-package-lock --no-audit --no-fund
+          npx playwright install chromium
+          npm run validate
+
+      - name: Run frozen S1 real-workstation acceptance
+        shell: bash
+        env:
+          AI_EXE_OS_S1_ACCEPTANCE_OUTPUT: ${{ runner.temp }}/s1-exact-head-${{ env.TARGET_SHA }}
+          AI_EXE_OS_S1_TEST_PORT: '43129'
+        run: |
+          set -Eeuo pipefail
+          node carrier/scripts/s1-acceptance-real-workstation.cjs target
+
+      - name: Verify machine-readable verdict and cleanliness
+        if: always()
+        shell: bash
+        env:
+          EVIDENCE: ${{ runner.temp }}/s1-exact-head-${{ env.TARGET_SHA }}
+        run: |
+          set -Eeuo pipefail
+          test -f "$EVIDENCE/s1-result.json"
+          node - "$EVIDENCE/s1-result.json" <<'NODE'
+          const fs = require('node:fs');
+          const result = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (result.status !== 'PASS') throw new Error(JSON.stringify(result.error || result));
+          if ((result.pageErrors || []).length !== 0) throw new Error('pageErrors not empty');
+          if ((result.consoleErrors || []).length !== 0) throw new Error('consoleErrors not empty');
+          if (result.phases.rejectNoSubmission.before !== result.phases.rejectNoSubmission.after) throw new Error('reject changed submission count');
+          if (result.phases.approveExactlyOnce.after !== result.phases.approveExactlyOnce.before + 1) throw new Error('approve was not exactly once');
+          if (result.phases.approveExactlyOnce.repeated !== result.phases.approveExactlyOnce.after) throw new Error('repeated approval replayed');
+          if (result.phases.restartNoReplay.before !== result.phases.restartNoReplay.after) throw new Error('restart replayed');
+          if (result.phases.crashNoReplay.before !== result.phases.crashNoReplay.after) throw new Error('crash recovery replayed');
+          if (result.phases.projectionRebuild.before !== result.phases.projectionRebuild.after) throw new Error('projection digest mismatch');
+          NODE
+          git -C target status --short > "$EVIDENCE/git-status.txt"
+          test ! -s "$EVIDENCE/git-status.txt"
+          find "$EVIDENCE" -type f -print | sort > "$EVIDENCE/manifest.txt"
+          find "$EVIDENCE" -type f ! -name SHA256SUMS.txt -exec shasum -a 256 {} \; | sort > "$EVIDENCE/SHA256SUMS.txt"
+
+      - name: Upload immutable S1 acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s1-exact-head-${{ env.TARGET_SHA }}
+          path: ${{ runner.temp }}/s1-exact-head-${{ env.TARGET_SHA }}
+          if-no-files-found: error
+          retention-days: 90
