@@ -9,7 +9,14 @@ class HumanGateService {
 
   request(input) {
     const existing = this.repository.get(input.id);
-    if (existing) return Object.freeze({ created: false, gate: existing });
+    if (existing) {
+      const comparable = ['workspaceId', 'taskId', 'executionRunId', 'actionClass', 'workerId', 'capabilityAction', 'target'];
+      const same = comparable.every((key) => existing[key] === String(input[key]))
+        && JSON.stringify(existing.payloadPreview) === JSON.stringify(input.payloadPreview || {})
+        && JSON.stringify(existing.evidenceExpected) === JSON.stringify(input.evidenceExpected || []);
+      if (!same) throw new Error(`Human Gate idempotency collision: ${input.id}`);
+      return Object.freeze({ created: false, gate: existing });
+    }
     const gate = Object.freeze({
       id: String(input.id),
       workspaceId: String(input.workspaceId),
