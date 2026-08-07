@@ -1,16 +1,25 @@
 'use strict';
 
 const { createHash } = require('node:crypto');
-const { S1ApplicationService, LOCAL_PACKAGE_ID, LOCAL_VERSION, LOCAL_PROVIDER_SNAPSHOT_ID } = require('./index.cjs');
+const { S1ApplicationService, LOCAL_PROVIDER_SNAPSHOT_ID } = require('./index.cjs');
 const { ProjectionRepository } = require('./projection-repository.cjs');
 const { createAgent, assertGrantAllows } = require('../domain/agent-model.cjs');
 const { createCapabilityPackage, publishCapabilityVersion } = require('../domain/capability-model.cjs');
 const { createProviderContractSnapshot, assertProviderSnapshotAllows } = require('../domain/provider-contract-snapshot.cjs');
-const { createMission, createMissionRevision, createMissionRun, freezeMissionRevision, assertRevisionSemanticMatch } = require('../domain/mission-model.cjs');
+const { createMission, createMissionRevision, createMissionRun, freezeMissionRevision } = require('../domain/mission-model.cjs');
 const { createExecutionPlan, createPlanStep, createStepBinding } = require('../domain/plan-model.cjs');
 const { createStepOutput, assertJsonSafe } = require('../domain/step-output-model.cjs');
 const { createAgentHandoff } = require('../domain/agent-handoff-model.cjs');
-const { createStepAttempt, deriveReadySet, evaluateMissionCompletion, recoverUncertainAttempts, retryAfterReview, transitionAttempt, transitionRun } = require('../orchestration/mission-orchestrator.cjs');
+const {
+  createStepAttempt,
+  deriveReadySet,
+  evaluateMissionCompletion,
+  markExternalStart,
+  recoverUncertainAttempts,
+  retryAfterReview,
+  transitionAttempt,
+  transitionRun,
+} = require('../orchestration/mission-orchestrator.cjs');
 const { createMissionCheckpoint, verifyMissionCheckpoint } = require('../checkpoint/mission-checkpoint.cjs');
 
 const LOCAL_TRANSFORM_PACKAGE_ID = 'local.mission-transform';
@@ -22,20 +31,16 @@ const LOCAL_JOIN_TARGET = 'local://mission-join';
 const LOCAL_TRANSFORM_DIGEST = `sha256:${'b'.repeat(64)}`;
 
 function boundedId(prefix, ...parts) {
-  const digest = createHash('sha256').update(parts.join(':')).digest('hex').slice(0, 20);
-  return `${prefix}-${digest}`;
+  return `${prefix}-${createHash('sha256').update(parts.join(':')).digest('hex').slice(0, 20)}`;
 }
-
 function stable(value) {
   if (Array.isArray(value)) return value.map(stable);
   if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])]));
   return value;
 }
-
 function semanticDigest(value) {
   return `sha256:${createHash('sha256').update(JSON.stringify(stable(value))).digest('hex')}`;
 }
-
 function named(entry) { return typeof entry === 'string' ? entry : entry?.name; }
 
 class S2ApplicationService extends S1ApplicationService {
@@ -68,40 +73,26 @@ class S2ApplicationService extends S1ApplicationService {
         packageId: LOCAL_TRANSFORM_PACKAGE_ID,
         version: LOCAL_TRANSFORM_VERSION,
         integrityDigest: LOCAL_TRANSFORM_DIGEST,
-        inputSchema: { type: 'object' },
-        outputSchema: { type: 'object' },
-        evidenceRequirements: ['local-transform-evidence'],
-        resourceRequirements: [],
-        providerContractIds: [LOCAL_TRANSFORM_PROVIDER_ID],
-        humanGatePolicy: 'never',
+        inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
+        evidenceRequirements: ['local-transform-evidence'], resourceRequirements: [],
+        providerContractIds: [LOCAL_TRANSFORM_PROVIDER_ID], humanGatePolicy: 'never',
       }) }, 'capability.published');
     }
     if (!this.providerSnapshot.get(LOCAL_TRANSFORM_PROVIDER_ID)) {
       this.providerSnapshot.save({ id: LOCAL_TRANSFORM_PROVIDER_ID, ...createProviderContractSnapshot({
         contractId: LOCAL_TRANSFORM_PROVIDER_ID,
-        providerId: 'project-owned',
-        surfaceId: 'local-mission-transform',
-        status: 'accepted',
-        reviewedAt: '2026-08-01T00:00:00.000Z',
-        expiresAt: '2030-01-01T00:00:00.000Z',
+        providerId: 'project-owned', surfaceId: 'local-mission-transform', status: 'accepted',
+        reviewedAt: '2026-08-01T00:00:00.000Z', expiresAt: '2030-01-01T00:00:00.000Z',
         governingTermsDigest: LOCAL_TRANSFORM_DIGEST,
-        permittedActions: ['transform_payload', 'join_payload'],
-        prohibitedActions: [],
+        permittedActions: ['transform_payload', 'join_payload'], prohibitedActions: [],
       }) }, 'provider_contract.accepted');
     }
   }
 
   appendS2Event({ type, workspaceId, aggregateType, aggregateId, idempotencyKey, payload = {} }) {
     return this.store.appendEvent({
-      workspaceId,
-      aggregateType,
-      aggregateId,
-      eventType: type,
-      eventVersion: 1,
-      idempotencyKey,
-      occurredAt: this.clock(),
-      payload,
-      metadata: { source: 's2-application' },
+      workspaceId, aggregateType, aggregateId, eventType: type, eventVersion: 1,
+      idempotencyKey, occurredAt: this.clock(), payload, metadata: { source: 's2-application' },
     }).event;
   }
 
@@ -110,25 +101,19 @@ class S2ApplicationService extends S1ApplicationService {
     const id = input.id || boundedId('mission', workspace.id, input.idempotencyKey || input.title);
     const existing = this.mission.get(id);
     if (existing) {
-      if (existing.workspaceId !== workspace.id || existing.title !== input.title) throw new Error(`Mission idempotency collision: ${id}`);
+      if (existing.workspaceId !== workspace.id || existing.title !== input.title || existing.objective !== String(input.objective || '')) {
+        throw new Error(`Mission idempotency collision: ${id}`);
+      }
       return Object.freeze({ mission: existing, draftRevision: this.missionRevision.get(existing.draftRevisionId) || null });
     }
     const mission = this.mission.save({
       ...createMission({ id, workspaceId: workspace.id, title: input.title, createdAt: this.clock() }),
-      objective: String(input.objective || ''),
-      draftRevisionId: boundedId('missionrev', id, 'draft'),
+      objective: String(input.objective || ''), draftRevisionId: boundedId('missionrev', id, 'draft'),
     }, 'mission.created');
     const draftRevision = this.missionRevision.save({
-      id: mission.draftRevisionId,
-      missionId: mission.id,
-      workspaceId: workspace.id,
-      revision: 0,
-      objective: String(input.objective || ''),
-      planId: null,
-      status: 'draft',
-      frozenAt: null,
-      contentDigest: null,
-      createdAt: this.clock(),
+      id: mission.draftRevisionId, missionId: mission.id, workspaceId: workspace.id,
+      revision: 0, objective: String(input.objective || ''), planId: null, status: 'draft',
+      frozenAt: null, contentDigest: null, createdAt: this.clock(),
     }, 'mission.draft_created');
     this.appendS2Event({ type: 'mission.created', workspaceId: workspace.id, aggregateType: 'mission', aggregateId: mission.id, idempotencyKey: `mission.created:${mission.id}`, payload: { missionId: mission.id } });
     return Object.freeze({ mission, draftRevision });
@@ -138,7 +123,8 @@ class S2ApplicationService extends S1ApplicationService {
     const mission = this.require(this.mission, input.missionId, 'Mission');
     if (mission.workspaceId !== input.workspaceId) throw new Error('Cross-Workspace Mission revision denied');
     if (!Array.isArray(input.steps) || input.steps.length < 1) throw new TypeError('Mission revision requires steps');
-    const revisionNumber = Number(input.revision || Math.max(1, ...this.missionRevision.list().filter((item) => item.missionId === mission.id).map((item) => Number(item.revision || 0) + 1)));
+    const priorRevisions = this.missionRevision.list().filter((item) => item.missionId === mission.id && Number(item.revision) > 0);
+    const revisionNumber = Number(input.revision || (priorRevisions.length ? Math.max(...priorRevisions.map((item) => Number(item.revision))) + 1 : 1));
     const revisionId = input.id || boundedId('missionrev', mission.id, revisionNumber);
     const planId = input.planId || boundedId('missionplan', revisionId);
     const bindings = [];
@@ -148,34 +134,27 @@ class S2ApplicationService extends S1ApplicationService {
       const action = String(raw.action || '');
       const providerSnapshotId = raw.providerSnapshotId || (target.startsWith('local://') ? LOCAL_TRANSFORM_PROVIDER_ID : LOCAL_PROVIDER_SNAPSHOT_ID);
       const binding = createStepBinding({
-        id: raw.bindingId || boundedId('binding', revisionId, raw.id),
-        workspaceId: input.workspaceId,
-        agentId: raw.agentId,
-        installationId: raw.installationId,
-        capabilityVersionId: raw.capabilityVersionId,
-        action,
-        target,
-        providerSnapshotId,
+        id: raw.bindingId || boundedId('binding', revisionId, raw.id), workspaceId: input.workspaceId,
+        agentId: raw.agentId, installationId: raw.installationId, capabilityVersionId: raw.capabilityVersionId,
+        action, target, providerSnapshotId,
       });
       this.validateBinding(binding);
       const step = createPlanStep({
-        id: raw.id,
-        planId,
-        workspaceId: input.workspaceId,
-        name: raw.name || raw.id,
-        bindingId: binding.id,
-        dependsOn: raw.dependsOn || [],
-        declaredInputs: raw.declaredInputs || [],
-        declaredOutputs: raw.declaredOutputs || [],
-        evidenceRequirements: raw.evidenceRequirements || [],
-        humanGatePolicy: raw.humanGatePolicy || (target.startsWith('local://') ? 'never' : 'action'),
+        id: raw.id, planId, workspaceId: input.workspaceId, name: raw.name || raw.id, bindingId: binding.id,
+        dependsOn: raw.dependsOn || [], declaredInputs: raw.declaredInputs || [], declaredOutputs: raw.declaredOutputs || [],
+        evidenceRequirements: raw.evidenceRequirements || [], humanGatePolicy: raw.humanGatePolicy || (target.startsWith('local://') ? 'never' : 'action'),
         resourceRequirements: raw.resourceRequirements || [],
       });
-      const payload = raw.payload === undefined ? '' : String(raw.payload);
-      steps.push(Object.freeze({ ...step, workerId: raw.workerId || null, payload, executionMode: target.startsWith('local://') ? 'local' : 's1' }));
+      steps.push(Object.freeze({
+        ...step, workerId: raw.workerId || null, payload: raw.payload === undefined ? '' : String(raw.payload),
+        executionMode: target.startsWith('local://') ? 'local' : 's1',
+      }));
       bindings.push(binding);
     }
-    const domainPlan = createExecutionPlan({ id: planId, missionRevisionId: revisionId, workspaceId: input.workspaceId, steps, bindings, terminalStepIds: input.terminalStepIds || [steps.at(-1).id] });
+    const domainPlan = createExecutionPlan({
+      id: planId, missionRevisionId: revisionId, workspaceId: input.workspaceId,
+      steps, bindings, terminalStepIds: input.terminalStepIds || [steps.at(-1).id],
+    });
     const integrationDigest = semanticDigest({ objective: input.objective, steps, bindings, terminalStepIds: domainPlan.terminalStepIds });
     const existingRevision = this.missionRevision.get(revisionId);
     if (existingRevision) {
@@ -184,14 +163,13 @@ class S2ApplicationService extends S1ApplicationService {
     }
     for (const binding of bindings) {
       const current = this.stepBinding.get(binding.id);
-      if (current && semanticDigest(current) !== semanticDigest(binding)) throw new Error(`Step binding idempotency collision: ${binding.id}`);
+      if (current && semanticDigest({ ...current, _revision: undefined }) !== semanticDigest(binding)) throw new Error(`Step binding idempotency collision: ${binding.id}`);
       if (!current) this.stepBinding.save(binding, 'step.binding_created');
     }
     const plan = this.executionPlan.save({ ...domainPlan, steps, bindings, integrationDigest }, 'mission.plan_created');
     const revision = this.missionRevision.save({
       ...createMissionRevision({ id: revisionId, missionId: mission.id, workspaceId: mission.workspaceId, revision: revisionNumber, objective: input.objective, planId, createdAt: this.clock() }),
-      integrationDigest,
-      status: 'ready',
+      integrationDigest, status: 'ready',
     }, 'mission.revision_created');
     this.mission.save({ ...mission, currentRevisionId: revision.id, updatedAt: this.clock() }, 'mission.revision_selected');
     this.appendS2Event({ type: 'mission.revision_created', workspaceId: mission.workspaceId, aggregateType: 'mission', aggregateId: mission.id, idempotencyKey: `mission.revision_created:${revision.id}`, payload: { revisionId: revision.id, planId: plan.id, integrationDigest } });
@@ -203,7 +181,9 @@ class S2ApplicationService extends S1ApplicationService {
     const agent = this.require(this.agent, binding.agentId, 'Agent');
     const installation = this.require(this.installation, binding.installationId, 'Installation');
     const version = this.require(this.capabilityVersion, binding.capabilityVersionId, 'Capability version');
-    if (installation.packageId !== version.packageId || installation.version !== version.version || installation.integrityDigest !== version.integrityDigest) throw new Error('Step binding capability installation/version mismatch');
+    if (installation.packageId !== version.packageId || installation.version !== version.version || installation.integrityDigest !== version.integrityDigest) {
+      throw new Error('Step binding capability installation/version mismatch');
+    }
     const grant = this.grant.list().find((candidate) => candidate.workspaceId === workspace.id && candidate.agentId === agent.id && candidate.installationId === installation.id && candidate.status === 'active');
     assertGrantAllows({ workspace, agent, installation, grant, action: binding.action, target: binding.target });
     const snapshot = this.require(this.providerSnapshot, binding.providerSnapshotId, 'Provider snapshot');
@@ -222,8 +202,7 @@ class S2ApplicationService extends S1ApplicationService {
     const frozen = freezeMissionRevision(revision, this.clock());
     this.missionRevision.save({ ...frozen, status: 'frozen' }, 'mission.revision_frozen');
     let run = createMissionRun({ id: runId, workspaceId: mission.workspaceId, missionId: mission.id, missionRevisionId: revision.id, planId: plan.id, createdAt: this.clock() });
-    run = transitionRun(run, 'running', 'mission start', this.clock());
-    run = this.missionRun.save(run, 'mission.run_started');
+    run = this.missionRun.save(transitionRun(run, 'running', 'mission start', this.clock()), 'mission.run_started');
     this.appendS2Event({ type: 'mission.run_started', workspaceId: run.workspaceId, aggregateType: 'missionRun', aggregateId: run.id, idempotencyKey: `mission.run_started:${run.id}`, payload: { missionId: mission.id, revisionId: revision.id, planId: plan.id } });
     this.evaluateRun(run.id);
     return Object.freeze({ run: this.missionRun.get(run.id), state: this.queryMissionState(run.workspaceId) });
@@ -240,11 +219,9 @@ class S2ApplicationService extends S1ApplicationService {
       const handoffs = this.agentHandoff.list().filter((item) => item.missionRunId === runId);
       const ready = deriveReadySet({ run: this.missionRun.get(runId), plan, attempts, handoffs });
       for (const stepId of ready.ready) {
-        const current = this.latestAttempt(runId, stepId);
-        if (current) continue;
+        if (this.latestAttempt(runId, stepId)) continue;
         const step = plan.steps.find((candidate) => candidate.id === stepId);
-        let attempt = createStepAttempt({ run: this.missionRun.get(runId), step, attemptNumber: 1, createdAt: this.clock() });
-        attempt = this.stepAttempt.save(attempt, 'step.attempt_created');
+        let attempt = this.stepAttempt.save(createStepAttempt({ run: this.missionRun.get(runId), step, attemptNumber: 1, createdAt: this.clock() }), 'step.attempt_created');
         this.appendS2Event({ type: 'step.attempt_created', workspaceId: run.workspaceId, aggregateType: 'stepAttempt', aggregateId: attempt.id, idempotencyKey: `step.attempt_created:${attempt.id}`, payload: { missionRunId: runId, stepId } });
         if (step.executionMode === 'local') {
           this.executeLocalAttempt(attempt, step, plan);
@@ -262,28 +239,30 @@ class S2ApplicationService extends S1ApplicationService {
   scheduleExternalAttempt(attempt, step) {
     const binding = this.require(this.stepBinding, step.bindingId, 'Step binding');
     const workerId = step.workerId || this.selectIdleWorker(attempt.workspaceId);
-    const taskId = boundedId('s2task', attempt.id);
     const result = super.createTask({
-      id: taskId,
-      workspaceId: attempt.workspaceId,
-      agentId: binding.agentId,
-      installationId: binding.installationId,
-      capabilityAction: binding.action,
-      target: binding.target,
-      workerId,
+      id: boundedId('s2task', attempt.id), workspaceId: attempt.workspaceId,
+      agentId: binding.agentId, installationId: binding.installationId,
+      capabilityAction: binding.action, target: binding.target, workerId,
       payload: step.payload || `${attempt.missionRunId}:${step.id}`,
     });
     let next = attempt;
     if (result.gate) next = transitionAttempt(next, 'waiting_human', 'human gate requested', this.clock());
     else if (result.run?.state === 'blocked') next = transitionAttempt(next, 'blocked', 'S1 execution blocked', this.clock());
-    next = this.stepAttempt.save({ ...next, executionRunId: result.run?.id || null, humanGateId: result.gate?.id || null, blockers: result.run?.blockers || [], workerId }, result.gate ? 'step.attempt_waiting_human' : 'step.attempt_blocked');
-    this.appendS2Event({ type: result.gate ? 'step.attempt_waiting_human' : 'plan.step_blocked', workspaceId: attempt.workspaceId, aggregateType: 'stepAttempt', aggregateId: attempt.id, idempotencyKey: `${result.gate ? 'step.attempt_waiting_human' : 'plan.step_blocked'}:${attempt.id}`, payload: { executionRunId: result.run?.id || null, gateId: result.gate?.id || null, blockers: result.run?.blockers || [] } });
+    next = this.stepAttempt.save({
+      ...next, executionRunId: result.run?.id || null, humanGateId: result.gate?.id || null,
+      blockers: result.run?.blockers || [], workerId,
+    }, result.gate ? 'step.attempt_waiting_human' : 'step.attempt_blocked');
+    this.appendS2Event({
+      type: result.gate ? 'step.attempt_waiting_human' : 'plan.step_blocked',
+      workspaceId: attempt.workspaceId, aggregateType: 'stepAttempt', aggregateId: attempt.id,
+      idempotencyKey: `${result.gate ? 'step.attempt_waiting_human' : 'plan.step_blocked'}:${attempt.id}`,
+      payload: { executionRunId: result.run?.id || null, gateId: result.gate?.id || null, blockers: result.run?.blockers || [] },
+    });
     return next;
   }
 
   executeLocalAttempt(attempt, step, plan) {
-    let active = transitionAttempt(attempt, 'active', 'local deterministic execution', this.clock());
-    active = this.stepAttempt.save(active, 'step.attempt_started');
+    let active = this.stepAttempt.save(transitionAttempt(attempt, 'active', 'local deterministic execution', this.clock()), 'step.attempt_started');
     const inputs = {};
     for (const descriptor of step.declaredInputs || []) {
       const inputName = named(descriptor);
@@ -293,23 +272,33 @@ class S2ApplicationService extends S1ApplicationService {
     }
     const value = step.declaredInputs?.length ? { kind: 'join', inputs } : { kind: 'local-transform', stepId: step.id, payload: step.payload || '' };
     assertJsonSafe(value);
-    this.recordOutputsAndEvidence({ attempt: active, step, plan, value });
-    const completed = this.stepAttempt.save(transitionAttempt(active, 'completed', 'local result observed', this.clock()), 'step.attempt_completed');
-    this.appendS2Event({ type: 'step.attempt_completed', workspaceId: completed.workspaceId, aggregateType: 'stepAttempt', aggregateId: completed.id, idempotencyKey: `step.attempt_completed:${completed.id}`, payload: { stepId: completed.stepId, local: true } });
-    this.recordHandoffsForCompletedAttempt(completed, step, plan);
-    return completed;
+    this.recordOutputsAndEvidence({ attempt: active, step, value });
+    active = this.stepAttempt.save(transitionAttempt(active, 'completed', 'local result observed', this.clock()), 'step.attempt_completed');
+    this.appendS2Event({ type: 'step.attempt_completed', workspaceId: active.workspaceId, aggregateType: 'stepAttempt', aggregateId: active.id, idempotencyKey: `step.attempt_completed:${active.id}`, payload: { stepId: active.stepId, local: true } });
+    this.recordHandoffsForCompletedAttempt(active, step, plan);
+    return active;
   }
 
-  recordOutputsAndEvidence({ attempt, step, plan, value }) {
-    const outputNames = (step.declaredOutputs || []).map(named).filter(Boolean);
-    for (const outputName of outputNames) {
+  recordOutputsAndEvidence({ attempt, step, value }) {
+    for (const outputName of (step.declaredOutputs || []).map(named).filter(Boolean)) {
       const outputId = boundedId('stepoutput', attempt.id, outputName);
-      if (!this.stepOutput.get(outputId)) this.stepOutput.save(createStepOutput({ id: outputId, workspaceId: attempt.workspaceId, missionRunId: attempt.missionRunId, stepAttemptId: attempt.id, outputName, schemaDigest: semanticDigest({ outputName }), value, evidenceIds: (step.evidenceRequirements || []).map((requirement) => boundedId('evidence', attempt.id, requirement)), createdAt: this.clock() }), 'step.output_recorded');
+      if (!this.stepOutput.get(outputId)) {
+        this.stepOutput.save(createStepOutput({
+          id: outputId, workspaceId: attempt.workspaceId, missionRunId: attempt.missionRunId,
+          stepAttemptId: attempt.id, outputName, schemaDigest: semanticDigest({ outputName }), value,
+          evidenceIds: (step.evidenceRequirements || []).map((requirement) => boundedId('evidence', attempt.id, requirement)), createdAt: this.clock(),
+        }), 'step.output_recorded');
+      }
       this.appendS2Event({ type: 'step.output_recorded', workspaceId: attempt.workspaceId, aggregateType: 'stepAttempt', aggregateId: attempt.id, idempotencyKey: `step.output_recorded:${outputId}`, payload: { stepId: step.id, outputId, outputName } });
     }
     for (const requirement of step.evidenceRequirements || []) {
       const evidenceId = boundedId('evidence', attempt.id, requirement);
-      if (!this.evidence.get(evidenceId)) this.evidence.save({ id: evidenceId, workspaceId: attempt.workspaceId, missionRunId: attempt.missionRunId, stepAttemptId: attempt.id, stepId: step.id, type: requirement, observedAt: this.clock(), result: value }, 's2.evidence_recorded');
+      if (!this.evidence.get(evidenceId)) {
+        this.evidence.save({
+          id: evidenceId, workspaceId: attempt.workspaceId, missionRunId: attempt.missionRunId,
+          stepAttemptId: attempt.id, stepId: step.id, type: requirement, observedAt: this.clock(), result: value,
+        }, 's2.evidence_recorded');
+      }
     }
   }
 
@@ -322,7 +311,10 @@ class S2ApplicationService extends S1ApplicationService {
         if (!output) continue;
         const handoffId = boundedId('handoff', attempt.missionRunId, sourceStep.id, targetStep.id, descriptor.name);
         if (this.agentHandoff.get(handoffId)) continue;
-        const handoff = createAgentHandoff({ id: handoffId, workspaceId: attempt.workspaceId, missionRunId: attempt.missionRunId, sourceStep, targetStep, inputName: descriptor.name, output, createdAt: this.clock() });
+        const handoff = createAgentHandoff({
+          id: handoffId, workspaceId: attempt.workspaceId, missionRunId: attempt.missionRunId,
+          sourceStep, targetStep, inputName: descriptor.name, output, createdAt: this.clock(),
+        });
         this.agentHandoff.save(handoff, 'agent.handoff_recorded');
         this.appendS2Event({ type: 'agent.handoff_recorded', workspaceId: attempt.workspaceId, aggregateType: 'missionRun', aggregateId: attempt.missionRunId, idempotencyKey: `agent.handoff_recorded:${handoff.id}`, payload: { handoffId: handoff.id, outputId: output.id, fromStepAttemptId: attempt.id, toStepId: targetStep.id } });
       }
@@ -353,14 +345,17 @@ class S2ApplicationService extends S1ApplicationService {
     try {
       const result = await super.approveHumanGate(input);
       if (!attempt || result.run?.state !== 'result_observed') return result;
-      const plan = this.require(this.executionPlan, this.require(this.missionRun, attempt.missionRunId, 'Mission run').planId, 'Execution plan');
+      const missionRun = this.require(this.missionRun, attempt.missionRunId, 'Mission run');
+      const plan = this.require(this.executionPlan, missionRun.planId, 'Execution plan');
       const step = plan.steps.find((candidate) => candidate.id === attempt.stepId);
       const latest = this.require(this.stepAttempt, attempt.id, 'Step attempt');
       if (latest.state !== 'completed') {
         const value = result.execution?.result || result.execution || { observed: true };
         assertJsonSafe(value);
-        this.recordOutputsAndEvidence({ attempt: latest, step, plan, value });
-        const completed = this.stepAttempt.save(Object.freeze({ ...transitionAttempt(latest, 'completed', 'S1 result observed', this.clock()), externalStartCommitted: true }), 'step.attempt_completed');
+        const active = latest.state === 'active' ? latest : markExternalStart(latest, result.run.id, this.clock());
+        this.stepAttempt.save(active, 'step.attempt_started');
+        this.recordOutputsAndEvidence({ attempt: active, step, value });
+        const completed = this.stepAttempt.save(transitionAttempt(active, 'completed', 'S1 result observed', this.clock()), 'step.attempt_completed');
         this.appendS2Event({ type: 'step.attempt_completed', workspaceId: completed.workspaceId, aggregateType: 'stepAttempt', aggregateId: completed.id, idempotencyKey: `step.attempt_completed:${completed.id}`, payload: { stepId: completed.stepId, executionRunId: completed.executionRunId } });
         this.recordHandoffsForCompletedAttempt(completed, step, plan);
         this.evaluateRun(completed.missionRunId);
@@ -423,11 +418,10 @@ class S2ApplicationService extends S1ApplicationService {
     if (previous.missionRunId !== run.id) throw new Error('StepAttempt does not belong to MissionRun');
     const plan = this.require(this.executionPlan, run.planId, 'Execution plan');
     const step = plan.steps.find((candidate) => candidate.id === previous.stepId);
-    const retried = retryAfterReview({ previousAttempt: previous, run, step, reviewed: input.reviewed === true, occurredAt: this.clock() });
-    const stored = this.stepAttempt.save(retried, 'step.attempt_retry_created');
-    this.appendS2Event({ type: 'step.attempt_created', workspaceId: run.workspaceId, aggregateType: 'stepAttempt', aggregateId: stored.id, idempotencyKey: `step.attempt_created:${stored.id}`, payload: { retryOf: previous.id, attemptNumber: stored.attemptNumber } });
-    if (step.executionMode === 'local') this.executeLocalAttempt(stored, step, plan); else this.scheduleExternalAttempt(stored, step);
-    return this.stepAttempt.get(stored.id);
+    const retried = this.stepAttempt.save(retryAfterReview({ previousAttempt: previous, run, step, reviewed: input.reviewed === true, occurredAt: this.clock() }), 'step.attempt_retry_created');
+    this.appendS2Event({ type: 'step.attempt_created', workspaceId: run.workspaceId, aggregateType: 'stepAttempt', aggregateId: retried.id, idempotencyKey: `step.attempt_created:${retried.id}`, payload: { retryOf: previous.id, attemptNumber: retried.attemptNumber } });
+    if (step.executionMode === 'local') this.executeLocalAttempt(retried, step, plan); else this.scheduleExternalAttempt(retried, step);
+    return this.stepAttempt.get(retried.id);
   }
 
   recordCheckpoint(input) {
@@ -443,7 +437,13 @@ class S2ApplicationService extends S1ApplicationService {
       return existing;
     }
     const ready = deriveReadySet({ run, plan: this.require(this.executionPlan, run.planId, 'Execution plan'), attempts: projectionState.attempts, handoffs: projectionState.handoffs });
-    const checkpoint = createMissionCheckpoint({ id: checkpointId, workspaceId: run.workspaceId, missionRunId: run.id, canonicalEventSequence: sequence, projectionState, readyStepIds: ready.ready, activeAttemptIds: projectionState.attempts.filter((item) => item.state === 'active').map((item) => item.id), recoveryRequiredAttemptIds: projectionState.attempts.filter((item) => item.state === 'recovery_required').map((item) => item.id), createdAt: this.clock() });
+    const checkpoint = createMissionCheckpoint({
+      id: checkpointId, workspaceId: run.workspaceId, missionRunId: run.id,
+      canonicalEventSequence: sequence, projectionState, readyStepIds: ready.ready,
+      activeAttemptIds: projectionState.attempts.filter((item) => item.state === 'active').map((item) => item.id),
+      recoveryRequiredAttemptIds: projectionState.attempts.filter((item) => item.state === 'recovery_required').map((item) => item.id),
+      createdAt: this.clock(),
+    });
     const stored = this.missionCheckpoint.save(checkpoint, 'mission.checkpoint_recorded');
     this.appendS2Event({ type: 'mission.checkpoint_recorded', workspaceId: run.workspaceId, aggregateType: 'missionRun', aggregateId: run.id, idempotencyKey: `mission.checkpoint_recorded:${stored.id}`, payload: { checkpointId: stored.id, canonicalEventSequence: stored.canonicalEventSequence, projectionDigest: stored.projectionDigest } });
     return stored;
@@ -455,9 +455,7 @@ class S2ApplicationService extends S1ApplicationService {
     const plan = this.require(this.executionPlan, run.planId, 'Execution plan');
     const attempts = this.stepAttempt.list().filter((item) => item.missionRunId === runId);
     const evidenceByStep = {};
-    for (const evidence of this.evidence.list().filter((item) => item.missionRunId === runId)) {
-      (evidenceByStep[evidence.stepId] ||= []).push(evidence.type);
-    }
+    for (const evidence of this.evidence.list().filter((item) => item.missionRunId === runId)) (evidenceByStep[evidence.stepId] ||= []).push(evidence.type);
     const verdict = evaluateMissionCompletion({ run, plan, attempts, terminalEvidenceByStep: evidenceByStep });
     if (!verdict.complete) return run;
     const completed = this.missionRun.save(transitionRun(run, 'completed', 'terminal evidence satisfied', this.clock()), 'mission.run_completed');
@@ -470,12 +468,12 @@ class S2ApplicationService extends S1ApplicationService {
     const scoped = (repository) => repository.list().filter((item) => item.workspaceId === workspaceId);
     const runs = scoped(this.missionRun);
     const attempts = scoped(this.stepAttempt);
+    const allHandoffs = scoped(this.agentHandoff);
     const plans = scoped(this.executionPlan).map((plan) => {
       const run = runs.find((candidate) => candidate.planId === plan.id) || null;
       if (!run) return plan;
       const runAttempts = attempts.filter((item) => item.missionRunId === run.id);
-      const handoffs = scoped(this.agentHandoff).filter((item) => item.missionRunId === run.id);
-      const derived = deriveReadySet({ run, plan, attempts: runAttempts, handoffs });
+      const derived = deriveReadySet({ run, plan, attempts: runAttempts, handoffs: allHandoffs.filter((item) => item.missionRunId === run.id) });
       const blockerByStep = new Map(derived.blocked.map((item) => [item.stepId, item.blockers]));
       return Object.freeze({ ...plan, steps: plan.steps.map((step) => {
         const latest = this.latestAttempt(run.id, step.id);
@@ -483,30 +481,20 @@ class S2ApplicationService extends S1ApplicationService {
       }) });
     });
     return Object.freeze({
-      workspaces: base.workspaces,
-      missions: scoped(this.mission),
-      revisions: scoped(this.missionRevision),
-      plans,
-      missionRuns: runs,
-      stepAttempts: attempts,
-      stepOutputs: scoped(this.stepOutput),
-      agentHandoffs: scoped(this.agentHandoff),
-      checkpoints: scoped(this.missionCheckpoint),
-      humanGates: base.humanGates,
+      workspaces: base.workspaces, missions: scoped(this.mission), revisions: scoped(this.missionRevision), plans,
+      missionRuns: runs, stepAttempts: attempts, stepOutputs: scoped(this.stepOutput), agentHandoffs: allHandoffs,
+      checkpoints: scoped(this.missionCheckpoint), humanGates: base.humanGates,
       evidence: base.evidence.filter((item) => item.missionRunId || item.executionRunId),
       missionEvents: this.store.listEvents({ workspaceId }).filter((event) => /^(mission\.|plan\.|step\.|agent\.handoff)/.test(event.eventType)).slice(-300),
-      activeWorkspaceId: workspaceId,
-      s1: base,
+      activeWorkspaceId: workspaceId, s1: base,
     });
   }
 
   missionProjectionState(runId) {
     const run = this.require(this.missionRun, runId, 'Mission run');
     return Object.freeze({
-      mission: this.mission.get(run.missionId),
-      revision: this.missionRevision.get(run.missionRevisionId),
-      plan: this.executionPlan.get(run.planId),
-      run,
+      mission: this.mission.get(run.missionId), revision: this.missionRevision.get(run.missionRevisionId),
+      plan: this.executionPlan.get(run.planId), run,
       attempts: this.stepAttempt.list().filter((item) => item.missionRunId === runId),
       outputs: this.stepOutput.list().filter((item) => item.missionRunId === runId),
       handoffs: this.agentHandoff.list().filter((item) => item.missionRunId === runId),
@@ -528,14 +516,11 @@ class S2ApplicationService extends S1ApplicationService {
   latestAttempt(runId, stepId) {
     return this.stepAttempt.list().filter((item) => item.missionRunId === runId && item.stepId === stepId).sort((a, b) => b.attemptNumber - a.attemptNumber)[0] || null;
   }
-
   selectIdleWorker(workspaceId) {
     const bindings = this.workerBinding.list().filter((item) => item.workspaceId === workspaceId);
     const live = new Map(this.workerManager.list().map((item) => [item.id, item]));
-    const idle = bindings.find((item) => live.get(item.id)?.status === 'idle');
-    return idle?.id || bindings[0]?.id || 's1-worker-chromium';
+    return bindings.find((item) => live.get(item.id)?.status === 'idle')?.id || bindings[0]?.id || 's1-worker-chromium';
   }
-
   requireRunInWorkspace(runId, workspaceId) {
     const run = this.require(this.missionRun, runId, 'Mission run');
     if (run.workspaceId !== workspaceId) throw new Error('Cross-Workspace MissionRun access denied');
