@@ -7,6 +7,13 @@ function s2Input(input) {
   return input;
 }
 
+function s3Input(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('S3 GitHub delivery command payload must be a plain object');
+  }
+  return input;
+}
+
 const s2Mission = Object.freeze({
   queryState: (workspaceId) => ipcRenderer.invoke('s2:mission:query-state', workspaceId || null),
   createMission: (input) => ipcRenderer.invoke('s2:mission:create', s2Input(input)),
@@ -17,6 +24,16 @@ const s2Mission = Object.freeze({
   cancelMission: (input) => ipcRenderer.invoke('s2:mission:cancel', s2Input(input)),
   retryStepAfterReview: (input) => ipcRenderer.invoke('s2:mission:retry-step-after-review', s2Input(input)),
   recordCheckpoint: (input) => ipcRenderer.invoke('s2:mission:record-checkpoint', s2Input(input)),
+});
+
+const s3Github = Object.freeze({
+  queryState: (workspaceId) => ipcRenderer.invoke('s3:github:query-state', workspaceId || null),
+  registerRepository: (input) => ipcRenderer.invoke('s3:github:repository:register', s3Input(input)),
+  reserveBranch: (input) => ipcRenderer.invoke('s3:github:branch:reserve', s3Input(input)),
+  claimPaths: (input) => ipcRenderer.invoke('s3:github:paths:claim', s3Input(input)),
+  bindPullRequest: (input) => ipcRenderer.invoke('s3:github:pr:bind', s3Input(input)),
+  observeDelivery: (input) => ipcRenderer.invoke('s3:github:delivery:observe', s3Input(input)),
+  createRepairProposal: (input) => ipcRenderer.invoke('s3:github:repair:propose', s3Input(input)),
 });
 
 contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
@@ -39,4 +56,5 @@ contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
     approveHumanGate: (input) => ipcRenderer.invoke('s1:human-gate:approve', input),
   }),
   s2: Object.freeze({ mission: s2Mission }),
+  s3: Object.freeze({ github: s3Github }),
 }));
