@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           git worktree add ../s4-product "$S4_PRODUCT_SHA"
           cd ../s4-product
-          npm ci --ignore-scripts
+          npm install --ignore-scripts --no-audit --no-fund
           npm run validate | tee ../ai_exe_os/s4-exact-source-validation.txt
       - name: Record exact product source evidence
         shell: bash
@@ -89,7 +89,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm ci
+          npm install --no-audit --no-fund
           npx playwright install chromium
           node -e "const fs=require('node:fs'); const electron=require('electron'); if(!fs.existsSync(electron)) throw new Error('Electron executable missing')"
       - name: Install Google Chrome
