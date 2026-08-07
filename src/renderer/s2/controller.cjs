@@ -42,6 +42,7 @@ class S2MissionController {
   resumeMission(input) { return this.command('resumeMission', input, `mission-resume:${input.runId}`); }
   cancelMission(input) { return this.command('cancelMission', input, `mission-cancel:${input.runId}`); }
   retryStepAfterReview(input) { return this.command('retryStepAfterReview', input, `mission-retry:${input.previousAttemptId}`); }
+  recordCheckpoint(input) { return this.command('recordCheckpoint', input, `mission-checkpoint:${input.runId}:${input.id || input.canonicalEventSequence}`); }
   isPending(key) { return this.pending.has(key); }
 }
 
