@@ -1,0 +1,8 @@
+.s1-shell { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
+.s1-navigation { display: grid; align-content: start; gap: 8px; }
+.s1-nav-item, .s1-approve, .s1-reject { min-height: 36px; cursor: pointer; }
+.s1-header, .s1-panel { grid-column: 2; border: 1px solid #334155; border-radius: 12px; padding: 16px; }
+.s1-list { display: grid; gap: 10px; }
+.s1-blocker, .s1-gate-card, .s1-evidence-row { display: grid; gap: 6px; padding: 12px; border: 1px solid #475569; border-radius: 10px; }
+.s1-payload { white-space: pre-wrap; overflow-wrap: anywhere; }
+.s1-empty { opacity: .7; }
