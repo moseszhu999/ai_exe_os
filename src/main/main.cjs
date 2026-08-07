@@ -7,11 +7,15 @@ const { JsonlEventStore } = require('./event-store.cjs');
 const { ProfileLeaseManager } = require('./profile-lease-manager.cjs');
 const { BrowserWorkerManager } = require('./browser-worker-manager.cjs');
 const { TaskRepository } = require('./task-repository.cjs');
-const { GitHubReadOnlyAdapter } = require('./github-readonly-adapter.cjs');
-const { GitHubStateObserver } = require('./github-state-observer.cjs');
-const { S2ApplicationService: S1ApplicationService } = require('../application/s2-index.cjs');
+const { S2ApplicationService } = require('../application/s2-index.cjs');
+const { S3ApplicationService: S1ApplicationService } = require('../application/s3-index.cjs');
 const { registerS1Ipc } = require('../application/s1-ipc.cjs');
 const { registerS2Ipc } = require('../application/s2-ipc.cjs');
+const { registerS3Ipc } = require('../application/s3-ipc.cjs');
+
+if (!(S1ApplicationService.prototype instanceof S2ApplicationService)) {
+  throw new Error('S3 application service must preserve the accepted S2 public service chain');
+}
 
 app.enableSandbox();
 
@@ -32,7 +36,6 @@ let mainWindow;
 let testServer;
 let eventStore;
 let workerManager;
-let githubObserver;
 let taskRepository;
 let s1Service;
 
@@ -94,7 +97,7 @@ function registerIpc() {
 
   ipcMain.handle('github:observe-pr', async (event, input) => {
     assertSender(event);
-    return githubObserver.observePullRequest(safeInputObject(input));
+    return s1Service.observeCompatibilityPullRequest(safeInputObject(input));
   });
 
   ipcMain.handle('task:confirm-local', async (event, input) => {
@@ -117,12 +120,13 @@ function registerIpc() {
 
   registerS1Ipc({ ipcMain, assertSender, service: s1Service });
   registerS2Ipc({ ipcMain, assertSender, service: s1Service });
+  registerS3Ipc({ ipcMain, assertSender, service: s1Service });
 }
 
 async function createMainWindow() {
   mainWindow = new BrowserWindow({
-    width: 1380,
-    height: 940,
+    width: 1440,
+    height: 980,
     show: false,
     webPreferences: {
       preload: join(__dirname, '..', 'preload', 'index.cjs'),
@@ -166,12 +170,9 @@ app.whenReady().then(async () => {
     databasePath: join(s1RuntimeRoot, 'state.sqlite'),
     workerManager,
     localTarget: `${testBaseUrl}/task-form.html`,
+    githubToken: process.env.AI_EXE_OS_GITHUB_TOKEN || null,
   });
 
-  githubObserver = new GitHubStateObserver({
-    adapter: new GitHubReadOnlyAdapter({ token: process.env.AI_EXE_OS_GITHUB_TOKEN || null }),
-    eventStore,
-  });
   registerIpc();
   await createMainWindow();
 });
