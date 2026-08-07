@@ -32,8 +32,8 @@ S0  Technical feasibility and provider boundary                  COMPLETE — GO
 S1  Local Execution Kernel and Workspace Interconnect           COMPLETE — GO
 S2  Durable Multi-Step Mission Orchestration                    COMPLETE — GO
 S3  GitHub-Native Engineering Workflow                          COMPLETE — GO
-S4  Multi-Session Operator Console                              CURRENT — GATE 0
-S5  Approved Provider Adapters                                  PLANNED
+S4  Multi-Session Operator Console                              COMPLETE — GO
+S5  Approved Provider Adapters                                  CURRENT — GATE 0
 S6  Scheduling Policy                                           PLANNED
 S7  Optional Collaboration and Sync                             FUTURE
 ```
@@ -41,12 +41,13 @@ S7  Optional Collaboration and Sync                             FUTURE
 Current baseline:
 
 ```text
-current main at S4 Gate 0 start: 91d01473c8bddc3ffe818e92656a903e57e73a11
+current main at S5 Gate 0 start: 4982b2bd6fd896f26c85f6dc5146653804ebec07
 S0 results: docs/spikes/S0-results.md
 S1 results: docs/results/S1-results.md
 S2 results: docs/results/S2-results.md
 S3 results: docs/results/S3-results.md
-canonical S4 issue: #58
+S4 results: docs/results/S4-results.md
+canonical S5 issue: #73
 ```
 
 ## S0 — Technical feasibility and provider boundary
@@ -198,11 +199,9 @@ docs/results/S3-results.md
 
 ## S4 — Multi-Session Operator Console
 
-Status: **CURRENT — GATE 0**
+Status: **COMPLETED — GO**
 
-Goal: make parallel execution understandable and controllable across Workspaces, Missions, delivery evidence, Workers, Human Gates, blockers and recovery without introducing a second execution authority.
-
-Accepted architectural direction:
+Accepted architecture:
 
 ```text
 S0 Worker/session state
@@ -215,7 +214,7 @@ S0 Worker/session state
 → secure Electron cockpit
 ```
 
-Expected surfaces:
+Accepted surfaces:
 
 ```text
 Cockpit / Overview
@@ -229,34 +228,72 @@ GitHub Delivery
 Evidence & Event Lineage
 ```
 
-Acceptance requires the operator to explain every active Worker, authorization, dependency, blocker and recovery state, and to stop one selected Worker without affecting unrelated Workers.
+S4 final native acceptance proved two concurrent unrelated Chrome/Chromium Workers, exact selected-worker focus/pause/resume/stop isolation, persisted Human Gate attention/evidence lineage, Workspace fail-closed behavior, deterministic restart with zero submission/Mission replay, real Electron operation on native arm64, privacy-safe immutable evidence and zero residual scoped processes.
 
-Normative Gate 0 documents:
+S4 did not introduce a second scheduler/store/HumanGate/provider authority and did not add GitHub writes.
+
+Normative/result documents:
 
 ```text
 docs/contracts/S4-multi-session-operator-console.md
 docs/architecture/005-s4-multi-session-operator-console.md
 docs/testing/S4-acceptance-matrix.md
+docs/results/S4-results.md
 ```
 
 ## S5 — Approved Provider Adapters
 
-Status: **PLANNED**
+Status: **CURRENT — GATE 0**
 
-Goal: observe or act on external delivery surfaces only through explicitly accepted provider paths.
+Goal: add reusable external-provider adapters only through explicitly accepted provider-use contracts and exact approved targets, without turning the product into a generic HTTP client or deployment engine.
 
-Possible adapters:
+First vertical slice:
 
 ```text
-GitHub write contract (only if separately accepted)
-Vercel
-Netlify
-Supabase
-Neon
-other explicitly approved surfaces
+accepted Workspace / Agent / Capability authority
+→ accepted ProviderUseContract snapshot
+→ exact approved provider target
+→ immutable provider adapter definition
+→ bounded HTTPS GET/HEAD observation
+→ normalized body-free ProviderObservation
+→ canonical SQLite evidence/event
+→ S4 Operator Cockpit explanation
 ```
 
-Every new provider adapter starts read-only unless a separate write contract is accepted. No ChatGPT website adapter may be created while that provider gate remains blocked.
+Initial provider-specific targets:
+
+```text
+Vercel public deployment observation
+Netlify public deployment observation
+```
+
+First-slice hard boundary:
+
+```text
+GET/HEAD only
+exact target required
+HTTPS external targets only
+bounded redirect/private-target policy
+no arbitrary URL fetch IPC
+no response-body harvesting/persistence
+no credential/token/cookie replication
+no deploy/promote/rollback/domain/env/secret/billing mutation
+no GitHub write
+no Supabase/Neon data/schema/config mutation
+restart never replays provider access
+```
+
+Authenticated provider APIs and every provider write action remain outside the first S5 contract. Any later write capability requires its own reviewed provider contract and Human-Gate semantics before implementation.
+
+Normative Gate 0 documents:
+
+```text
+docs/contracts/S5-approved-provider-adapters.md
+docs/architecture/006-s5-approved-provider-adapters.md
+docs/testing/S5-acceptance-matrix.md
+```
+
+Canonical coordination issue: #73.
 
 ## S6 — Scheduling Policy
 
@@ -340,10 +377,11 @@ No financial, payment, wallet, token, settlement, or legal irreversible executio
 ## Current next action
 
 ```text
-accept and merge S4 Gate 0 docs-only contract
-→ launch disjoint S4-B / S4-C / S4-D / S4-E owners from one exact latest main
+accept and merge S5 Gate 0 docs-only contract
+→ launch disjoint S5-B / S5-C / S5-D / S5-E owners from one exact latest main
 → merge each independently after exact-head validation
-→ start S4-I shared integration only after B/C/D/E are merged
-→ execute S4-F frozen-head + native multi-session Electron acceptance
+→ start S5-I shared application/SQLite/IPC/S4 integration only after B/C/D/E are merged
+→ freeze exact S5-I product head
+→ execute S5-F native arm64 + live Vercel/Netlify read-only acceptance
 → issue GO / GO WITH ARCHITECTURE CHANGE / NO-GO
 ```
