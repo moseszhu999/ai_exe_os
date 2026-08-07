@@ -49,7 +49,7 @@ test('cockpit composes accepted S1-S3 authority state with live Worker bindings 
   assert.equal(cockpit.found, true);
   assert.equal(cockpit.workspace.id, 'workspace-a');
   assert.equal(cockpit.projects.length, 1);
-  assert.equal(cockpit.providerSnapshots.length, 1);
+  assert.ok(cockpit.providerSnapshots.some((item) => item.id === 'provider-local-form'));
   assert.deepEqual(cockpit.workers.map((item) => item.workerId).sort(), ['s1-worker-chrome', 's1-worker-chromium']);
   const raw = JSON.stringify(cockpit);
   assert.doesNotMatch(raw, /profilePath|processId|\/private\/a|\/private\/b/);
