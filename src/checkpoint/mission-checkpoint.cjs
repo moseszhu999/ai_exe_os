@@ -2,22 +2,25 @@
 
 const { createHash } = require('node:crypto');
 
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+  }
+  return value;
+}
+
 function canonicalDigest(value) {
-  return `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
+  return `sha256:${createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex')}`;
 }
 
 function createMissionCheckpoint(input) {
-  if (!Number.isInteger(input?.canonicalEventSequence) || input.canonicalEventSequence < 0) {
-    throw new TypeError('canonicalEventSequence must be a non-negative integer');
-  }
+  if (!Number.isInteger(input?.canonicalEventSequence) || input.canonicalEventSequence < 0) throw new TypeError('canonicalEventSequence must be a non-negative integer');
   const projectionState = structuredClone(input?.projectionState || {});
   const projectionDigest = canonicalDigest(projectionState);
   return Object.freeze({
-    id: String(input.id),
-    workspaceId: String(input.workspaceId),
-    missionRunId: String(input.missionRunId),
-    canonicalEventSequence: input.canonicalEventSequence,
-    projectionDigest,
+    id: String(input.id), workspaceId: String(input.workspaceId), missionRunId: String(input.missionRunId),
+    canonicalEventSequence: input.canonicalEventSequence, projectionDigest,
     readyStepIds: Object.freeze([...(input.readyStepIds || [])].sort()),
     activeAttemptIds: Object.freeze([...(input.activeAttemptIds || [])].sort()),
     recoveryRequiredAttemptIds: Object.freeze([...(input.recoveryRequiredAttemptIds || [])].sort()),
@@ -34,4 +37,4 @@ function verifyMissionCheckpoint(checkpoint, { canonicalEventSequence, projectio
   return Object.freeze({ valid: blockers.length === 0, blockers: Object.freeze(blockers), projectionDigest: digest });
 }
 
-module.exports = { canonicalDigest, createMissionCheckpoint, verifyMissionCheckpoint };
+module.exports = { canonicalDigest, canonicalize, createMissionCheckpoint, verifyMissionCheckpoint };
