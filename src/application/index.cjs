@@ -2,6 +2,8 @@
 
 const base = require('./s1-application-service.cjs');
 
+const LOCAL_PROVIDER_SNAPSHOT_ID = 'provider-local-form';
+
 class S1ApplicationService extends base.S1ApplicationService {
   constructor(options = {}) {
     super(options);
@@ -74,5 +76,6 @@ class S1ApplicationService extends base.S1ApplicationService {
 
 module.exports = {
   ...base,
+  LOCAL_PROVIDER_SNAPSHOT_ID,
   S1ApplicationService,
 };
