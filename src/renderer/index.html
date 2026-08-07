@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
-  <title>AI Execution OS · S2</title>
+  <title>AI Execution OS · S3</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,14 +12,80 @@
     <header>
       <div>
         <p class="eyebrow">Durable local execution system</p>
-        <h1>AI Execution OS · S2</h1>
-        <p>Workspace-scoped Marketplace capabilities, multi-Agent Missions, typed handoffs, persistent Human Gates, checkpoints, evidence, and crash-safe recovery.</p>
+        <h1>AI Execution OS · S3</h1>
+        <p>Workspace-scoped Missions plus read-only GitHub ownership, exact-head delivery gates, checks, reviews, merge evidence, and crash-safe local continuation.</p>
       </div>
       <button id="refresh">Refresh all</button>
     </header>
 
     <section class="notice">
-      <strong>Boundary:</strong> execution is limited to project-owned or explicitly approved bounded surfaces. No third-party AI website automation, credential copying, or automatic production/financial/legal execution.
+      <strong>Boundary:</strong> execution is limited to project-owned or explicitly approved bounded surfaces. S3 GitHub integration is read-only: no push, PR mutation, merge, comment, review, workflow dispatch, or other provider write. No third-party AI website automation, credential copying, or automatic production/financial/legal execution.
+    </section>
+
+    <section class="mission-shell" aria-labelledby="s3-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">S3 GitHub-native engineering workflow</p>
+          <h2 id="s3-heading">GitHub delivery evidence</h2>
+        </div>
+        <strong id="s3-summary">No PullRequestBinding</strong>
+      </div>
+
+      <nav id="s3-navigation" class="surface-nav" aria-label="S3 product surfaces">
+        <span>Repositories</span><span>Ownership</span><span>Pull Requests</span><span>Checks</span><span>Review Threads</span>
+        <span>Delivery Gates</span><span>Merge Order</span><span>Delivery Evidence</span><span>Repair Proposals</span>
+      </nav>
+
+      <section class="grid three">
+        <article>
+          <h3>1 · Local repository ownership</h3>
+          <label>Repository <input id="s3-repository" value="moseszhu999/ai_exe_os"></label>
+          <button id="s3-register">Register repository locally</button>
+          <label>Branch <input id="s3-branch" value="agent/s3-readonly-observation"></label>
+          <button id="s3-reserve" class="secondary">Reserve branch locally</button>
+          <label>Path prefix <input id="s3-path" value="src/application/**"></label>
+          <button id="s3-claim" class="secondary">Claim path locally</button>
+        </article>
+        <article>
+          <h3>2 · Bind immutable PR head</h3>
+          <label>PR number <input id="s3-pr-number" type="number" min="1" value="55"></label>
+          <button id="s3-load-head" class="secondary">Load PR head · Read-Only</button>
+          <label>Expected head SHA <input id="s3-expected-head" placeholder="40-character exact head SHA"></label>
+          <label>Expected base ref <input id="s3-base-ref" value="main"></label>
+          <label>Required checks <input id="s3-required-checks" placeholder="build, validate"></label>
+          <label><input id="s3-require-reviews" type="checkbox"> Require proven clear review threads</label>
+          <label><input id="s3-require-base" type="checkbox" checked> Require current base</label>
+          <button id="s3-bind">Bind PR exact head locally</button>
+        </article>
+        <article>
+          <h3>3 · Evidence controls</h3>
+          <p><strong>Provider mode: READ-ONLY.</strong> These actions only perform bounded GitHub GET observations or create local metadata.</p>
+          <button id="s3-observe">Refresh GitHub evidence · Read-Only</button>
+          <button id="s3-repair" class="secondary">Create local RepairProposal</button>
+          <pre id="s3-exact-head">Bind a PR to pin an exact head.</pre>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article><h3>Repositories</h3><div id="s3-repositories" class="cards"></div></article>
+        <article><h3>Ownership</h3><div id="s3-ownership" class="cards"></div></article>
+      </section>
+      <section class="grid">
+        <article><h3>Pull Requests</h3><div id="s3-prs" class="cards"></div></article>
+        <article><h3>Checks</h3><div id="s3-checks" class="cards"></div></article>
+      </section>
+      <section class="grid">
+        <article><h3>Review Threads</h3><div id="s3-reviews" class="cards"></div></article>
+        <article><h3>Delivery Gates</h3><div id="s3-gates" class="cards"></div></article>
+      </section>
+      <section class="grid">
+        <article><h3>Merge Order</h3><div id="s3-merge-order" class="cards"></div></article>
+        <article><h3>Delivery Evidence</h3><div id="s3-evidence" class="cards"></div></article>
+      </section>
+      <section class="grid">
+        <article><h3>Repair Proposals</h3><div id="s3-repairs" class="cards"></div></article>
+        <article><h3>Canonical GitHub Events</h3><pre id="s3-events"></pre></article>
+      </section>
     </section>
 
     <section class="mission-shell" aria-labelledby="s2-heading">
@@ -154,7 +220,7 @@
           <h2>Observe GitHub PR</h2>
           <label>Repository <input id="github-repository" value="moseszhu999/ai_exe_os"></label>
           <label>PR number <input id="github-pr-number" type="number" min="1" value="1"></label>
-          <button id="observe-pr">Observe PR state</button>
+          <button id="observe-pr">Observe PR state · Read-Only</button>
         </article>
       </section>
       <section><h2>Workers</h2><div id="workers" class="cards"></div></section>
@@ -165,5 +231,6 @@
     <div id="status" role="status"></div>
   </main>
   <script src="app.js"></script>
+  <script src="s3-integrated.js"></script>
 </body>
 </html>
