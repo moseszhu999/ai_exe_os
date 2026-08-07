@@ -7,10 +7,15 @@ const { JsonlEventStore } = require('./event-store.cjs');
 const { ProfileLeaseManager } = require('./profile-lease-manager.cjs');
 const { BrowserWorkerManager } = require('./browser-worker-manager.cjs');
 const { TaskRepository } = require('./task-repository.cjs');
+const { S2ApplicationService } = require('../application/s2-index.cjs');
 const { S3ApplicationService: S1ApplicationService } = require('../application/s3-index.cjs');
 const { registerS1Ipc } = require('../application/s1-ipc.cjs');
 const { registerS2Ipc } = require('../application/s2-ipc.cjs');
 const { registerS3Ipc } = require('../application/s3-ipc.cjs');
+
+if (!(S1ApplicationService.prototype instanceof S2ApplicationService)) {
+  throw new Error('S3 application service must preserve the accepted S2 public service chain');
+}
 
 app.enableSandbox();
 
