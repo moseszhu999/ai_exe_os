@@ -1,0 +1,182 @@
+name: S4 native multi-session operator console acceptance
+
+on:
+  pull_request:
+    branches:
+      - agent/s4-operator-console-integration-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-product-source:
+    name: Exact frozen product source validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      S4_PRODUCT_SHA: 9d4b6d85dffd22481196fafca64ae8526750f9e1
+    steps:
+      - name: Check out acceptance carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify carrier changes only acceptance-owned paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$S4_PRODUCT_SHA" HEAD
+          changed="$(git diff --name-only "$S4_PRODUCT_SHA" HEAD)"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -vE '^(scripts/s4-acceptance-|\.github/workflows/s4-|docs/results/S4-results\.md$)' | grep -q .; then
+            echo 'Acceptance carrier modified product-owned paths' >&2
+            exit 1
+          fi
+      - name: Validate exact frozen product head
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add ../s4-product "$S4_PRODUCT_SHA"
+          cd ../s4-product
+          npm ci --ignore-scripts
+          npm run validate | tee ../ai_exe_os/s4-exact-source-validation.txt
+      - name: Record exact product source evidence
+        shell: bash
+        run: |
+          printf '%s\n' "$S4_PRODUCT_SHA" > s4-product-head.txt
+          sha256sum s4-product-head.txt s4-exact-source-validation.txt > s4-source-SHA256SUMS.txt
+      - name: Upload exact-source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: s4-exact-source-${{ github.sha }}
+          path: |
+            s4-product-head.txt
+            s4-exact-source-validation.txt
+            s4-source-SHA256SUMS.txt
+          retention-days: 30
+
+  native-arm64-console:
+    name: Native arm64 dual-session Electron console acceptance
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      S4_PRODUCT_SHA: 9d4b6d85dffd22481196fafca64ae8526750f9e1
+      S4_ACCEPTANCE_OUTPUT: runtime/s4-acceptance
+    steps:
+      - name: Check out acceptance carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify native Apple Silicon runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "arm64"
+          test "$(node -p 'process.arch')" = "arm64"
+          if [[ "$(sysctl -in sysctl.proc_translated 2>/dev/null || echo 0)" = "1" ]]; then
+            echo 'Rosetta-translated runner is not accepted' >&2
+            exit 1
+          fi
+      - name: Install pinned Electron and Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npx playwright install chromium
+          node -e "const fs=require('node:fs'); const electron=require('electron'); if(!fs.existsSync(electron)) throw new Error('Electron executable missing')"
+      - name: Install Google Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ]]; then
+            brew install --cask google-chrome
+          fi
+          file '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+      - name: Run full carrier/source validation on native arm64
+        run: npm run validate
+      - name: Run direct Chrome plus Chromium selected-worker isolation matrix
+        run: node scripts/s4-acceptance-native-matrix.cjs
+      - name: Run real Electron cockpit, control, restart and screenshot matrix
+        run: node scripts/s4-acceptance-electron-ui.cjs
+      - name: Verify required S4 evidence and privacy boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            native-session-matrix.json \
+            cockpit-state-before.json \
+            cockpit-state-after-control.json \
+            cockpit-state-after-restart.json \
+            worker-session-matrix.json \
+            attention-lineage.json \
+            canonical-events.jsonl \
+            projection-restart-digests.json \
+            cleanup-audit.json \
+            electron-control-matrix.json \
+            electron-ui-audit.json \
+            electron-cleanup-audit.json \
+            s4-cockpit-before.png \
+            s4-cockpit-after-control.png \
+            s4-cockpit-after-restart.png; do
+            test -s "runtime/s4-acceptance/$file"
+          done
+          node <<'NODE'
+          const fs = require('node:fs');
+          const root = 'runtime/s4-acceptance';
+          const native = JSON.parse(fs.readFileSync(`${root}/native-session-matrix.json`, 'utf8'));
+          const digests = JSON.parse(fs.readFileSync(`${root}/projection-restart-digests.json`, 'utf8'));
+          const ui = JSON.parse(fs.readFileSync(`${root}/electron-ui-audit.json`, 'utf8'));
+          const nativeCleanup = JSON.parse(fs.readFileSync(`${root}/cleanup-audit.json`, 'utf8'));
+          const electronCleanup = JSON.parse(fs.readFileSync(`${root}/electron-cleanup-audit.json`, 'utf8'));
+          if (native.status !== 'PASS' || digests.status !== 'PASS' || ui.status !== 'PASS') process.exit(1);
+          if (native.productSha !== process.env.S4_PRODUCT_SHA || ui.productSha !== process.env.S4_PRODUCT_SHA) process.exit(1);
+          if (native.pageErrors.length || native.consoleErrors.length || ui.pageErrors.length || ui.consoleErrors.length) process.exit(1);
+          if (digests.projectionBefore !== digests.projectionAfter || digests.eventCountBefore !== digests.eventCountAfter) process.exit(1);
+          if (digests.submissionsBefore !== digests.submissionsAfter || digests.missionAttemptsAfter !== 0) process.exit(1);
+          if (nativeCleanup.residualScopedProcesses.length || electronCleanup.residualScopedProcesses.length) process.exit(1);
+          NODE
+          if grep -nEi 'profilePath|profileDir|userDataDir|storageState|processId|"pid"|"ppid"|authorization|\bBearer\b|cookie|password|access[_-]?token|refresh[_-]?token|private[_ -]?key' \
+            runtime/s4-acceptance/*.json runtime/s4-acceptance/*.jsonl; then
+            echo 'Forbidden credential/profile/process field found in S4 evidence artifact' >&2
+            exit 1
+          fi
+          if grep -nEi 'mergePullRequest|createComment|submitReview|workflowDispatch|deleteBranch|updatePullRequest|s3:github:(merge|comment|update|delete|dispatch)' \
+            src/application/s4-*.cjs src/renderer/s4-integrated.js src/preload/index.cjs; then
+            echo 'Unexpected provider-write path in S4 surface' >&2
+            exit 1
+          fi
+      - name: Build portable manifest and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd runtime/s4-acceptance
+          node <<'NODE'
+          const fs = require('node:fs');
+          const files = fs.readdirSync('.').filter((name) => name !== 'manifest.json' && name !== 'SHA256SUMS.txt').sort();
+          fs.writeFileSync('manifest.json', JSON.stringify({
+            status: 'PASS',
+            productSha: process.env.S4_PRODUCT_SHA,
+            evidenceClass: 'github-hosted-native-apple-silicon',
+            files,
+          }, null, 2) + '\n');
+          NODE
+          rm -f SHA256SUMS.txt
+          for file in $(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print | sed 's#^./##' | LC_ALL=C sort); do
+            shasum -a 256 "$file"
+          done > SHA256SUMS.txt
+          shasum -a 256 -c SHA256SUMS.txt
+      - name: Upload privacy-safe immutable S4 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: s4-native-multi-session-${{ github.sha }}
+          path: runtime/s4-acceptance
+          if-no-files-found: error
+          retention-days: 30
