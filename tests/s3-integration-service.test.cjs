@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { mkdtempSync, rmSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
-const { S3ApplicationService } = require('../src/application/s3-application-service.cjs');
+const { S3ApplicationService } = require('../src/application/s3-index.cjs');
 const {
   LOCAL_TRANSFORM_PACKAGE_ID,
   LOCAL_TRANSFORM_TARGET,
@@ -78,6 +78,10 @@ function prepareMission(service) {
   return { mission: created.mission, revision: revision.revision };
 }
 
+function githubEvents(service) {
+  return service.store.listEvents({ workspaceId: 'workspace-a' }).filter((event) => event.eventType.startsWith('github.'));
+}
+
 test('exact-head readiness does not start Mission; merge evidence releases it exactly once across restart', async () => {
   const root = mkdtempSync(join(tmpdir(), 'ai-exe-os-s3-'));
   const databasePath = join(root, 'state.sqlite');
@@ -89,10 +93,13 @@ test('exact-head readiness does not start Mission; merge evidence releases it ex
     const registration = service.registerRepository({ id: 'repo-reg-a', workspaceId: 'workspace-a', owner: 'moseszhu999', repository: 'ai_exe_os', visibilityHint: 'private' });
     const reservation = service.reserveBranch({ id: 'branch-res-a', workspaceId: 'workspace-a', repositoryRegistrationId: registration.id, branch: 'agent/s3-test', ownerKind: 'mission_step', ownerId: 'delivery-local-step' });
     service.claimPaths({ workspaceId: 'workspace-a', branchReservationId: reservation.id, ownerId: 'delivery-local-step', paths: ['src/application/**'] });
-    const { binding } = service.bindPullRequest({
+    const bound = service.bindPullRequest({
       id: 'pr-binding-a', workspaceId: 'workspace-a', repositoryRegistrationId: registration.id, planStepId: 'delivery-local-step',
       number: 54, expectedHeadSha: H1, expectedBaseRef: 'main', requiredCheckNames: ['build'], requireNoUnresolvedThreads: true, requireCurrentBase: true,
     });
+    const binding = bound.binding;
+    assert.equal(bound.repositoryBinding.planStepId, 'delivery-local-step');
+    assert.equal(service.repositoryBinding.list().length, 1);
     service.declareMissionDeliveryDependency({
       id: 'delivery-dependency-a', workspaceId: 'workspace-a', pullRequestBindingId: binding.id,
       missionId: mission.id, revisionId: revision.id, runId: 's3-delivery-run',
@@ -103,6 +110,10 @@ test('exact-head readiness does not start Mission; merge evidence releases it ex
     assert.equal(ready.evidence.kind, 'exact_head_ready');
     assert.equal(service.missionRun.get('s3-delivery-run'), null, 'exact-head ready must not start the delivery-dependent Mission');
     assert.equal(service.deliveryDependency.get('delivery-dependency-a').state, 'waiting');
+    const firstTypes = githubEvents(service).map((event) => event.eventType);
+    for (const type of ['github.checks_observed', 'github.review_threads_observed', 'github.delivery_gate_changed']) {
+      assert.equal(firstTypes.includes(type), true, `missing canonical semantic event ${type}`);
+    }
 
     github.merged = true;
     const merged = await service.observeDelivery({ workspaceId: 'workspace-a', pullRequestBindingId: binding.id });
@@ -111,17 +122,17 @@ test('exact-head readiness does not start Mission; merge evidence releases it ex
     assert.equal(service.deliveryDependency.get('delivery-dependency-a').state, 'released');
     assert.equal(service.missionRun.get('s3-delivery-run').state, 'completed');
     assert.equal(service.stepAttempt.list().filter((item) => item.missionRunId === 's3-delivery-run').length, 1);
-    const githubEventCount = service.store.listEvents({ workspaceId: 'workspace-a' }).filter((event) => event.eventType.startsWith('github.')).length;
+    const githubEventCount = githubEvents(service).length;
     service.close();
 
     service = new S3ApplicationService({ databasePath, workerManager: workerManager(), localTarget: 'http://127.0.0.1:43119/task-form.html', githubObservationAdapter: github });
     assert.equal(service.missionRun.get('s3-delivery-run').state, 'completed');
     assert.equal(service.deliveryDependency.get('delivery-dependency-a').state, 'released');
+    assert.equal(service.repositoryBinding.list().length, 1);
     const beforeRepeatAttempts = service.stepAttempt.list().filter((item) => item.missionRunId === 's3-delivery-run').length;
     await service.observeDelivery({ workspaceId: 'workspace-a', pullRequestBindingId: binding.id });
     assert.equal(service.stepAttempt.list().filter((item) => item.missionRunId === 's3-delivery-run').length, beforeRepeatAttempts, 'repeated merged observation must not replay Mission work');
-    const afterGithubEventCount = service.store.listEvents({ workspaceId: 'workspace-a' }).filter((event) => event.eventType.startsWith('github.')).length;
-    assert.equal(afterGithubEventCount, githubEventCount, 'unchanged observation must not append duplicate canonical GitHub events');
+    assert.equal(githubEvents(service).length, githubEventCount, 'unchanged observation must not append duplicate canonical GitHub events');
   } finally {
     try { service?.close(); } catch {}
     rmSync(root, { recursive: true, force: true });
