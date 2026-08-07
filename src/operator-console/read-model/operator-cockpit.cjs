@@ -72,6 +72,10 @@ function summarizeMission(run, state) {
   }));
 }
 
+function sanitizeList(items) {
+  return items.map((item) => sanitize(item));
+}
+
 function createOperatorCockpitSnapshot({ workspaceId, missionState, githubState = null, workers = [] } = {}) {
   if (typeof workspaceId !== 'string' || !workspaceId.trim()) throw new TypeError('workspaceId is required');
   if (!missionState || typeof missionState !== 'object') throw new TypeError('missionState is required');
@@ -99,25 +103,25 @@ function createOperatorCockpitSnapshot({ workspaceId, missionState, githubState 
     workspaceId,
     workspace: Object.freeze(sanitize(workspace)),
     found: true,
-    projects: Object.freeze(stableSort(scoped(s1.projects || [], workspaceId).map(sanitize))),
+    projects: Object.freeze(stableSort(sanitizeList(scoped(s1.projects || [], workspaceId)))),
     missions: Object.freeze(runs.map((run) => summarizeMission(run, {
       missions: scoped(missionState.missions || [], workspaceId),
       plans: scoped(missionState.plans || [], workspaceId),
       stepAttempts: scoped(missionState.stepAttempts || [], workspaceId),
     }))),
     workers: Object.freeze(workerSummaries),
-    humanGates: Object.freeze(stableSort(scoped(missionState.humanGates || [], workspaceId).map(sanitize))),
-    agents: Object.freeze(stableSort(scoped(s1.agents || [], workspaceId).map(sanitize))),
-    installations: Object.freeze(stableSort(scoped(s1.installations || [], workspaceId).map(sanitize))),
-    providerSnapshots: Object.freeze(stableSort(scoped(s1.providerSnapshots || [], workspaceId).map(sanitize))),
+    humanGates: Object.freeze(stableSort(sanitizeList(scoped(missionState.humanGates || [], workspaceId)))),
+    agents: Object.freeze(stableSort(sanitizeList(scoped(s1.agents || [], workspaceId)))),
+    installations: Object.freeze(stableSort(sanitizeList(scoped(s1.installations || [], workspaceId)))),
+    providerSnapshots: Object.freeze(stableSort(sanitizeList(scoped(s1.providerSnapshots || [], workspaceId)))),
     github: Object.freeze({
-      repositories: Object.freeze(stableSort(scoped(github.repositories || [], workspaceId).map(sanitize))),
-      pullRequests: Object.freeze(stableSort(scoped(github.pullRequestBindings || [], workspaceId).map(sanitize))),
-      deliveryGates: Object.freeze(stableSort(scoped(github.deliveryGates || [], workspaceId).map(sanitize))),
-      deliveryEvidence: Object.freeze(stableSort(scoped(github.deliveryEvidence || [], workspaceId).map(sanitize))),
+      repositories: Object.freeze(stableSort(sanitizeList(scoped(github.repositories || [], workspaceId)))),
+      pullRequests: Object.freeze(stableSort(sanitizeList(scoped(github.pullRequestBindings || [], workspaceId)))),
+      deliveryGates: Object.freeze(stableSort(sanitizeList(scoped(github.deliveryGates || [], workspaceId)))),
+      deliveryEvidence: Object.freeze(stableSort(sanitizeList(scoped(github.deliveryEvidence || [], workspaceId)))),
     }),
-    evidence: Object.freeze(stableSort(scoped(missionState.evidence || [], workspaceId).map(sanitize))),
-    events: Object.freeze((missionState.missionEvents || []).filter((event) => event.workspaceId === workspaceId).slice(-100).map(sanitize)),
+    evidence: Object.freeze(stableSort(sanitizeList(scoped(missionState.evidence || [], workspaceId)))),
+    events: Object.freeze(sanitizeList((missionState.missionEvents || []).filter((event) => event.workspaceId === workspaceId).slice(-100))),
   });
 }
 
