@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { S2ApplicationService, LOCAL_JOIN_TARGET, LOCAL_TRANSFORM_PACKAGE_ID, LOCAL_TRANSFORM_TARGET, LOCAL_TRANSFORM_VERSION } = require('../src/application/s2-application-service.cjs');
+const { S2ApplicationService, LOCAL_JOIN_TARGET, LOCAL_TRANSFORM_PACKAGE_ID, LOCAL_TRANSFORM_TARGET, LOCAL_TRANSFORM_VERSION } = require('../src/application/s2-index.cjs');
 
 const LOCAL_FORM_VERSION_ID = 'local.form-submit@1.0.0';
 const LOCAL_TRANSFORM_VERSION_ID = `${LOCAL_TRANSFORM_PACKAGE_ID}@${LOCAL_TRANSFORM_VERSION}`;
@@ -151,12 +151,17 @@ test('uncertain external failure contains StepAttempt and reviewed retry creates
   assert.equal(failedState.missionRuns[0].state, 'recovery_required');
   assert.equal(h.workerManager.submissionCount, 1);
   assert.throws(() => h.service.retryStepAfterReview({ workspaceId: 'workspace-a', runId: 'mission-run-1', previousAttemptId: previous.id, reviewed: false }), /human review/);
+  assert.equal(h.service.queryMissionState('workspace-a').missionRuns[0].state, 'recovery_required');
   h.workerManager.failSubmit = false;
   const retried = h.service.retryStepAfterReview({ workspaceId: 'workspace-a', runId: 'mission-run-1', previousAttemptId: previous.id, reviewed: true });
   assert.equal(retried.attemptNumber, 2);
   assert.notEqual(retried.id, previous.id);
   assert.equal(h.workerManager.submissionCount, 1);
+  const oldRun = h.service.executionRun.get(previous.executionRunId);
+  assert.equal(oldRun.state, 'cancelled');
+  assert.equal(oldRun.recoveryReason, 'reviewed_retry_superseded');
   const newGate = h.service.queryMissionState('workspace-a').humanGates.find((item) => item.state === 'requested');
+  assert.ok(newGate);
   await h.service.approveHumanGate({ gateId: newGate.id });
   assert.equal(h.workerManager.submissionCount, 2);
   h.service.close();
