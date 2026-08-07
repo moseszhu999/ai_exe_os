@@ -30,7 +30,8 @@ class ResourceLockManager {
 
   acquireAll({ workspaceId, taskId, executionRunId, resources, acquiredAt = new Date().toISOString() }) {
     if (!workspaceId || !taskId || !executionRunId) throw new TypeError('workspaceId, taskId and executionRunId are required');
-    if (!Array.isArray(resources) || resources.length === 0) throw new TypeError('resources are required');
+    if (!Array.isArray(resources)) throw new TypeError('resources must be an array');
+    if (resources.length === 0) return Object.freeze([]);
     const normalized = resources.map(normalizeResource)
       .sort((left, right) => left.normalizedKey.localeCompare(right.normalizedKey));
     const duplicate = normalized.find((resource, index) => index > 0
