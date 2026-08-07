@@ -21,6 +21,13 @@ function s4Input(input) {
   return input;
 }
 
+function s5Input(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('S5 provider command payload must be a plain object');
+  }
+  return input;
+}
+
 const s2Mission = Object.freeze({
   queryState: (workspaceId) => ipcRenderer.invoke('s2:mission:query-state', workspaceId || null),
   createMission: (input) => ipcRenderer.invoke('s2:mission:create', s2Input(input)),
@@ -51,6 +58,12 @@ const s4Console = Object.freeze({
   resumeWorker: (input) => ipcRenderer.invoke('s4:console:worker:resume', s4Input(input)),
 });
 
+const s5Provider = Object.freeze({
+  queryState: (workspaceId) => ipcRenderer.invoke('s5:provider:query-state', workspaceId || null),
+  bindTarget: (input) => ipcRenderer.invoke('s5:provider:bind-target', s5Input(input)),
+  observe: (input) => ipcRenderer.invoke('s5:provider:observe', s5Input(input)),
+});
+
 contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   getState: () => ipcRenderer.invoke('state:list'),
   createWorker: (input) => ipcRenderer.invoke('worker:create', input),
@@ -73,4 +86,5 @@ contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   s2: Object.freeze({ mission: s2Mission }),
   s3: Object.freeze({ github: s3Github }),
   s4: Object.freeze({ console: s4Console }),
+  s5: Object.freeze({ provider: s5Provider }),
 }));
