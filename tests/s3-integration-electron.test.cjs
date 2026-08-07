@@ -34,6 +34,7 @@ test('legacy GitHub JSONL observer is removed and compatibility observation rout
   assert.match(main, /s1Service\.observeCompatibilityPullRequest\(safeInputObject\(input\)\)/);
   assert.match(main, /githubToken:\s*process\.env\.AI_EXE_OS_GITHUB_TOKEN\s*\|\|\s*null/);
   assert.match(main, /registerS3Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
+  assert.match(main, /S1ApplicationService\.prototype instanceof S2ApplicationService/);
   assert.equal((main.match(/state\.sqlite/g) || []).length >= 1, true);
 });
 
@@ -77,6 +78,7 @@ test('S3 IPC registers exactly seven sender-validated channels and only calls lo
 test('integrated S3 renderer exposes all nine evidence surfaces and no provider-write or Node/database path', () => {
   assert.match(html, /Content-Security-Policy/);
   assert.match(html, /Provider mode: READ-ONLY/);
+  assert.match(html, /Refresh GitHub evidence · Read-Only/);
   assert.match(html, /s3-integrated\.js/);
   for (const surface of S3_SURFACES) assert.ok(html.includes(surface), `missing ${surface}`);
   for (const id of ['s3-register','s3-reserve','s3-claim','s3-load-head','s3-bind','s3-observe','s3-repair']) {
@@ -85,7 +87,7 @@ test('integrated S3 renderer exposes all nine evidence surfaces and no provider-
   assert.doesNotMatch(s3Renderer, /\brequire\s*\(/);
   assert.doesNotMatch(s3Renderer, /node:sqlite|DatabaseSync|state\.sqlite|innerHTML|insertAdjacentHTML|document\.write/);
   assert.doesNotMatch(s3Renderer, /mergePullRequest|closePullRequest|createComment|submitReview|updatePullRequest|deleteBranch|workflowDispatch/);
-  assert.match(s3Renderer, /Refresh GitHub evidence · Read-Only/);
+  assert.match(s3Renderer, /Refreshed GitHub evidence with GET-only provider calls/);
   assert.match(s3Renderer, /Created local RepairProposal; no GitHub write occurred/);
   assert.match(s3Renderer, /S3_SENSITIVE_KEY/);
 });
