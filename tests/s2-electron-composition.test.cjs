@@ -30,7 +30,12 @@ test('S2 service initializes on canonical SQLite before both IPC groups and Brow
   for (const security of ['contextIsolation: true', 'nodeIntegration: false', 'sandbox: true', 'webSecurity: true']) assert.ok(main.includes(security), security);
 });
 
-test('preload preserves S0 and S1 APIs and exposes nested S2 Mission bridge only', () => {
+test('sandbox preload is self-contained and preserves bounded S0/S1/S2 bridges', () => {
+  const requireCalls = preload.match(/\brequire\s*\(/g) || [];
+  assert.equal(requireCalls.length, 1, 'sandbox preload must not depend on local CommonJS modules');
+  assert.match(preload, /require\('electron'\)/);
+  assert.doesNotMatch(preload, /require\(['"]\.\.?\//);
+
   for (const method of ['getState','createWorker','startWorker','stopWorker','focusWorker','pauseWorker','resumeWorker','createTask','confirmLocalTask','observePullRequest']) {
     assert.ok(preload.includes(`${method}:`), `missing ${method}`);
   }
@@ -38,8 +43,11 @@ test('preload preserves S0 and S1 APIs and exposes nested S2 Mission bridge only
   for (const method of ['queryState','installCapability','grantCapability','createTask','rejectHumanGate','approveHumanGate']) {
     assert.match(preload, new RegExp(`${method}:\\s*\\(`));
   }
-  assert.match(preload, /s2:\s*Object\.freeze\(\{/);
-  assert.match(preload, /mission:\s*createS2BridgeContract\(ipcRenderer\)/);
+  assert.equal((preload.match(/ipcRenderer\.invoke\('s2:mission:/g) || []).length, 9);
+  for (const method of ['queryState','createMission','createRevision','startMission','pauseMission','resumeMission','cancelMission','retryStepAfterReview','recordCheckpoint']) {
+    assert.ok(preload.includes(`${method}:`), `missing S2 Mission method ${method}`);
+  }
+  assert.match(preload, /s2:\s*Object\.freeze\(\{ mission: s2Mission \}\)/);
   assert.doesNotMatch(preload, /state\.sqlite|DatabaseSync|workerManager/);
 });
 
