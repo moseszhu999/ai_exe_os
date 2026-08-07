@@ -1,4 +1,5 @@
 name: S2 native Apple Silicon acceptance
+# Frozen repair product: 5d023616df1f0564a66ef2b3ab79ea6739cefaa0
 
 on:
   pull_request:
