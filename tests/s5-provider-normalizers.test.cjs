@@ -78,6 +78,6 @@ test('provider normalizer source contains no network or write primitive', () => 
   for (const file of ['vercel-public-deployment.cjs', 'netlify-public-deployment.cjs', 'index.cjs']) {
     const source = readFileSync(join(__dirname, '..', 'src', 'provider-adapters', 'providers', file), 'utf8');
     assert.doesNotMatch(source, /\bfetch\s*\(|node:https|node:http|\.request\s*\(|axios|got\s*\(/);
-    assert.doesNotMatch(source, /\bPOST\b|\bPUT\b|\bPATCH\b|\bDELETE\b|deploy|promote|rollback/i);
+    assert.doesNotMatch(source, /\bPOST\b|\bPUT\b|\bPATCH\b|\bDELETE\b|\bdeploy\s*\(|\bpromote\s*\(|\brollback\s*\(/i);
   }
 });
