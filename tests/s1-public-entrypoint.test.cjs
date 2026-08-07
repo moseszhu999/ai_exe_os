@@ -61,8 +61,10 @@ test('same-Workspace idle Worker permits the persisted Human Gate flow', () => {
   service.close();
 });
 
-test('Electron composition imports the public application entrypoint and injects testBaseUrl', () => {
+test('Electron composition uses the S2 public entrypoint while preserving the S1 public service chain and local target', () => {
   const main = readFileSync(join(__dirname, '..', 'src/main/main.cjs'), 'utf8');
-  assert.match(main, /require\('\.\.\/application\/index\.cjs'\)/);
+  const s2Service = readFileSync(join(__dirname, '..', 'src/application/s2-application-service.cjs'), 'utf8');
+  assert.match(main, /require\('\.\.\/application\/s2-index\.cjs'\)/);
+  assert.match(s2Service, /require\('\.\/index\.cjs'\)/);
   assert.match(main, /localTarget: `\$\{testBaseUrl\}\/task-form\.html`/);
 });

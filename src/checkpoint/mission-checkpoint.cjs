@@ -3,7 +3,13 @@
 const { createHash } = require('node:crypto');
 
 function canonicalize(value) {
-  if (Array.isArray(value)) return value.map(canonicalize);
+  if (Array.isArray(value)) {
+    const items = value.map(canonicalize);
+    if (items.length > 0 && items.every((item) => item && typeof item === 'object' && !Array.isArray(item) && typeof item.id === 'string')) {
+      return items.sort((a, b) => a.id.localeCompare(b.id));
+    }
+    return items;
+  }
   if (value && typeof value === 'object') {
     return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
   }

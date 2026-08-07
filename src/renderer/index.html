@@ -4,73 +4,128 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
-  <title>AI Execution OS · S1</title>
+  <title>AI Execution OS · S2</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main>
     <header>
       <div>
-        <p class="eyebrow">Local execution kernel</p>
-        <h1>AI Execution OS · S1</h1>
-        <p>Workspace-scoped Marketplace capabilities, Agent grants, persistent Human Gates, workers, evidence, and recovery.</p>
+        <p class="eyebrow">Durable local execution system</p>
+        <h1>AI Execution OS · S2</h1>
+        <p>Workspace-scoped Marketplace capabilities, multi-Agent Missions, typed handoffs, persistent Human Gates, checkpoints, evidence, and crash-safe recovery.</p>
       </div>
       <button id="refresh">Refresh all</button>
     </header>
 
     <section class="notice">
-      <strong>Boundary:</strong> execution is limited to the project-owned loopback test surface. No third-party AI website automation or credential copying.
+      <strong>Boundary:</strong> execution is limited to project-owned or explicitly approved bounded surfaces. No third-party AI website automation, credential copying, or automatic production/financial/legal execution.
     </section>
 
-    <nav id="s1-navigation" class="surface-nav" aria-label="S1 product surfaces">
-      <span>Projects</span><span>Workspaces</span><span>Marketplace</span><span>Agents</span><span>Workers</span>
-      <span>Tasks</span><span>Execution Graph</span><span>Human Gates</span><span>Evidence</span><span>Events / Recovery</span>
-    </nav>
+    <section class="mission-shell" aria-labelledby="s2-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">S2 durable orchestration</p>
+          <h2 id="s2-heading">Mission control</h2>
+        </div>
+        <strong id="s2-run-summary">No Mission run</strong>
+      </div>
 
-    <section class="s1-workspace-bar">
-      <label>Active Workspace <select id="s1-workspace"></select></label>
-      <strong id="s1-workspace-summary"></strong>
+      <nav id="s2-navigation" class="surface-nav" aria-label="S2 product surfaces">
+        <span>Missions</span><span>Mission Builder</span><span>Execution Plan</span><span>Step Details</span>
+        <span>Agent Handoffs</span><span>Human Gates</span><span>Checkpoints</span><span>Run Timeline</span><span>Evidence / Recovery</span>
+      </nav>
+
+      <section class="grid three">
+        <article>
+          <h3>1 · Prepare capabilities</h3>
+          <p>Install the project-owned browser and transform capabilities, then grant them to two same-Workspace Agents.</p>
+          <button id="s2-prepare">Prepare S2 prerequisites</button>
+        </article>
+        <article>
+          <h3>2 · Mission Builder</h3>
+          <label>Mission ID <input id="s2-mission-id" value="mission-ui-001"></label>
+          <label>Objective <textarea id="s2-objective">Collect bounded browser evidence and a deterministic local transform, then join both outputs.</textarea></label>
+          <button id="s2-create">Create 3-step revision</button>
+        </article>
+        <article>
+          <h3>3 · Run controls</h3>
+          <div class="card-actions">
+            <button id="s2-start">Start</button>
+            <button id="s2-pause" class="secondary">Pause</button>
+            <button id="s2-resume" class="secondary">Resume</button>
+            <button id="s2-checkpoint" class="secondary">Checkpoint</button>
+            <button id="s2-cancel" class="danger">Cancel</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article><h3>Missions & revisions</h3><div id="s2-missions" class="cards"></div></article>
+        <article><h3>Execution Plan graph</h3><div id="s2-plan" class="cards"></div></article>
+      </section>
+      <section class="grid">
+        <article><h3>Step details / recovery</h3><div id="s2-steps" class="cards"></div></article>
+        <article><h3>Agent Handoffs</h3><div id="s2-handoffs" class="cards"></div></article>
+      </section>
+      <section class="grid">
+        <article><h3>Checkpoints</h3><div id="s2-checkpoints" class="cards"></div></article>
+        <article><h3>Run Timeline</h3><pre id="s2-timeline"></pre></article>
+      </section>
     </section>
 
-    <section class="grid three">
-      <article>
-        <h2>Marketplace install</h2>
-        <p id="s1-marketplace"></p>
-        <button id="s1-install">Install local.form-submit</button>
-      </article>
-      <article>
-        <h2>Agent grant</h2>
-        <p id="s1-agent-summary"></p>
-        <button id="s1-grant">Grant submit_payload</button>
-      </article>
-      <article>
-        <h2>Worker provision</h2>
-        <label>Worker <select id="s1-worker"></select></label>
-        <button id="s1-provision">Provision + Start</button>
-      </article>
-    </section>
+    <details open>
+      <summary>S1 execution kernel</summary>
+      <nav id="s1-navigation" class="surface-nav" aria-label="S1 product surfaces">
+        <span>Projects</span><span>Workspaces</span><span>Marketplace</span><span>Agents</span><span>Workers</span>
+        <span>Tasks</span><span>Execution Graph</span><span>Human Gates</span><span>Evidence</span><span>Events / Recovery</span>
+      </nav>
 
-    <section class="grid">
-      <article>
-        <h2>Create S1 task</h2>
-        <label>Task ID <input id="s1-task-id" value="s1-task-001"></label>
-        <label>Payload <textarea id="s1-task-payload">hello from Workspace A</textarea></label>
-        <button id="s1-create-task">Create / schedule</button>
-      </article>
-      <article>
-        <h2>Blockers & recovery</h2>
-        <div id="s1-blockers" class="cards"></div>
-      </article>
-    </section>
+      <section class="s1-workspace-bar">
+        <label>Active Workspace <select id="s1-workspace"></select></label>
+        <strong id="s1-workspace-summary"></strong>
+      </section>
 
-    <section class="grid">
-      <article><h2>Tasks & graph</h2><div id="s1-tasks" class="cards"></div></article>
-      <article><h2>Human Gates</h2><div id="s1-gates" class="cards"></div></article>
-    </section>
-    <section class="grid">
-      <article><h2>Evidence</h2><div id="s1-evidence" class="cards"></div></article>
-      <article><h2>Events</h2><pre id="s1-events"></pre></article>
-    </section>
+      <section class="grid three">
+        <article>
+          <h2>Marketplace install</h2>
+          <p id="s1-marketplace"></p>
+          <button id="s1-install">Install local.form-submit</button>
+        </article>
+        <article>
+          <h2>Agent grant</h2>
+          <p id="s1-agent-summary"></p>
+          <button id="s1-grant">Grant submit_payload</button>
+        </article>
+        <article>
+          <h2>Worker provision</h2>
+          <label>Worker <select id="s1-worker"></select></label>
+          <button id="s1-provision">Provision + Start</button>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article>
+          <h2>Create S1 task</h2>
+          <label>Task ID <input id="s1-task-id" value="s1-task-001"></label>
+          <label>Payload <textarea id="s1-task-payload">hello from Workspace A</textarea></label>
+          <button id="s1-create-task">Create / schedule</button>
+        </article>
+        <article>
+          <h2>Blockers & recovery</h2>
+          <div id="s1-blockers" class="cards"></div>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article><h2>Tasks & graph</h2><div id="s1-tasks" class="cards"></div></article>
+        <article><h2>Human Gates</h2><div id="s1-gates" class="cards"></div></article>
+      </section>
+      <section class="grid">
+        <article><h2>Evidence</h2><div id="s1-evidence" class="cards"></div></article>
+        <article><h2>Events</h2><pre id="s1-events"></pre></article>
+      </section>
+    </details>
 
     <details>
       <summary>S0 compatibility controls</summary>

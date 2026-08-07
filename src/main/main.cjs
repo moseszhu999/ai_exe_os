@@ -9,8 +9,9 @@ const { BrowserWorkerManager } = require('./browser-worker-manager.cjs');
 const { TaskRepository } = require('./task-repository.cjs');
 const { GitHubReadOnlyAdapter } = require('./github-readonly-adapter.cjs');
 const { GitHubStateObserver } = require('./github-state-observer.cjs');
-const { S1ApplicationService } = require('../application/index.cjs');
+const { S2ApplicationService: S1ApplicationService } = require('../application/s2-index.cjs');
 const { registerS1Ipc } = require('../application/s1-ipc.cjs');
+const { registerS2Ipc } = require('../application/s2-ipc.cjs');
 
 app.enableSandbox();
 
@@ -115,6 +116,7 @@ function registerIpc() {
   });
 
   registerS1Ipc({ ipcMain, assertSender, service: s1Service });
+  registerS2Ipc({ ipcMain, assertSender, service: s1Service });
 }
 
 async function createMainWindow() {

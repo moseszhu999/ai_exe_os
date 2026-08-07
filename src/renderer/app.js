@@ -2,7 +2,9 @@ const api = window.aiExecutionOS;
 const statusElement = document.getElementById('status');
 let state = { workers: [], tasks: [], events: [] };
 let s1State = null;
+let s2State = null;
 let activeWorkspaceId = 'workspace-a';
+let selectedMissionId = 'mission-ui-001';
 
 const BLOCKER_LABELS = Object.freeze({
   workspace_inactive: 'Workspace is inactive',
@@ -14,8 +16,13 @@ const BLOCKER_LABELS = Object.freeze({
   provider_contract_changed_or_expired: 'Provider contract changed or expired',
   dependency_unsatisfied: 'Task dependency is not satisfied',
   resource_conflict: 'An exclusive resource is already reserved',
+  worker_unavailable: 'Bound Worker is unavailable',
   human_gate_required: 'Human approval is required',
   recovery_requires_review: 'Recovered execution requires human review',
+  step_output_missing: 'Required upstream step output is missing',
+  mission_paused: 'Mission is paused',
+  mission_cancelled: 'Mission is cancelled',
+  terminal_evidence_unsatisfied: 'Terminal evidence is unsatisfied',
 });
 
 function showStatus(message, isError = false) {
@@ -170,7 +177,7 @@ function renderS1Evidence() {
     const card = element('div');
     card.append(
       element('strong', evidence.type),
-      element('p', `${evidence.taskId} / ${evidence.executionRunId} / ${evidence.workerId}`),
+      element('p', `${evidence.taskId || evidence.stepId || 'evidence'} / ${evidence.executionRunId || evidence.missionRunId || 'local'}`),
       element('small', JSON.stringify(evidence.result)),
     );
     return card;
@@ -194,17 +201,190 @@ function renderS1() {
     .join('\n') || 'No Agent';
 }
 
+function currentMission() {
+  return s2State?.missions.find((mission) => mission.id === selectedMissionId) || s2State?.missions[0] || null;
+}
+
+function currentRun() {
+  const mission = currentMission();
+  return s2State?.missionRuns.find((run) => run.missionId === mission?.id) || null;
+}
+
+function currentPlan() {
+  const run = currentRun();
+  const mission = currentMission();
+  const revision = s2State?.revisions.filter((item) => item.missionId === mission?.id && Number(item.revision) > 0).sort((a, b) => Number(b.revision) - Number(a.revision))[0];
+  return s2State?.plans.find((plan) => plan.id === (run?.planId || revision?.planId)) || null;
+}
+
+function renderS2() {
+  const mission = currentMission();
+  const run = currentRun();
+  const plan = currentPlan();
+  document.getElementById('s2-run-summary').textContent = run
+    ? `${run.id} · ${run.state} · revision ${s2State.revisions.find((item) => item.id === run.missionRevisionId)?.revision || '?'}`
+    : 'No Mission run';
+
+  const missionCards = s2State.missions.map((item) => {
+    const card = element('div');
+    card.append(element('strong', item.title), element('p', `${item.id} · ${item.status}`), element('small', item.objective || ''));
+    card.addEventListener('click', () => { selectedMissionId = item.id; renderS2(); });
+    return card;
+  });
+  document.getElementById('s2-missions').replaceChildren(...missionCards);
+  if (!missionCards.length) document.getElementById('s2-missions').append(element('p', 'No Missions in this Workspace'));
+
+  const planCards = (plan?.steps || []).map((step) => {
+    const card = element('div', undefined, `mission-step mission-step--${step.state || 'pending'}`);
+    const blockers = (step.blockers || []).map((entry) => BLOCKER_LABELS[entry.code] || entry.code).join(' · ');
+    card.append(
+      element('strong', `${step.id} · ${step.name}`),
+      element('p', `${step.state || 'pending'} · ${step.executionMode || 'declared'} · Agent binding ${step.bindingId}`),
+      element('small', `${(step.dependsOn || []).length ? `Depends on ${step.dependsOn.join(', ')}` : 'Root step'}${blockers ? ` · ${blockers}` : ''}`),
+    );
+    return card;
+  });
+  document.getElementById('s2-plan').replaceChildren(...planCards);
+  if (!planCards.length) document.getElementById('s2-plan').append(element('p', 'Create a Mission revision to see its Execution Plan'));
+
+  const attempts = run ? s2State.stepAttempts.filter((item) => item.missionRunId === run.id) : [];
+  document.getElementById('s2-steps').replaceChildren(...attempts.map((attempt) => {
+    const card = element('div');
+    card.append(
+      element('strong', `${attempt.stepId} · attempt ${attempt.attemptNumber}`),
+      element('p', `${attempt.state}${attempt.executionRunId ? ` · S1 run ${attempt.executionRunId}` : ''}`),
+      element('small', attempt.recoveryReason || (attempt.blockers || []).map((entry) => BLOCKER_LABELS[entry.code] || entry.code).join(' · ')),
+    );
+    if (attempt.state === 'recovery_required' || (attempt.state === 'waiting_human' && attempt.recoveryReason)) {
+      card.append(actionButton('Review recovery & create new attempt', 'secondary', () => {
+        const accepted = window.confirm(`Retry creates a NEW StepAttempt. The old uncertain attempt will never be replayed.\n\nStep: ${attempt.stepId}\nPrevious attempt: ${attempt.id}\nReason: ${attempt.recoveryReason || 'review required'}`);
+        if (!accepted) return;
+        call(() => api.s2.mission.retryStepAfterReview({
+          workspaceId: activeWorkspaceId,
+          runId: run.id,
+          previousAttemptId: attempt.id,
+          reviewed: true,
+        }), 'Reviewed retry created a new StepAttempt');
+      }));
+    }
+    return card;
+  }));
+  if (!attempts.length) document.getElementById('s2-steps').append(element('p', 'No StepAttempts yet'));
+
+  const handoffs = run ? s2State.agentHandoffs.filter((item) => item.missionRunId === run.id) : [];
+  document.getElementById('s2-handoffs').replaceChildren(...handoffs.map((handoff) => {
+    const output = s2State.stepOutputs.find((item) => item.id === handoff.outputId);
+    const card = element('div');
+    card.append(
+      element('strong', `${handoff.fromStepAttemptId} → ${handoff.toStepId}.${handoff.inputName}`),
+      element('p', output ? `${output.outputName} · ${output.schemaDigest}` : handoff.outputId),
+      element('small', output ? JSON.stringify(output.value) : 'Output unavailable'),
+    );
+    return card;
+  }));
+  if (!handoffs.length) document.getElementById('s2-handoffs').append(element('p', 'No Agent handoffs yet'));
+
+  const checkpoints = run ? s2State.checkpoints.filter((item) => item.missionRunId === run.id) : [];
+  document.getElementById('s2-checkpoints').replaceChildren(...checkpoints.map((checkpoint) => {
+    const card = element('div');
+    card.append(
+      element('strong', checkpoint.id),
+      element('p', `event sequence ${checkpoint.canonicalEventSequence}`),
+      element('small', checkpoint.projectionDigest),
+    );
+    return card;
+  }));
+  if (!checkpoints.length) document.getElementById('s2-checkpoints').append(element('p', 'No checkpoints yet'));
+
+  const events = run ? s2State.missionEvents.filter((event) => event.aggregateId === run.id || event.payload?.missionRunId === run.id || event.payload?.missionId === mission?.id) : [];
+  document.getElementById('s2-timeline').textContent = events.map((event) => `${event.sequence} · ${event.eventType} · ${event.occurredAt}`).join('\n');
+
+  document.getElementById('s2-start').disabled = !mission || !!run;
+  document.getElementById('s2-pause').disabled = run?.state !== 'running';
+  document.getElementById('s2-resume').disabled = run?.state !== 'paused';
+  document.getElementById('s2-checkpoint').disabled = !run;
+  document.getElementById('s2-cancel').disabled = !run || ['completed', 'cancelled', 'failed'].includes(run.state);
+}
+
 async function refresh() {
-  [state, s1State] = await Promise.all([api.getState(), api.s1.queryState(activeWorkspaceId)]);
+  [state, s1State, s2State] = await Promise.all([
+    api.getState(),
+    api.s1.queryState(activeWorkspaceId),
+    api.s2.mission.queryState(activeWorkspaceId),
+  ]);
   document.getElementById('workers').replaceChildren(...state.workers.map(workerCard));
   document.getElementById('tasks').replaceChildren(...state.tasks.map(taskCard));
   document.getElementById('events').textContent = state.events.map((event) => JSON.stringify(event)).join('\n');
   renderS1();
+  renderS2();
+}
+
+async function prepareS2Prerequisites() {
+  const localTarget = s1State.localTarget;
+  const formInstall = await api.s1.installCapability({ workspaceId: activeWorkspaceId, packageId: 'local.form-submit', version: '1.0.0' });
+  const transformInstall = await api.s1.installCapability({ workspaceId: activeWorkspaceId, packageId: 'local.mission-transform', version: '1.0.0' });
+  const next = await api.s1.queryState(activeWorkspaceId);
+  const agentA = next.agents.find((agent) => agent.id === 'agent-a');
+  const agentA2 = next.agents.find((agent) => agent.id === 'agent-a2');
+  if (!agentA || !agentA2) throw new Error('S2 requires agent-a and agent-a2 in Workspace A');
+  await api.s1.grantCapability({ workspaceId: activeWorkspaceId, agentId: agentA.id, installationId: formInstall.id, allowedActions: ['submit_payload'], allowedTargets: [localTarget] });
+  await api.s1.grantCapability({ workspaceId: activeWorkspaceId, agentId: agentA2.id, installationId: transformInstall.id, allowedActions: ['transform_payload', 'join_payload'], allowedTargets: ['local://mission-transform', 'local://mission-join'] });
+}
+
+async function createS2MissionRevision() {
+  const missionId = document.getElementById('s2-mission-id').value.trim();
+  const objective = document.getElementById('s2-objective').value.trim();
+  if (!missionId || !objective) throw new Error('Mission ID and objective are required');
+  selectedMissionId = missionId;
+  await api.s2.mission.createMission({ id: missionId, workspaceId: activeWorkspaceId, title: `Mission ${missionId}`, objective, idempotencyKey: missionId });
+  const next = await api.s1.queryState(activeWorkspaceId);
+  const formInstall = next.installations.find((item) => item.packageId === 'local.form-submit' && item.status === 'installed');
+  const transformInstall = next.installations.find((item) => item.packageId === 'local.mission-transform' && item.status === 'installed');
+  if (!formInstall || !transformInstall) throw new Error('Prepare S2 prerequisites first');
+  await api.s2.mission.createRevision({
+    workspaceId: activeWorkspaceId,
+    missionId,
+    id: `${missionId}-rev-1`,
+    revision: 1,
+    objective,
+    terminalStepIds: ['step-c'],
+    steps: [
+      {
+        id: 'step-a', name: 'Bounded browser evidence', agentId: 'agent-a', installationId: formInstall.id,
+        capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: next.localTarget,
+        workerId: 's1-worker-chromium', dependsOn: [], declaredInputs: [], declaredOutputs: ['result_a'],
+        evidenceRequirements: ['local result text'], humanGatePolicy: 'action', payload: `S2 Mission ${missionId} browser evidence`,
+      },
+      {
+        id: 'step-b', name: 'Deterministic transform', agentId: 'agent-a2', installationId: transformInstall.id,
+        capabilityVersionId: 'local.mission-transform@1.0.0', action: 'transform_payload', target: 'local://mission-transform',
+        dependsOn: [], declaredInputs: [], declaredOutputs: ['result_b'], evidenceRequirements: ['local-transform-evidence'], humanGatePolicy: 'never', payload: `S2 Mission ${missionId} local branch`,
+      },
+      {
+        id: 'step-c', name: 'Join declared outputs', agentId: 'agent-a2', installationId: transformInstall.id,
+        capabilityVersionId: 'local.mission-transform@1.0.0', action: 'join_payload', target: 'local://mission-join',
+        dependsOn: ['step-a', 'step-b'],
+        declaredInputs: [
+          { name: 'input_a', fromStepId: 'step-a', outputName: 'result_a' },
+          { name: 'input_b', fromStepId: 'step-b', outputName: 'result_b' },
+        ],
+        declaredOutputs: ['final_result'], evidenceRequirements: ['final-evidence'], humanGatePolicy: 'never',
+      },
+    ],
+  });
+}
+
+function selectedRevision() {
+  const mission = currentMission();
+  return s2State.revisions
+    .filter((item) => item.missionId === mission?.id && Number(item.revision) > 0)
+    .sort((a, b) => Number(b.revision) - Number(a.revision))[0] || null;
 }
 
 document.getElementById('refresh').addEventListener('click', () => call(refresh));
 document.getElementById('s1-workspace').addEventListener('change', (event) => {
   activeWorkspaceId = event.target.value;
+  selectedMissionId = '';
   call(refresh);
 });
 document.getElementById('s1-install').addEventListener('click', () => call(
@@ -220,7 +400,7 @@ document.getElementById('s1-grant').addEventListener('click', () => {
     agentId: agent.id,
     installationId: installation.id,
     allowedActions: ['submit_payload'],
-    allowedTargets: ['http://127.0.0.1:43119/task-form.html'],
+    allowedTargets: [s1State.localTarget],
   }), 'Capability granted to Agent');
 });
 document.getElementById('s1-provision').addEventListener('click', async () => {
@@ -228,9 +408,7 @@ document.getElementById('s1-provision').addEventListener('click', async () => {
   if (!worker) return showStatus('No Worker binding in this Workspace', true);
   await call(async () => {
     const existing = state.workers.find((item) => item.id === worker.id);
-    if (!existing) {
-      await api.createWorker({ id: worker.id, projectId: 's1-local-project', role: 'implementation', browserChannel: worker.browserChannel });
-    }
+    if (!existing) await api.createWorker({ id: worker.id, projectId: 's1-local-project', role: 'implementation', browserChannel: worker.browserChannel });
     const current = (await api.getState()).workers.find((item) => item.id === worker.id);
     if (!current || ['created', 'stopped', 'failed'].includes(current.status)) await api.startWorker(worker.id);
   }, 'Worker provisioned and started');
@@ -240,28 +418,47 @@ document.getElementById('s1-create-task').addEventListener('click', () => {
   const installation = s1State.installations.find((item) => item.packageId === 'local.form-submit' && item.status === 'installed');
   const workerId = document.getElementById('s1-worker').value || 's1-worker-chromium';
   call(() => api.s1.createTask({
-    id: document.getElementById('s1-task-id').value.trim(),
-    workspaceId: activeWorkspaceId,
+    id: document.getElementById('s1-task-id').value.trim(), workspaceId: activeWorkspaceId,
     agentId: agent?.id || (activeWorkspaceId === 'workspace-a' ? 'agent-a' : 'agent-b'),
-    installationId: installation?.id || 'install-missing',
-    capabilityAction: 'submit_payload',
-    target: 'http://127.0.0.1:43119/task-form.html',
-    workerId,
-    payload: document.getElementById('s1-task-payload').value,
+    installationId: installation?.id || 'install-missing', capabilityAction: 'submit_payload',
+    target: s1State.localTarget, workerId, payload: document.getElementById('s1-task-payload').value,
   }), 'Task created and evaluated');
 });
 
+document.getElementById('s2-prepare').addEventListener('click', () => call(prepareS2Prerequisites, 'S2 capabilities installed and granted to two Agents'));
+document.getElementById('s2-create').addEventListener('click', () => call(createS2MissionRevision, 'Three-step Mission revision created'));
+document.getElementById('s2-start').addEventListener('click', () => {
+  const mission = currentMission();
+  const revision = selectedRevision();
+  if (!mission || !revision) return showStatus('Create a Mission revision first', true);
+  call(() => api.s2.mission.startMission({ workspaceId: activeWorkspaceId, missionId: mission.id, revisionId: revision.id, runId: `${mission.id}-run-1` }), 'Mission started; ready steps evaluated');
+});
+document.getElementById('s2-pause').addEventListener('click', () => {
+  const run = currentRun(); if (!run) return;
+  call(() => api.s2.mission.pauseMission({ workspaceId: activeWorkspaceId, missionId: run.missionId, runId: run.id, reason: 'operator pause' }), 'Mission paused; no new step may start');
+});
+document.getElementById('s2-resume').addEventListener('click', () => {
+  const run = currentRun(); if (!run) return;
+  call(() => api.s2.mission.resumeMission({ workspaceId: activeWorkspaceId, missionId: run.missionId, runId: run.id, reason: 'operator resume' }), 'Mission resumed; ready set reevaluated');
+});
+document.getElementById('s2-cancel').addEventListener('click', () => {
+  const run = currentRun(); if (!run) return;
+  const accepted = window.confirm(`Cancel Mission ${run.missionId}? Completed evidence remains immutable; no new step will start.`);
+  if (!accepted) return;
+  call(() => api.s2.mission.cancelMission({ workspaceId: activeWorkspaceId, missionId: run.missionId, runId: run.id, reason: 'operator cancel' }), 'Mission cancelled; history preserved');
+});
+document.getElementById('s2-checkpoint').addEventListener('click', () => {
+  const run = currentRun(); if (!run) return;
+  call(() => api.s2.mission.recordCheckpoint({ workspaceId: activeWorkspaceId, missionId: run.missionId, runId: run.id }), 'Mission checkpoint recorded');
+});
+
 document.getElementById('create-worker').addEventListener('click', () => call(() => api.createWorker({
-  id: document.getElementById('worker-id').value.trim(),
-  projectId: 's0-local-project',
-  role: document.getElementById('worker-role').value,
-  browserChannel: document.getElementById('browser-channel').value,
+  id: document.getElementById('worker-id').value.trim(), projectId: 's0-local-project',
+  role: document.getElementById('worker-role').value, browserChannel: document.getElementById('browser-channel').value,
 })));
 document.getElementById('create-task').addEventListener('click', () => call(() => api.createTask({
-  id: document.getElementById('task-id').value.trim(),
-  projectId: 's0-local-project',
-  title: document.getElementById('task-title').value.trim(),
-  payload: document.getElementById('task-payload').value,
+  id: document.getElementById('task-id').value.trim(), projectId: 's0-local-project',
+  title: document.getElementById('task-title').value.trim(), payload: document.getElementById('task-payload').value,
 })));
 document.getElementById('observe-pr').addEventListener('click', async () => {
   const repository = document.getElementById('github-repository').value.trim();
