@@ -37,9 +37,13 @@ function deriveReadySet({ run, plan, attempts = [], handoffs = [], resourceConfl
   for (const step of [...plan.steps].sort((a, b) => a.id.localeCompare(b.id))) {
     if (completedAttempt(attempts, step.id)) continue;
     const current = latestAttempt(attempts, step.id);
-    if (current && !TERMINAL_ATTEMPT_STATES.has(current.state)) continue;
-
     const blockers = [];
+    if (current && ['failed', 'cancelled'].includes(current.state)) {
+      blockers.push({ code: 'recovery_requires_review', previousAttemptId: current.id });
+    } else if (current && !TERMINAL_ATTEMPT_STATES.has(current.state)) {
+      continue;
+    }
+
     if (barrier) blockers.push({ code: barrier });
     else if (run.state !== 'running') blockers.push({ code: 'mission_not_running' });
 
