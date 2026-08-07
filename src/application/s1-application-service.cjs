@@ -123,7 +123,15 @@ class S1ApplicationService {
   grantCapability({ workspaceId, agentId, installationId, allowedActions = ['submit_payload'], allowedTargets = [LOCAL_TARGET] }) {
     const id = boundedId('grant', workspaceId, agentId, installationId);
     const existing = this.grant.get(id);
-    if (existing) return existing;
+    if (existing) {
+      const same = existing.workspaceId === workspaceId
+        && existing.agentId === agentId
+        && existing.installationId === installationId
+        && JSON.stringify([...existing.allowedActions].sort()) === JSON.stringify([...allowedActions].sort())
+        && JSON.stringify([...existing.allowedTargets].sort()) === JSON.stringify([...allowedTargets].sort());
+      if (!same) throw new Error(`Grant idempotency collision: ${id}`);
+      return existing;
+    }
     return this.grant.save(createAgentCapabilityGrant({
       id, workspace: this.require(this.workspace, workspaceId, 'Workspace'),
       agent: this.require(this.agent, agentId, 'Agent'), installation: this.require(this.installation, installationId, 'Installation'),
@@ -133,6 +141,24 @@ class S1ApplicationService {
 
   createTask(input) {
     const workspace = this.require(this.workspace, input.workspaceId, 'Workspace');
+    const existingTask = this.task.get(input.id);
+    if (existingTask) {
+      const expectedAction = input.capabilityAction || 'submit_payload';
+      const expectedTarget = input.target || LOCAL_TARGET;
+      const expectedPayload = String(input.payload || '');
+      const same = existingTask.workspaceId === input.workspaceId
+        && existingTask.agentId === input.agentId
+        && existingTask.installationId === input.installationId
+        && existingTask.capabilityAction === expectedAction
+        && existingTask.target === expectedTarget
+        && String(existingTask.input?.payload || '') === expectedPayload;
+      if (!same) throw new Error(`Task idempotency collision: ${input.id}`);
+      return Object.freeze({
+        task: existingTask,
+        run: this.executionRun.get(existingTask.executionRunId),
+        gate: existingTask.humanGateId ? this.humanGate.get(existingTask.humanGateId) : null,
+      });
+    }
     const graphId = input.graphId || boundedId('graph', input.workspaceId, input.id);
     if (!this.graph.get(graphId)) this.graph.save(createExecutionGraph({ id: graphId, workspaceId: workspace.id, name: input.graphName || `Graph for ${input.id}` }), 'graph.created');
     let task = createTaskNode({
@@ -179,6 +205,11 @@ class S1ApplicationService {
   }
 
   async approveHumanGate({ gateId }) {
+    const existingGate = this.humanGate.get(gateId);
+    const existingRun = existingGate ? this.executionRun.get(existingGate.executionRunId) : null;
+    if (existingRun?.recoveryReason) {
+      throw new Error('Recovered or uncertain execution cannot be replayed; create a new reviewed task');
+    }
     try {
       const result = await this.coordinator.approve(gateId);
       const task = this.task.get(result.run.taskId);
