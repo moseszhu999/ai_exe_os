@@ -37,11 +37,12 @@ jobs:
             exit 1
           fi
 
-      - name: Install pinned dependencies and Playwright Chromium
+      - name: Install pinned Electron and browser dependencies
         run: |
           set -euo pipefail
-          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-audit --no-fund
           npx playwright install chromium
+          node -e "const fs=require('node:fs'); const electron=require('electron'); if(!fs.existsSync(electron)) throw new Error('Electron executable missing')"
 
       - name: Install Google Chrome
         run: |
@@ -57,11 +58,40 @@ jobs:
       - name: Run real Chrome plus Chromium Mission matrix
         run: node scripts/s2-acceptance-favicon-safe.cjs
 
-      - name: Verify immutable evidence digest
+      - name: Run integrated Electron renderer acceptance and screenshots
+        run: node scripts/s2-acceptance-electron-ui.cjs
+
+      - name: Verify complete portable evidence artifact
         run: |
           set -euo pipefail
+          test -s runtime/s2-acceptance/matrix-result.json
+          test -s runtime/s2-acceptance/canonical-events.jsonl
+          test -s runtime/s2-acceptance/projection-checkpoint-digests.json
+          test -s runtime/s2-acceptance/electron-ui-audit.json
+          test -s runtime/s2-acceptance/s2-mission-ui-overview.png
+          test -s runtime/s2-acceptance/s2-mission-ui-state.png
+          node <<'NODE'
+          const fs = require('node:fs');
+          const matrix = JSON.parse(fs.readFileSync('runtime/s2-acceptance/matrix-result.json', 'utf8'));
+          const digests = JSON.parse(fs.readFileSync('runtime/s2-acceptance/projection-checkpoint-digests.json', 'utf8'));
+          const ui = JSON.parse(fs.readFileSync('runtime/s2-acceptance/electron-ui-audit.json', 'utf8'));
+          if (matrix.status !== 'PASS' || digests.status !== 'PASS' || ui.status !== 'PASS') process.exit(1);
+          if (matrix.productSha !== process.env.S2_PRODUCT_SHA) process.exit(1);
+          if (digests.projectionBeforeRestart !== digests.projectionAfterRestart) process.exit(1);
+          if (digests.checkpointBeforeRestart !== digests.checkpointAfterRestart) process.exit(1);
+          if (ui.pageErrors.length || ui.consoleErrors.length) process.exit(1);
+          NODE
+          if grep -nEi 'profilePath|user-data|processId|\bpid\b|\bppid\b|authorization|\bBearer\b|cookie|password|secret|access[_-]?token|refresh[_-]?token|private[_ -]?key' \
+            runtime/s2-acceptance/*.json runtime/s2-acceptance/*.jsonl; then
+            echo 'Forbidden credential/profile/process field found in S2 evidence artifact' >&2
+            exit 1
+          fi
           cd runtime/s2-acceptance
-          shasum -a 256 -c matrix-result.sha256
+          rm -f SHA256SUMS.txt
+          for file in $(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print | sed 's#^./##' | LC_ALL=C sort); do
+            shasum -a 256 "$file"
+          done > SHA256SUMS.txt
+          shasum -a 256 -c SHA256SUMS.txt
 
       - name: Upload portable immutable evidence
         if: always()
