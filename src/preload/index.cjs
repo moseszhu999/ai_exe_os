@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const { createS2BridgeContract } = require('./s2-bridge-contract.cjs');
 
 contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   getState: () => ipcRenderer.invoke('state:list'),
@@ -18,5 +19,8 @@ contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
     createTask: (input) => ipcRenderer.invoke('s1:task:create', input),
     rejectHumanGate: (input) => ipcRenderer.invoke('s1:human-gate:reject', input),
     approveHumanGate: (input) => ipcRenderer.invoke('s1:human-gate:approve', input),
+  }),
+  s2: Object.freeze({
+    mission: createS2BridgeContract(ipcRenderer),
   }),
 }));
