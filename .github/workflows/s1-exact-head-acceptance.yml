@@ -127,7 +127,58 @@ jobs:
           cp "$RUNNER_TEMP/controller-sha256.txt" "$AI_EXE_OS_S1_ACCEPTANCE_OUTPUT-controller-sha256.txt"
           node "$RUNNER_TEMP/s1-acceptance-controller.cjs" target
           mv "$AI_EXE_OS_S1_ACCEPTANCE_OUTPUT-controller-sha256.txt" "$AI_EXE_OS_S1_ACCEPTANCE_OUTPUT/controller-sha256.txt"
-      - name: Verify machine-readable verdict and cleanliness
+      - name: Sanitize evidence and remove ephemeral browser profiles
+        if: always()
+        shell: bash
+        env:
+          EVIDENCE: ${{ runner.temp }}/s1-exact-head-${{ env.TARGET_SHA }}
+        run: |
+          set -Eeuo pipefail
+          test -d "$EVIDENCE"
+          node - "$EVIDENCE" <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = path.resolve(process.argv[2]);
+          const ephemeralUserData = path.join(root, 'user-data');
+          const forbiddenKey = /^(profilePath|profileDir|profileDirectory|userData|userDataDir|processId|pid|ppid)$/i;
+
+          function scrub(value, key = '') {
+            if (forbiddenKey.test(key)) return undefined;
+            if (Array.isArray(value)) return value.map((item) => scrub(item)).filter((item) => item !== undefined);
+            if (value && typeof value === 'object') {
+              const result = {};
+              for (const [nestedKey, nestedValue] of Object.entries(value)) {
+                const cleaned = scrub(nestedValue, nestedKey);
+                if (cleaned !== undefined) result[nestedKey] = cleaned;
+              }
+              return result;
+            }
+            if (typeof value === 'string') {
+              return value
+                .split(ephemeralUserData).join('[ephemeral-user-data]')
+                .replace(/--user-data-dir=([^\s"']+)/g, '--user-data-dir=[redacted]')
+                .replace(/\/(?:[^/\s"']+\/)*profiles\/[^\s"']+/g, '[ephemeral-profile]');
+            }
+            return value;
+          }
+
+          function walk(directory) {
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+              const filePath = path.join(directory, entry.name);
+              if (filePath.startsWith(ephemeralUserData)) continue;
+              if (entry.isDirectory()) walk(filePath);
+              else if (entry.isFile() && entry.name.endsWith('.json')) {
+                const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                fs.writeFileSync(filePath, `${JSON.stringify(scrub(parsed), null, 2)}\n`, 'utf8');
+              }
+            }
+          }
+
+          walk(root);
+          fs.rmSync(ephemeralUserData, { recursive: true, force: true });
+          NODE
+          test ! -e "$EVIDENCE/user-data"
+      - name: Verify machine-readable verdict, privacy and cleanliness
         if: always()
         shell: bash
         env:
@@ -148,6 +199,19 @@ jobs:
           if (result.phases.crashNoReplay.before !== result.phases.crashNoReplay.after) throw new Error('crash recovery replayed');
           if (result.phases.projectionRebuild.before !== result.phases.projectionRebuild.after) throw new Error('projection digest mismatch');
           NODE
+          test ! -e "$EVIDENCE/user-data"
+          if grep -RInE '"(profilePath|profileDir|profileDirectory|userData|userDataDir|processId|pid|ppid)"[[:space:]]*:' "$EVIDENCE" --include='*.json' --include='*.jsonl'; then
+            echo 'Forbidden process/profile key found in final evidence.' >&2
+            exit 1
+          fi
+          if grep -RInE '(access[_-]?token|refresh[_-]?token|authorization["=: ]|cookie["=: ]|password["=: ]|Bearer[[:space:]]+[A-Za-z0-9._~+/=-]{12,})' "$EVIDENCE" --include='*.json' --include='*.jsonl'; then
+            echo 'Forbidden credential-like evidence found.' >&2
+            exit 1
+          fi
+          if strings "$EVIDENCE/state.sqlite" | grep -E 'profilePath|access[_-]?token|refresh[_-]?token|Bearer[[:space:]]|password|cookie'; then
+            echo 'Forbidden persistence field found inside canonical SQLite.' >&2
+            exit 1
+          fi
           git -C target status --short > "$EVIDENCE/git-status.txt"
           test ! -s "$EVIDENCE/git-status.txt"
           find "$EVIDENCE" -type f -print | sort > "$EVIDENCE/manifest.txt"
