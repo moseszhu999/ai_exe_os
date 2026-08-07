@@ -30,9 +30,12 @@ test('S2 service initializes on canonical SQLite before both IPC groups and Brow
 
 test('preload preserves S0 and S1 APIs and exposes nested S2 Mission bridge only', () => {
   for (const method of ['getState','createWorker','startWorker','stopWorker','focusWorker','pauseWorker','resumeWorker','createTask','confirmLocalTask','observePullRequest']) {
-    assert.match(preload, new RegExp(`\\b${method}:`));
+    assert.ok(preload.includes(`${method}:`), `missing ${method}`);
   }
   assert.equal((preload.match(/ipcRenderer\.invoke\('s1:/g) || []).length, 6);
+  for (const method of ['queryState','installCapability','grantCapability','createTask','rejectHumanGate','approveHumanGate']) {
+    assert.match(preload, new RegExp(`${method}:\\s*\\(`));
+  }
   assert.match(preload, /s2:\s*Object\.freeze\(\{/);
   assert.match(preload, /mission:\s*createS2BridgeContract\(ipcRenderer\)/);
   assert.doesNotMatch(preload, /state\.sqlite|DatabaseSync|workerManager/);
