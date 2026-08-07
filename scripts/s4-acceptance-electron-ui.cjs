@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const net = require('node:net');
+const { execFileSync } = require('node:child_process');
 const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
@@ -16,6 +17,8 @@ const S2_METHODS = ['cancelMission','createMission','createRevision','pauseMissi
 const S3_METHODS = ['bindPullRequest','claimPaths','createRepairProposal','observeDelivery','queryState','registerRepository','reserveBranch'];
 const S4_METHODS = ['focusWorker','pauseWorker','query','resumeWorker','stopWorker'];
 const S4_SURFACES = ['Cockpit / Overview','Projects & Workspaces','Missions / Execution Graph','Workers & Sessions','Agents / Capabilities / Provider Use','Human Gate Inbox','Blockers & Recovery','GitHub Delivery','Evidence & Event Lineage'];
+
+function sh(name, args = []) { return execFileSync(name, args, { encoding: 'utf8' }).trim(); }
 
 async function freePort() {
   const server = net.createServer();
@@ -100,7 +103,6 @@ async function main() {
     assert.equal(missing.found, false);
     assert.deepEqual(missing.workers, []);
 
-    // Exercise the accepted S2 UI builder so the S4 cockpit has a real Mission plus persisted Human Gate.
     await page.click('#s2-prepare');
     await page.waitForFunction(() => document.getElementById('s1-marketplace')?.textContent.includes('local.mission-transform'));
     await page.click('#s2-create');
@@ -125,10 +127,10 @@ async function main() {
     const submissionsBefore = (await page.evaluate(() => window.aiExecutionOS.getState())).events.filter((event) => event.type === 'task.submission_started').length;
 
     await page.evaluate(() => window.aiExecutionOS.s4.console.focusWorker({ workspaceId: 'workspace-a', workerId: 's1-worker-chrome' }));
-    let afterFocus = await page.evaluate(() => window.aiExecutionOS.s4.console.query('workspace-a'));
+    const afterFocus = await page.evaluate(() => window.aiExecutionOS.s4.console.query('workspace-a'));
     assert.deepEqual(afterFocus.workers.find((item) => item.workerId === 's1-worker-chromium'), workerBBefore);
     await page.evaluate(() => window.aiExecutionOS.s4.console.pauseWorker({ workspaceId: 'workspace-a', workerId: 's1-worker-chrome' }));
-    let afterPause = await page.evaluate(() => window.aiExecutionOS.s4.console.query('workspace-a'));
+    const afterPause = await page.evaluate(() => window.aiExecutionOS.s4.console.query('workspace-a'));
     assert.equal(afterPause.workers.find((item) => item.workerId === 's1-worker-chrome').status, 'paused');
     assert.equal(afterPause.workers.find((item) => item.workerId === 's1-worker-chromium').status, 'idle');
     await page.evaluate(() => window.aiExecutionOS.s4.console.resumeWorker({ workspaceId: 'workspace-a', workerId: 's1-worker-chrome' }));
@@ -154,7 +156,6 @@ async function main() {
     app = null;
     page = null;
 
-    // Restart with the same userData. S0 rehydrates Workers to actual recovered state; S1/S2 state stays canonical.
     ({ app, page } = await launch(userData, port, audit));
     const restartCockpit = await page.evaluate(() => window.aiExecutionOS.s4.console.query('workspace-a'));
     const restartMission = await page.evaluate(() => window.aiExecutionOS.s2.mission.queryState('workspace-a'));
@@ -176,6 +177,14 @@ async function main() {
       pageErrors: audit.pageErrors, consoleErrors: audit.consoleErrors,
       screenshots: ['s4-cockpit-before.png', 's4-cockpit-after-control.png', 's4-cockpit-after-restart.png'],
     });
+
+    await app.close();
+    app = null;
+    page = null;
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    const residual = sh('ps', ['-axo', 'command']).split('\n').filter((line) => line.includes(userData));
+    assert.deepEqual(residual, []);
+    writeJson('electron-cleanup-audit.json', { status: 'PASS', residualScopedProcesses: residual });
   } catch (error) {
     if (page) {
       try { await page.screenshot({ path: join(OUTPUT, 's4-electron-failure.png'), fullPage: true }); } catch {}
