@@ -214,8 +214,12 @@ jobs:
           fi
           git -C target status --short > "$EVIDENCE/git-status.txt"
           test ! -s "$EVIDENCE/git-status.txt"
-          find "$EVIDENCE" -type f -print | sort > "$EVIDENCE/manifest.txt"
-          find "$EVIDENCE" -type f ! -name SHA256SUMS.txt -exec shasum -a 256 {} \; | sort > "$EVIDENCE/SHA256SUMS.txt"
+          (
+            cd "$EVIDENCE"
+            find . -type f ! -name manifest.txt ! -name SHA256SUMS.txt -print | sort > manifest.txt
+            find . -type f ! -name SHA256SUMS.txt -exec shasum -a 256 {} \; | sort > SHA256SUMS.txt
+            shasum -a 256 -c SHA256SUMS.txt
+          )
       - name: Upload immutable S1 acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
