@@ -84,6 +84,7 @@ test('controller collapses repeated pause commands into one bridge invocation', 
   const a = controller.pauseMission(input);
   const b = controller.pauseMission(input);
   assert.equal(a, b);
+  await Promise.resolve();
   assert.equal(pauseCalls, 1);
   release({ state: 'paused' });
   await a;
