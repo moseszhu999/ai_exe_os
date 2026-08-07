@@ -20,9 +20,11 @@ const BLOCKER_LABELS = Object.freeze({
 });
 
 const FORBIDDEN_KEY = /password|passwd|cookie|authorization|token|profilepath|userdata|storagestate/i;
+const FORBIDDEN_VALUE = /(-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\bBearer\s+[A-Za-z0-9._~+/=-]{12,}|\b(?:sessionid|access_token|refresh_token)=)/i;
 
 function sanitizeForDisplay(value, key = '') {
   if (FORBIDDEN_KEY.test(key)) return '[redacted]';
+  if (typeof value === 'string' && FORBIDDEN_VALUE.test(value)) return '[redacted]';
   if (Array.isArray(value)) return value.map((item) => sanitizeForDisplay(item));
   if (value && typeof value === 'object') {
     return Object.fromEntries(Object.entries(value).map(([nestedKey, nested]) => [nestedKey, sanitizeForDisplay(nested, nestedKey)]));
