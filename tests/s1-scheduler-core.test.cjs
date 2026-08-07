@@ -168,10 +168,20 @@ test('application recovery contains active executions without invoking runtime',
   assert.equal(h.submissionCount, 0);
 });
 
-test('S0 runtime adapter restricts execution to project-owned loopback target', async () => {
+test('S0 runtime adapter restricts execution to project-owned loopback target and normalizes its result', async () => {
   const calls = [];
-  const adapter = new S0BrowserWorkerAdapter({ workerManager: { async submitAuthorizedLocalTask(input) { calls.push(input); return { ok: true }; } } });
-  assert.deepEqual(await adapter.execute({ workerId: 'worker-a', taskId: 'task-a', capabilityAction: 'submit_payload', target, payload: 'hello' }), { ok: true });
+  const adapter = new S0BrowserWorkerAdapter({
+    workerManager: {
+      async submitAuthorizedLocalTask(input) {
+        calls.push(input);
+        return { worker: null, result: { ok: true } };
+      },
+    },
+  });
+  assert.deepEqual(
+    await adapter.execute({ workerId: 'worker-a', taskId: 'task-a', capabilityAction: 'submit_payload', target, payload: 'hello' }),
+    { worker: null, result: { ok: true } },
+  );
   await assert.rejects(() => adapter.execute({ workerId: 'worker-a', taskId: 'task-a', capabilityAction: 'submit_payload', target: 'https://example.com', payload: 'x' }), /project-owned loopback/);
   assert.equal(calls.length, 1);
 });
