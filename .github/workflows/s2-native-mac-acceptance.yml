@@ -3,7 +3,7 @@ name: S2 native Apple Silicon acceptance
 on:
   pull_request:
     branches:
-      - agent/s2-application-integration-v1
+      - agent/s2-sandbox-preload-repair-v1
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     env:
-      S2_PRODUCT_SHA: 5981b0ba3bbc3d730d5c345d5f164826e647e7c7
+      S2_PRODUCT_SHA: 5d023616df1f0564a66ef2b3ab79ea6739cefaa0
       S2_ACCEPTANCE_OUTPUT: runtime/s2-acceptance
     steps:
       - name: Check out acceptance branch
