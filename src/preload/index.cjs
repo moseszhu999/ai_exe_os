@@ -1,5 +1,23 @@
 const { contextBridge, ipcRenderer } = require('electron');
-const { createS2BridgeContract } = require('./s2-bridge-contract.cjs');
+
+function s2Input(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('S2 command payload must be a plain object');
+  }
+  return input;
+}
+
+const s2Mission = Object.freeze({
+  queryState: (workspaceId) => ipcRenderer.invoke('s2:mission:query-state', workspaceId || null),
+  createMission: (input) => ipcRenderer.invoke('s2:mission:create', s2Input(input)),
+  createRevision: (input) => ipcRenderer.invoke('s2:mission:create-revision', s2Input(input)),
+  startMission: (input) => ipcRenderer.invoke('s2:mission:start', s2Input(input)),
+  pauseMission: (input) => ipcRenderer.invoke('s2:mission:pause', s2Input(input)),
+  resumeMission: (input) => ipcRenderer.invoke('s2:mission:resume', s2Input(input)),
+  cancelMission: (input) => ipcRenderer.invoke('s2:mission:cancel', s2Input(input)),
+  retryStepAfterReview: (input) => ipcRenderer.invoke('s2:mission:retry-step-after-review', s2Input(input)),
+  recordCheckpoint: (input) => ipcRenderer.invoke('s2:mission:record-checkpoint', s2Input(input)),
+});
 
 contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   getState: () => ipcRenderer.invoke('state:list'),
@@ -20,7 +38,5 @@ contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
     rejectHumanGate: (input) => ipcRenderer.invoke('s1:human-gate:reject', input),
     approveHumanGate: (input) => ipcRenderer.invoke('s1:human-gate:approve', input),
   }),
-  s2: Object.freeze({
-    mission: createS2BridgeContract(ipcRenderer),
-  }),
+  s2: Object.freeze({ mission: s2Mission }),
 }));
