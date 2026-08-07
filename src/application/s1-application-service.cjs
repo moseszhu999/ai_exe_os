@@ -103,15 +103,11 @@ class S1ApplicationService {
         this.agent.save(createAgent({ id: agentId, workspace: this.workspace.get(workspaceId), name: agentId === 'agent-a' ? 'Agent A' : 'Agent B', role: 'operator', createdAt: this.clock() }), 'agent.created');
       }
     }
-    const workerSeeds = [
+    for (const seed of [
       { id: 's1-worker-chrome', workspaceId: 'workspace-a', browserChannel: 'chrome' },
       { id: 's1-worker-chromium', workspaceId: 'workspace-a', browserChannel: 'chromium' },
-    ];
-    for (const seed of workerSeeds) {
+    ]) {
       if (!this.workerBinding.get(seed.id)) this.workerBinding.save({ ...seed, id: seed.id, workspaceId: seed.workspaceId }, 'worker.bound');
-      if (!workerManagerHas(this.workerManager, seed.id)) {
-        this.workerManager.create({ id: seed.id, projectId: 's1-local-project', role: 'implementation', browserChannel: seed.browserChannel });
-      }
     }
   }
 
@@ -264,10 +260,6 @@ class S1ApplicationService {
   }
 
   close() { this.store.close(); }
-}
-
-function workerManagerHas(workerManager, workerId) {
-  return workerManager.list().some((worker) => worker.id === workerId);
 }
 
 module.exports = { LOCAL_PACKAGE_ID, LOCAL_TARGET, LOCAL_VERSION, S1ApplicationService, boundedId };
