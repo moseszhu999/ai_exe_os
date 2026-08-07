@@ -17,7 +17,7 @@ function indexOfOrFail(source, pattern) {
   return index;
 }
 
-test('S3 service extends the accepted S2 chain and initializes on canonical SQLite before all IPC groups and BrowserWindow', () => {
+test('S4 entrypoint preserves the accepted S3→S2 chain and initializes before all IPC groups and BrowserWindow', () => {
   const service = indexOfOrFail(main, 's1Service = new S1ApplicationService');
   const registerIpcCall = main.lastIndexOf('registerIpc();');
   const window = indexOfOrFail(main, 'await createMainWindow();');
@@ -26,7 +26,10 @@ test('S3 service extends the accepted S2 chain and initializes on canonical SQLi
   assert.match(main, /registerS1Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
   assert.match(main, /registerS2Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
   assert.match(main, /registerS3Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
-  assert.match(main, /S3ApplicationService: S1ApplicationService/);
+  assert.match(main, /registerS4Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
+  assert.match(main, /S4ApplicationService: S1ApplicationService/);
+  assert.match(main, /S3ApplicationService\.prototype instanceof S2ApplicationService/);
+  assert.match(main, /S1ApplicationService\.prototype instanceof S3ApplicationService/);
   assert.match(main, /databasePath: join\(s1RuntimeRoot, 'state\.sqlite'\)/);
   for (const security of ['contextIsolation: true', 'nodeIntegration: false', 'sandbox: true', 'webSecurity: true']) assert.ok(main.includes(security), security);
 });

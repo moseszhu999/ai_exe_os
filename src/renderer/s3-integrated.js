@@ -230,3 +230,10 @@ document.getElementById('s1-workspace')?.addEventListener('change', () => {
 document.getElementById('refresh')?.addEventListener('click', () => queueMicrotask(() => s3Refresh()));
 
 s3Refresh();
+
+if (!document.querySelector('script[data-s4-cockpit]')) {
+  const s4Script = document.createElement('script');
+  s4Script.src = 's4-integrated.js';
+  s4Script.dataset.s4Cockpit = 'true';
+  document.body.append(s4Script);
+}
