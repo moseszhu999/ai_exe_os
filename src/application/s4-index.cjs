@@ -18,6 +18,21 @@ class S4ApplicationService extends S3ApplicationService {
     });
   }
 
+  cockpitMissionState(workspaceId, missionState) {
+    const workspace = this.workspace.get(workspaceId);
+    const s1 = missionState.s1 || {};
+    return Object.freeze({
+      ...missionState,
+      s1: Object.freeze({
+        ...s1,
+        projects: (s1.projects || []).map((project) => Object.freeze({ ...project, workspaceId })),
+        workerBindings: this.workerBinding.list().filter((item) => item.workspaceId === workspaceId),
+        providerSnapshots: this.providerSnapshot.list().map((snapshot) => Object.freeze({ ...snapshot, workspaceId })),
+        workspace: workspace ? Object.freeze({ ...workspace }) : null,
+      }),
+    });
+  }
+
   queryOperatorCockpit(workspaceId) {
     if (typeof workspaceId !== 'string' || !workspaceId.trim()) throw new TypeError('workspaceId is required');
     if (!this.workspace.get(workspaceId)) {
@@ -25,7 +40,7 @@ class S4ApplicationService extends S3ApplicationService {
       return Object.freeze({ ...empty, attention: Object.freeze([]), lineage: Object.freeze({}) });
     }
     const githubState = this.queryGitHubDeliveryState(workspaceId);
-    const missionState = githubState.s2;
+    const missionState = this.cockpitMissionState(workspaceId, githubState.s2);
     const base = createOperatorCockpitSnapshot({
       workspaceId,
       missionState,
