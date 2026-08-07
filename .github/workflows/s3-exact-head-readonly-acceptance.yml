@@ -1,0 +1,136 @@
+name: S3 exact-head read-only acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/s3-acceptance-*.cjs'
+      - '.github/workflows/s3-*-acceptance.yml'
+      - 'docs/results/S3-results.md'
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  actions: read
+
+env:
+  S3_PRODUCT_HEAD: ddf08c7a92ceb94d21740630b27667ff8be4c987
+  S3_MERGED_MAIN: 5d221ee7352a98d19a5ec66b4e5cbc50027f92d0
+  S3_TARGET_OWNER: moseszhu999
+  S3_TARGET_REPO: ai_exe_os
+  S3_TARGET_PR: '55'
+
+jobs:
+  exact-source-matrix:
+    name: Exact source and deterministic S3 matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out acceptance carrier
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Prove frozen product head equals merged main tree
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git cat-file -e "${S3_PRODUCT_HEAD}^{commit}"
+          git cat-file -e "${S3_MERGED_MAIN}^{commit}"
+          test "$(git rev-parse "${S3_PRODUCT_HEAD}")" = "${S3_PRODUCT_HEAD}"
+          test "$(git rev-parse "${S3_MERGED_MAIN}")" = "${S3_MERGED_MAIN}"
+          git diff --exit-code "${S3_PRODUCT_HEAD}" "${S3_MERGED_MAIN}" -- .
+          mkdir -p artifacts/s3-source
+          printf '%s\n' "${S3_PRODUCT_HEAD}" > artifacts/s3-source/product-head.txt
+          printf '%s\n' "${S3_MERGED_MAIN}" > artifacts/s3-source/merged-main.txt
+          printf 'TREE_EQUAL=PASS\n' > artifacts/s3-source/tree-equality.txt
+
+      - name: Validate exact frozen product source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git worktree add --detach /tmp/s3-product "${S3_PRODUCT_HEAD}"
+          cd /tmp/s3-product
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run validate 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/s3-source/source-validation.txt"
+
+      - name: Run focused S3 contract and integration matrix
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd /tmp/s3-product
+          node --test \
+            tests/s3-github-domain.test.cjs \
+            tests/s3-github-observation.test.cjs \
+            tests/s3-github-delivery.test.cjs \
+            tests/s3-github-ui-contract.test.cjs \
+            tests/s3-integration-service.test.cjs \
+            tests/s3-integration-electron.test.cjs \
+            2>&1 | tee "$GITHUB_WORKSPACE/artifacts/s3-source/focused-s3-tests.txt"
+
+      - name: Record source evidence checksums
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd artifacts/s3-source
+          find . -type f ! -name SHA256SUMS.txt -print0 \
+            | sort -z \
+            | xargs -0 shasum -a 256 \
+            > SHA256SUMS.txt
+          shasum -a 256 -c SHA256SUMS.txt
+
+      - name: Upload exact-source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: s3-exact-source-evidence
+          path: artifacts/s3-source
+          if-no-files-found: error
+          retention-days: 90
+
+  live-electron-readonly:
+    name: Native macOS Electron and live GitHub read-only acceptance
+    needs: exact-source-matrix
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - name: Check out acceptance carrier
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install runtime dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run live read-only Electron acceptance
+        env:
+          AI_EXE_OS_GITHUB_TOKEN: ${{ github.token }}
+          S3_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/s3-acceptance
+          S3_USER_DATA_DIR: ${{ runner.temp }}/ai-exe-os-s3-user-data
+          S3_TEST_PORT: '45119'
+        run: node scripts/s3-acceptance-live-electron.cjs
+
+      - name: Verify portable artifact checksums
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd artifacts/s3-acceptance
+          shasum -a 256 -c SHA256SUMS.txt
+          test ! -d user-data
+
+      - name: Upload privacy-safe S3 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: s3-live-readonly-electron-evidence
+          path: artifacts/s3-acceptance
+          if-no-files-found: error
+          retention-days: 90
