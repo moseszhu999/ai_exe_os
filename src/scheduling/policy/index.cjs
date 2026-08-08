@@ -84,6 +84,7 @@ function assertCandidate(candidate) {
   return {
     id: assertSafeIdentifier(candidate.id, 'scheduling candidate id'),
     workspaceId: assertSafeIdentifier(candidate.workspaceId, 'workspace id'),
+    readyState: 'ready',
     priority: candidate.priority,
     readySince: isoInstant(candidate.readySince, 'candidate readySince'),
     reusableSessionCompatible: candidate.reusableSessionCompatible === true,
@@ -125,12 +126,11 @@ function rankSchedulingCandidates({ policy, candidates, evaluatedAt, workspaceAc
     const workspaceActiveCount = positiveInteger(workspaceActiveCounts[normalized.workspaceId] ?? 0, 'workspace active count', { allowZero: true });
     const reusePreference = policy.sessionReuse === 'compatible-only' && normalized.reusableSessionCompatible ? 0 : 1;
     return {
-      candidate,
       normalized,
       priority,
       tuple: [
         priority.effectiveRank,
-        priority.ageBucket === 0 ? 1 : 0,
+        -priority.ageBucket,
         workspaceActiveCount,
         reusePreference,
         normalized.readySince,
