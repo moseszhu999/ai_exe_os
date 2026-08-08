@@ -1,0 +1,250 @@
+name: S6 native multi-session scheduling acceptance
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-product-source:
+    name: Exact frozen product source validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      S6_PRODUCT_SHA: b9cce3a331b33c273e5eecd11fa3269fd5c9b135
+    steps:
+      - name: Check out acceptance carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify carrier changes only acceptance-owned paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$S6_PRODUCT_SHA" HEAD
+          changed="$(git diff --name-only "$S6_PRODUCT_SHA" HEAD)"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -vE '^(scripts/s6-acceptance-|\.github/workflows/s6-|docs/results/S6-results\.md$)' | grep -q .; then
+            echo 'S6 acceptance carrier modified product-owned paths' >&2
+            exit 1
+          fi
+      - name: Validate exact frozen product head
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add ../s6-product "$S6_PRODUCT_SHA"
+          cd ../s6-product
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run validate | tee ../ai_exe_os/s6-exact-source-validation.txt
+      - name: Record exact product source evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$S6_PRODUCT_SHA" > exact-product-head.txt
+          sha256sum exact-product-head.txt s6-exact-source-validation.txt > s6-source-SHA256SUMS.txt
+          sha256sum -c s6-source-SHA256SUMS.txt
+      - name: Upload exact-source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: s6-exact-source-${{ github.sha }}
+          path: |
+            exact-product-head.txt
+            s6-exact-source-validation.txt
+            s6-source-SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  native-arm64-scheduling:
+    name: Native arm64 dual-session scheduling + Electron acceptance
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      S6_PRODUCT_SHA: b9cce3a331b33c273e5eecd11fa3269fd5c9b135
+      S6_ACCEPTANCE_OUTPUT: runtime/s6-acceptance
+    steps:
+      - name: Check out acceptance carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify frozen source ancestry and QA-only carrier scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$S6_PRODUCT_SHA" HEAD
+          changed="$(git diff --name-only "$S6_PRODUCT_SHA" HEAD)"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -vE '^(scripts/s6-acceptance-|\.github/workflows/s6-|docs/results/S6-results\.md$)' | grep -q .; then
+            echo 'S6 acceptance carrier modified product-owned paths' >&2
+            exit 1
+          fi
+      - name: Verify native Apple Silicon runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "arm64"
+          test "$(node -p 'process.arch')" = "arm64"
+          if [[ "$(sysctl -in sysctl.proc_translated 2>/dev/null || echo 0)" = "1" ]]; then
+            echo 'Rosetta-translated runner is not accepted' >&2
+            exit 1
+          fi
+      - name: Install pinned dependencies including Electron and Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npx playwright install chromium
+          node -e "const fs=require('node:fs'); const electron=require('electron'); if(!fs.existsSync(electron)) throw new Error('Electron executable missing')"
+      - name: Install Google Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ]]; then
+            brew install --cask google-chrome
+          fi
+          file '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+      - name: Run full carrier/source validation on native arm64
+        run: npm run validate
+      - name: Record frozen product head
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$S6_ACCEPTANCE_OUTPUT"
+          printf '%s\n' "$S6_PRODUCT_SHA" > "$S6_ACCEPTANCE_OUTPUT/exact-product-head.txt"
+      - name: Run native dual-session scheduling matrix
+        run: node scripts/s6-acceptance-native-matrix.cjs
+      - name: Run real Electron scheduling cockpit and restart matrix
+        run: node scripts/s6-acceptance-electron-ui.cjs
+      - name: Verify S6 evidence and acceptance invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$S6_ACCEPTANCE_OUTPUT"
+          for file in \
+            exact-product-head.txt \
+            native-scheduling-matrix.json \
+            native-scheduling-matrix.sha256 \
+            fairness-determinism-matrix.json \
+            conservative-boundary-matrix.json \
+            native-scheduling-state.json \
+            cockpit-scheduling-state.json \
+            canonical-events.jsonl \
+            projection-restart-digests.json \
+            cleanup-audit.json \
+            electron-scheduling-before-restart.json \
+            electron-scheduling-after-restart.json \
+            electron-ui-audit.json \
+            electron-cleanup-audit.json \
+            s6-cockpit-after-scheduling.png \
+            s6-cockpit-after-restart.png; do
+            test -s "$root/$file"
+          done
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = process.env.S6_ACCEPTANCE_OUTPUT;
+          const productSha = process.env.S6_PRODUCT_SHA;
+          const read = (name) => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8'));
+          const native = read('native-scheduling-matrix.json');
+          const fairness = read('fairness-determinism-matrix.json');
+          const boundaries = read('conservative-boundary-matrix.json');
+          const state = read('native-scheduling-state.json');
+          const cockpit = read('cockpit-scheduling-state.json');
+          const restart = read('projection-restart-digests.json');
+          const cleanup = read('cleanup-audit.json');
+          const electron = read('electron-ui-audit.json');
+          const electronCleanup = read('electron-cleanup-audit.json');
+          const electronBefore = read('electron-scheduling-before-restart.json');
+          const electronAfter = read('electron-scheduling-after-restart.json');
+
+          for (const doc of [native, fairness, boundaries, state, cockpit, restart, cleanup, electron, electronCleanup, electronBefore, electronAfter]) {
+            if (doc.status !== 'PASS') throw new Error('S6 evidence document is not PASS');
+            if ('productSha' in doc && doc.productSha !== productSha) throw new Error('S6 evidence product SHA mismatch');
+          }
+          if (fs.readFileSync(path.join(root, 'exact-product-head.txt'), 'utf8').trim() !== productSha) throw new Error('exact product head mismatch');
+          if (native.activeAssignments !== 2 || native.remainingEligibleCandidates < 1) throw new Error('native matrix did not exercise candidates > capacity');
+          if (native.s0SubmissionCount !== 0) throw new Error('native HumanGate boundary allowed execution');
+          if (native.pageErrors.length || native.consoleErrors.length || electron.pageErrors.length || electron.consoleErrors.length) throw new Error('page/console errors present');
+          if (fairness.digestA !== fairness.digestB) throw new Error('deterministic input digest mismatch');
+          if (fairness.ranked[0].id !== 'critical-fresh') throw new Error('bounded fairness exceeded critical priority bound');
+          if (fairness.ranked.findIndex((item) => item.id === 'low-aged') >= fairness.ranked.findIndex((item) => item.id === 'high-fresh')) throw new Error('bounded fairness did not advance aged eligible work');
+          if (boundaries.unknownProvider.reasonCode !== 'provider_capacity_unknown' || boundaries.staleProvider.reasonCode !== 'provider_capacity_stale') throw new Error('provider capacity did not fail closed');
+          if (!boundaries.crossWorkspaceCompatibility.reasonCodes.includes('cross_workspace_worker')) throw new Error('cross-Workspace reuse did not fail closed');
+          if (boundaries.staleProposal.state !== 'stale' || boundaries.staleProposal.reasonCode !== 'stale_authority_snapshot') throw new Error('stale proposal was not rejected');
+          if (state.capacity.globalActive > state.capacity.globalMaxActive || state.capacity.workspaceActive > state.capacity.workspaceMaxActive) throw new Error('hard concurrency cap exceeded');
+          if (state.attempts.length !== 2 || !state.attempts.every((item) => item.state === 'waiting_human')) throw new Error('native attempts did not stop at HumanGate');
+          if (state.proposals.filter((item) => item.state === 'accepted').length !== 2) throw new Error('expected two accepted proposals');
+          if (!state.decisions.some((item) => item.selectedCandidateId === null && item.reasonCodes.includes('no_assignment'))) throw new Error('capacity deferral decision missing');
+          if (!cockpit.scheduling.policy || !cockpit.scheduling.deferred.length) throw new Error('cockpit explanation evidence missing');
+          if (restart.projectionBefore !== restart.projectionAfter || restart.eventCountBefore !== restart.eventCountAfter) throw new Error('restart projection/event digest drift');
+          if (restart.decisionCountBefore !== restart.decisionCountAfter || restart.proposalCountBefore !== restart.proposalCountAfter || restart.attemptCountBefore !== restart.attemptCountAfter) throw new Error('restart scheduling evidence drift');
+          if (restart.submissionsBefore !== restart.submissionsAfter) throw new Error('restart replayed a submission');
+          if (cleanup.residualScopedProcesses.length || electronCleanup.residualScopedProcesses.length) throw new Error('residual scoped process present');
+          if (electron.before.attemptCount !== 2 || electron.before.readySteps.length < 1 || electron.before.submissionEvents !== 0) throw new Error('Electron matrix did not exercise bounded HumanGate scheduling');
+          if (electron.before.attemptCount !== electron.afterRestart.attemptCount || electron.before.decisionCount !== electron.afterRestart.decisionCount || electron.before.proposalCount !== electron.afterRestart.proposalCount || electron.before.submissionEvents !== electron.afterRestart.submissionEvents) throw new Error('Electron restart replay/drift');
+
+          const forbiddenKey = /^(authorization|proxy-authorization|cookie|cookies|set-cookie|password|passwd|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|private[_ -]?key|profilePath|profileDir|profileDirectory|browserProfile|userData|userDataDir|storageState|processId|pid|ppid|body|responseBody|environment|env)$/i;
+          const forbiddenString = /(-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\bBearer\s+[A-Za-z0-9._~+/=-]{12,}|\b(?:sessionid|access_token|refresh_token)=)/i;
+          function scan(value, trail = '$') {
+            if (value === null || value === undefined) return;
+            if (typeof value === 'string') {
+              if (forbiddenString.test(value)) throw new Error(`sensitive string at ${trail}`);
+              return;
+            }
+            if (Array.isArray(value)) return value.forEach((item, index) => scan(item, `${trail}[${index}]`));
+            if (typeof value === 'object') {
+              for (const [key, nested] of Object.entries(value)) {
+                if (forbiddenKey.test(key)) throw new Error(`forbidden evidence key ${trail}.${key}`);
+                scan(nested, `${trail}.${key}`);
+              }
+            }
+          }
+          for (const file of fs.readdirSync(root).filter((name) => name.endsWith('.json'))) scan(read(file), file);
+          for (const [index, line] of fs.readFileSync(path.join(root, 'canonical-events.jsonl'), 'utf8').split('\n').filter(Boolean).entries()) scan(JSON.parse(line), `canonical-events.jsonl:${index + 1}`);
+          NODE
+          if grep -RInE 'workerManager\.start\s*\(|submitAuthorizedLocalTask\s*\(|approveHumanGate\s*\(|coordinator\.approve\s*\(|retryStepAfterReview\s*\(|observeProvider\s*\(' src/application/s6-*.cjs; then
+            echo 'S6 contains a forbidden direct execution/approval/retry/provider path' >&2
+            exit 1
+          fi
+          if grep -RInE 's6:scheduling:(start|execute|approve|reject|retry|provider|deploy|promote|rollback|mutate)' src/preload/index.cjs src/application/s6-ipc.cjs src/renderer/s6-integrated.js; then
+            echo 'Unexpected S6 execution-authority IPC/control path' >&2
+            exit 1
+          fi
+      - name: Build portable manifest and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$S6_ACCEPTANCE_OUTPUT"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const files = fs.readdirSync('.').filter((name) => name !== 'manifest.json' && name !== 'SHA256SUMS.txt').sort();
+          fs.writeFileSync('manifest.json', JSON.stringify({
+            status: 'PASS',
+            productSha: process.env.S6_PRODUCT_SHA,
+            evidenceClass: 'github-hosted-native-apple-silicon',
+            files,
+          }, null, 2) + '\n');
+          NODE
+          rm -f SHA256SUMS.txt
+          for file in $(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print | sed 's#^./##' | LC_ALL=C sort); do
+            shasum -a 256 "$file"
+          done > SHA256SUMS.txt
+          shasum -a 256 -c SHA256SUMS.txt
+      - name: Upload privacy-safe immutable S6 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: s6-native-multi-session-${{ github.sha }}
+          path: runtime/s6-acceptance
+          if-no-files-found: error
+          retention-days: 30
