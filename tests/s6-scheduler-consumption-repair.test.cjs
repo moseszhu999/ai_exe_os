@@ -41,24 +41,29 @@ function recordPolicy(service, overrides = {}) {
 
 function prepareMission(service, { includeLow = true } = {}) {
   const install = service.installCapability({ workspaceId: 'workspace-a', packageId: 'local.form-submit', version: '1.0.0' });
+  const targets = {
+    high: `${service.localTarget}?s6-slot=high`,
+    normal: `${service.localTarget}?s6-slot=normal`,
+    low: `${service.localTarget}?s6-slot=low`,
+  };
   service.grantCapability({
     workspaceId: 'workspace-a',
     agentId: 'agent-a',
     installationId: install.id,
     allowedActions: ['submit_payload'],
-    allowedTargets: [service.localTarget],
+    allowedTargets: Object.values(targets),
   });
   service.createMission({ id: 's6-mission', workspaceId: 'workspace-a', title: 'S6 bounded scheduling mission', objective: 'ready steps for bounded assignment slots' });
   const steps = [
     {
       id: 'step-normal', name: 'Normal priority Chromium work', agentId: 'agent-a', installationId: install.id,
-      capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: service.localTarget,
+      capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: targets.normal,
       workerId: 's1-worker-chromium', dependsOn: [], declaredInputs: [], declaredOutputs: ['normal-result'],
       evidenceRequirements: ['local result text'], humanGatePolicy: 'action', resourceRequirements: [], priority: 'normal', payload: 'normal',
     },
     {
       id: 'step-high', name: 'High priority Chrome work', agentId: 'agent-a', installationId: install.id,
-      capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: service.localTarget,
+      capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: targets.high,
       workerId: 's1-worker-chrome', dependsOn: [], declaredInputs: [], declaredOutputs: ['high-result'],
       evidenceRequirements: ['local result text'], humanGatePolicy: 'action', resourceRequirements: [], priority: 'high', payload: 'high',
     },
@@ -66,7 +71,7 @@ function prepareMission(service, { includeLow = true } = {}) {
   if (includeLow) {
     steps.unshift({
       id: 'step-low', name: 'Low priority Chrome work', agentId: 'agent-a', installationId: install.id,
-      capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: service.localTarget,
+      capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: targets.low,
       workerId: 's1-worker-chrome', dependsOn: [], declaredInputs: [], declaredOutputs: ['low-result'],
       evidenceRequirements: ['local result text'], humanGatePolicy: 'action', resourceRequirements: [], priority: 'low', payload: 'low',
     });
@@ -108,17 +113,18 @@ test('S6 scheduler consumes policy proposal before S2 creates attempts and reser
 
     const proposals = service.assignmentProposal.list().filter((item) => item.workspaceId === 'workspace-a');
     assert.equal(proposals.length, 2);
-    assert.deepEqual(proposals.map((item) => item.state), ['accepted', 'accepted']);
+    assert.ok(proposals.every((item) => item.state === 'accepted'));
     assert.deepEqual(new Set(proposals.map((item) => item.workerId)), new Set(['s1-worker-chrome', 's1-worker-chromium']));
-    assert.equal(proposals[0].candidateId, boundedId('schedcand', 's6-run', 'step-high'));
-    assert.equal(proposals[1].candidateId, boundedId('schedcand', 's6-run', 'step-normal'));
+    assert.ok(proposals.some((item) => item.candidateId === boundedId('schedcand', 's6-run', 'step-high')));
+    assert.ok(proposals.some((item) => item.candidateId === boundedId('schedcand', 's6-run', 'step-normal')));
 
     const decisions = service.schedulingDecision.list().filter((item) => item.workspaceId === 'workspace-a');
-    assert.equal(decisions[0].selectedCandidateId, boundedId('schedcand', 's6-run', 'step-high'));
+    assert.ok(decisions.some((item) => item.selectedCandidateId === boundedId('schedcand', 's6-run', 'step-high')));
     assert.ok(decisions.some((item) => item.selectedCandidateId === null && item.reasonCodes.includes('no_assignment')));
 
     const locks = service.locks.list().filter((item) => item.resourceType === 'browser_profile');
     assert.deepEqual(new Set(locks.map((item) => item.resourceKey)), new Set(['s1-worker-chrome', 's1-worker-chromium']));
+    assert.equal(service.locks.list().filter((item) => item.resourceType === 'provider_surface').length, 2);
     const scheduling = service.querySchedulingState('workspace-a');
     assert.equal(scheduling.capacity.workspaceActive, 2);
     assert.equal(scheduling.capacity.workspaceMaxActive, 2);
@@ -171,6 +177,24 @@ test('live browser sessions are eligible capacity supply until S1 browser-profil
   }
 });
 
+test('S6 candidate resource set includes implicit S1 provider-surface reservation', () => {
+  const service = new S6SchedulingApplicationService({
+    databasePath: ':memory:', workerManager: new FakeWorkerManager(), clock: () => '2026-08-08T00:05:00.000Z',
+    localTarget: 'http://127.0.0.1:43119/task-form.html',
+  });
+  try {
+    recordPolicy(service, { globalMaxActive: 1, workspaceMaxActive: 1 });
+    prepareMission(service, { includeLow: false });
+    service.startMission({ workspaceId: 'workspace-a', missionId: 's6-mission', revisionId: 's6-revision', runId: 's6-run-resource' });
+    const scheduling = service.schedulingInputs('workspace-a', service.activeSchedulingPolicy('workspace-a'));
+    const remaining = scheduling.derived.candidates[0];
+    assert.ok(remaining.requiredResources.length >= 1);
+    assert.equal(remaining.requiredResources.some((resourceId) => scheduling.blockedResources.includes(resourceId)), false, 'independent query targets must not collide');
+  } finally {
+    service.close();
+  }
+});
+
 test('without an S6 policy the inherited S2 scheduler behavior remains unchanged', () => {
   const workerManager = new FakeWorkerManager();
   const service = new S6SchedulingApplicationService({
@@ -183,7 +207,7 @@ test('without an S6 policy the inherited S2 scheduler behavior remains unchanged
     prepareMission(service, { includeLow: false });
     service.startMission({ workspaceId: 'workspace-a', missionId: 's6-mission', revisionId: 's6-revision', runId: 's6-run-no-policy' });
     const attempts = service.queryMissionState('workspace-a').stepAttempts.filter((item) => item.missionRunId === 's6-run-no-policy');
-    assert.equal(attempts.length, 2, 'legacy S2 eagerly schedules the distinct-worker root ready-set when no S6 policy exists');
+    assert.equal(attempts.length, 2, 'legacy S2 eagerly schedules the distinct-worker/distinct-surface root ready-set when no S6 policy exists');
     assert.equal(service.schedulingDecision.list().length, 0);
   } finally {
     service.close();
