@@ -25,7 +25,7 @@ function manifest(overrides = {}) {
       status: 'available',
     },
     roleRefs: ['training.instructional-designer'],
-    skillRefs: [{ skillId: 'training-course-alignment', version: '1.0.0' }],
+    agentSkillRefs: [{ skillId: 'training-course-alignment', version: '1.0.0' }],
     mcpDependencies: [{ serverId: 'training.mcp', minVersion: '1.0.0', required: true }],
     toolGrants: {
       observe: ['training_get_course_map'],
@@ -53,7 +53,7 @@ function manifest(overrides = {}) {
 
 function context() {
   return {
-    skillCatalog: new Set(['training-course-alignment@1.0.0']),
+    agentSkillCatalog: new Set(['training-course-alignment@1.0.0']),
     sourceCatalog: new Map([
       ['cornell-course-design', {}],
       ['uic-backward-design', {}],
@@ -89,7 +89,7 @@ test('compiles knowledge metadata into the existing capability package/version m
     'training_create_alignment_draft',
   ]);
   assert.deepEqual(compiled.externalActionCandidates, []);
-  assert.equal(compiled.metadata.skillRefs[0].skillId, 'training-course-alignment');
+  assert.equal(compiled.metadata.agentSkillRefs[0].skillId, 'training-course-alignment');
   assert.ok(Object.isFrozen(compiled));
   assert.ok(Object.isFrozen(compiled.metadata));
 });
@@ -105,7 +105,7 @@ test('manifest digest is deterministic across object key ordering', () => {
     knowledge: first.knowledge,
     toolGrants: first.toolGrants,
     mcpDependencies: first.mcpDependencies,
-    skillRefs: first.skillRefs,
+    agentSkillRefs: first.agentSkillRefs,
     roleRefs: first.roleRefs,
     version: first.version,
     package: first.package,
@@ -200,15 +200,25 @@ test('blocks execution-ready compilation when a required source needs review', (
   );
 });
 
-test('rejects unknown Skill versions and unsupported manifest fields', () => {
-  const wrongSkill = manifest({
-    skillRefs: [{ skillId: 'training-course-alignment', version: '2.0.0' }],
+test('rejects unknown Agent Skill versions and legacy ambiguous skillRefs', () => {
+  const wrongAgentSkill = manifest({
+    agentSkillRefs: [{ skillId: 'training-course-alignment', version: '2.0.0' }],
   });
   assert.throws(
-    () => compileCapabilityKnowledgeManifest(wrongSkill, context()),
-    /Unknown skill ref/,
+    () => compileCapabilityKnowledgeManifest(wrongAgentSkill, context()),
+    /Unknown Agent Skill ref/,
   );
 
+  const ambiguousLegacyName = manifest();
+  delete ambiguousLegacyName.agentSkillRefs;
+  ambiguousLegacyName.skillRefs = [{ skillId: 'training-course-alignment', version: '1.0.0' }];
+  assert.throws(
+    () => compileCapabilityKnowledgeManifest(ambiguousLegacyName, context()),
+    /unsupported field: skillRefs/,
+  );
+});
+
+test('rejects manifest attempts to inject runtime Agent authority', () => {
   const withRuntimeAuthority = manifest();
   withRuntimeAuthority.allowedTargets = ['production'];
   assert.throws(
