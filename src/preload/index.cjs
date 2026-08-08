@@ -1,44 +1,31 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 function s2Input(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new TypeError('S2 command payload must be a plain object');
-  }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('S2 command payload must be a plain object');
   return input;
 }
-
 function s3Input(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new TypeError('S3 GitHub delivery command payload must be a plain object');
-  }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('S3 GitHub delivery command payload must be a plain object');
   return input;
 }
-
 function s4Input(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new TypeError('S4 console command payload must be a plain object');
-  }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('S4 console command payload must be a plain object');
   return input;
 }
-
 function s5Input(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new TypeError('S5 provider command payload must be a plain object');
-  }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('S5 provider command payload must be a plain object');
   return input;
 }
-
 function s6Input(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new TypeError('S6 scheduling command payload must be a plain object');
-  }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('S6 scheduling command payload must be a plain object');
   return input;
 }
-
 function s7Input(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new TypeError('S7 collaboration sync command payload must be a plain object');
-  }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('S7 collaboration sync command payload must be a plain object');
+  return input;
+}
+function s8Input(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('S8 controlled delegation command payload must be a plain object');
   return input;
 }
 
@@ -93,6 +80,21 @@ const s7Sync = Object.freeze({
   recordMembership: (input) => ipcRenderer.invoke('s7:sync:membership:record', s7Input(input)),
 });
 
+const s8Delegation = Object.freeze({
+  queryState: (workspaceId) => ipcRenderer.invoke('s8:delegation:query-state', workspaceId || null),
+  recordPeerBinding: (input) => ipcRenderer.invoke('s8:delegation:peer:record', s8Input(input)),
+  recordDelegationPolicy: (input) => ipcRenderer.invoke('s8:delegation:policy:record', s8Input(input)),
+  createDelegationRequest: (input) => ipcRenderer.invoke('s8:delegation:request:create', s8Input(input)),
+  pushDelegationRequest: (input) => ipcRenderer.invoke('s8:delegation:request:push', s8Input(input)),
+  pullDelegationInbox: (input) => ipcRenderer.invoke('s8:delegation:inbox:pull', s8Input(input)),
+  approveDelegationProposal: (input) => ipcRenderer.invoke('s8:delegation:proposal:approve-local', s8Input(input)),
+  rejectDelegationProposal: (input) => ipcRenderer.invoke('s8:delegation:proposal:reject-local', s8Input(input)),
+  proposeDelegationCancellation: (input) => ipcRenderer.invoke('s8:delegation:cancellation:propose', s8Input(input)),
+  resolveDelegationCancellation: (input) => ipcRenderer.invoke('s8:delegation:cancellation:resolve-local', s8Input(input)),
+  pullDelegationReceipts: (input) => ipcRenderer.invoke('s8:delegation:receipts:pull', s8Input(input)),
+  consumeDelegationReceipt: (input) => ipcRenderer.invoke('s8:delegation:receipt:consume-local', s8Input(input)),
+});
+
 contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   getState: () => ipcRenderer.invoke('state:list'),
   createWorker: (input) => ipcRenderer.invoke('worker:create', input),
@@ -118,4 +120,5 @@ contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   s5: Object.freeze({ provider: s5Provider }),
   s6: Object.freeze({ scheduling: s6Scheduling }),
   s7: Object.freeze({ sync: s7Sync }),
+  s8: Object.freeze({ delegation: s8Delegation }),
 }));
