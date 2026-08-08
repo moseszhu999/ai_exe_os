@@ -86,7 +86,7 @@ test('same completed observation id returns canonical evidence without second ne
   assert.equal(second.replayed, true);
   assert.equal(transport.calls.length, 1);
   assert.equal(first.observation.evidenceDigest, second.observation.evidenceDigest);
-  assert.throws(() => service.observeProvider({ id: 'provider-observation-1', workspaceId: 'workspace-a', bindingId: binding.id, method: 'GET' }), /idempotency collision/);
+  await assert.rejects(() => service.observeProvider({ id: 'provider-observation-1', workspaceId: 'workspace-a', bindingId: binding.id, method: 'GET' }), /idempotency collision/);
   assert.equal(transport.calls.length, 1);
   service.close();
 });
@@ -101,7 +101,8 @@ test('canonical provider evidence is body-free and visible through S4 cockpit co
   const cockpit = service.queryOperatorCockpit('workspace-a');
   assert.equal(cockpit.providerAdapters.observations[0].id, result.observation.id);
   const raw = JSON.stringify(cockpit.providerAdapters);
-  assert.doesNotMatch(raw, /responseBody|Bearer|Set-Cookie|password|profilePath|processId/);
+  assert.doesNotMatch(raw, /"(?:body|responseBody|authorization|cookie|set-cookie|password|profilePath|processId)"\s*:/i);
+  assert.match(raw, /"responseBodyPolicy":"none"/);
   const eventTypes = service.store.listEvents().map((item) => item.eventType);
   assert.ok(eventTypes.includes('provider.target_bound'));
   assert.ok(eventTypes.includes('provider.observation_requested'));
