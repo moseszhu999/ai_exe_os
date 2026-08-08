@@ -93,6 +93,8 @@ test('controller scopes every command to selected Workspace and collapses duplic
   const first = controller.computeDecision();
   const second = controller.computeDecision();
   assert.equal(first, second);
+  await Promise.resolve();
+  assert.equal(typeof resolveDecision, 'function');
   resolveDecision({ id: 'decision-a' });
   await first;
   assert.equal(calls.filter(([name]) => name === 'computeDecision').length, 1);
