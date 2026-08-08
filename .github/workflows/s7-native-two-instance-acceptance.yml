@@ -2,8 +2,7 @@ name: S7 native two-instance collaboration acceptance
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,15 +16,13 @@ jobs:
     env:
       S7_PRODUCT_SHA: 004bfc9f6972b0bfc0295256dcdb7aada308b70b
     steps:
-      - name: Check out acceptance carrier
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Verify carrier changes only S7 acceptance-owned paths
+      - name: Verify QA-only carrier scope
         shell: bash
         run: |
           set -euo pipefail
@@ -44,15 +41,14 @@ jobs:
           cd ../s7-product
           npm install --ignore-scripts --no-audit --no-fund
           npm run validate | tee ../ai_exe_os/s7-exact-source-validation.txt
-      - name: Record exact product source evidence
+      - name: Build source checksums
         shell: bash
         run: |
           set -euo pipefail
           printf '%s\n' "$S7_PRODUCT_SHA" > exact-product-head.txt
           sha256sum exact-product-head.txt s7-exact-source-validation.txt > s7-source-SHA256SUMS.txt
           sha256sum -c s7-source-SHA256SUMS.txt
-      - name: Upload exact-source evidence
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: s7-exact-source-${{ github.sha }}
           path: |
@@ -70,12 +66,10 @@ jobs:
       S7_PRODUCT_SHA: 004bfc9f6972b0bfc0295256dcdb7aada308b70b
       S7_ACCEPTANCE_OUTPUT: runtime/s7-acceptance
     steps:
-      - name: Check out acceptance carrier
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Verify frozen source ancestry and QA-only scope
@@ -95,28 +89,20 @@ jobs:
           set -euo pipefail
           test "$(uname -m)" = "arm64"
           test "$(node -p 'process.arch')" = "arm64"
-          if [[ "$(sysctl -in sysctl.proc_translated 2>/dev/null || echo 0)" = "1" ]]; then
-            echo 'Rosetta-translated runner is not accepted' >&2
-            exit 1
-          fi
-      - name: Install pinned dependencies including Electron and Chromium
+          test "$(sysctl -in sysctl.proc_translated 2>/dev/null || echo 0)" != "1"
+      - name: Install pinned runtime dependencies
         shell: bash
         run: |
           set -euo pipefail
           npm install --no-audit --no-fund
           npx playwright install chromium
           node -e "const fs=require('node:fs'); const electron=require('electron'); if(!fs.existsSync(electron)) throw new Error('Electron executable missing')"
-      - name: Install Google Chrome
-        shell: bash
-        run: |
-          set -euo pipefail
           if [[ ! -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ]]; then
             brew install --cask google-chrome
           fi
-          file '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
       - name: Run full carrier/source validation on native arm64
         run: npm run validate
-      - name: Record frozen product head
+      - name: Prepare frozen-head evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -124,26 +110,14 @@ jobs:
           printf '%s\n' "$S7_PRODUCT_SHA" > "$S7_ACCEPTANCE_OUTPUT/exact-product-head.txt"
       - name: Run native SQLite / HTTP two-instance collaboration matrix
         run: node scripts/s7-acceptance-native-matrix.cjs
-      - name: Run real Electron two-instance collaboration and restart matrix
-        run: node scripts/s7-acceptance-electron-two-instance.cjs
+      - name: Run binding-aware real Electron two-instance collaboration matrix
+        run: node scripts/s7-acceptance-electron-two-instance-v2.cjs
       - name: Verify S7 evidence and permanent authority boundaries
         shell: bash
         run: |
           set -euo pipefail
           root="$S7_ACCEPTANCE_OUTPUT"
-          for file in \
-            exact-product-head.txt \
-            native-two-instance-matrix.json \
-            native-two-instance-matrix.sha256 \
-            sync-negative-matrix.json \
-            electron-before-restart.json \
-            electron-after-restart.json \
-            electron-two-instance-audit.json \
-            electron-cleanup-audit.json \
-            s7-instance-a-after-sync.png \
-            s7-instance-b-after-sync.png \
-            s7-instance-a-after-restart.png \
-            s7-instance-b-after-restart.png; do
+          for file in exact-product-head.txt native-two-instance-matrix.json native-two-instance-matrix.sha256 sync-negative-matrix.json electron-trace.jsonl electron-before-restart.json electron-after-restart.json electron-two-instance-audit.json electron-cleanup-audit.json s7-instance-a-after-sync.png s7-instance-b-after-sync.png s7-instance-a-after-restart.png s7-instance-b-after-restart.png; do
             test -s "$root/$file"
           done
           node <<'NODE'
@@ -160,11 +134,11 @@ jobs:
           const cleanup = read('electron-cleanup-audit.json');
           for (const doc of [native, negative, electron, before, after, cleanup]) {
             if (doc.status !== 'PASS') throw new Error('S7 evidence document is not PASS');
-            if ('productSha' in doc && doc.productSha !== productSha) throw new Error('S7 evidence product SHA mismatch');
+            if ('productSha' in doc && doc.productSha !== productSha) throw new Error('S7 product SHA mismatch');
           }
           if (fs.readFileSync(path.join(root, 'exact-product-head.txt'), 'utf8').trim() !== productSha) throw new Error('exact product head mismatch');
-          if (native.sourceA.id === native.sourceB.id || electron.sourceA === electron.sourceB) throw new Error('two source identities are not independent');
-          if (negative.conflict !== 'envelope_id_digest_conflict' || negative.gap !== 'cursor_gap' || negative.crossWorkspace !== 'cross_workspace' || negative.unknownSource !== 'unknown_source') throw new Error('fail-closed sync negative matrix mismatch');
+          if (native.sourceA.id === native.sourceB.id || electron.sourceA === electron.sourceB) throw new Error('source identities are not independent');
+          if (negative.conflict !== 'envelope_id_digest_conflict' || negative.gap !== 'cursor_gap' || negative.crossWorkspace !== 'cross_workspace' || negative.unknownSource !== 'unknown_source') throw new Error('fail-closed matrix mismatch');
           if (after.replayA.networkRequested !== false || after.replayB.networkRequested !== false) throw new Error('acknowledged envelope replayed after restart');
           if (before.sourceA !== after.sourceA || before.sourceB !== after.sourceB) throw new Error('source identity drift after restart');
           if (before.cursorA.lastProducedCursor !== after.cursorA.lastProducedCursor || before.cursorA.lastAcknowledgedCursor !== after.cursorA.lastAcknowledgedCursor) throw new Error('A cursor drift after restart');
@@ -173,6 +147,9 @@ jobs:
           if (cleanup.residualScopedProcesses.length) throw new Error('residual scoped process present');
           if (!native.requestAudit.every((item) => ['GET','POST'].includes(item.method) && !item.hasAuthorization && !item.hasCookie)) throw new Error('native transport request boundary violated');
           if (!electron.mirrorRequestAudit.every((item) => ['GET','POST'].includes(item.method) && !item.hasAuthorization && !item.hasCookie)) throw new Error('Electron transport request boundary violated');
+          const chromeA = electron.workerPresenceFromA.find((item) => item.workerPublicId === 's1-worker-chrome');
+          const chromiumB = electron.workerPresenceFromB.find((item) => item.workerPublicId === 's1-worker-chromium');
+          if (chromeA?.statusClass !== 'available' || chromiumB?.statusClass !== 'available') throw new Error('canonical WorkerBinding presence mismatch');
 
           const forbiddenKey = /^(authorization|proxy-authorization|cookie|cookies|set-cookie|password|passwd|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|private[_ -]?key|profilePath|profileDir|profileDirectory|browserProfile|userData|userDataDir|storageState|processId|pid|ppid|body|responseBody|environment|env|debugEndpoint|controlHandle)$/i;
           const forbiddenString = /(-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\bBearer\s+[A-Za-z0-9._~+/=-]{12,}|\b(?:sessionid|access_token|refresh_token|id_token)=|\/private\/)/i;
@@ -183,26 +160,21 @@ jobs:
               return;
             }
             if (Array.isArray(value)) return value.forEach((item, index) => scan(item, `${trail}[${index}]`));
-            if (typeof value === 'object') {
-              for (const [key, nested] of Object.entries(value)) {
-                if (forbiddenKey.test(key)) throw new Error(`forbidden evidence key ${trail}.${key}`);
-                scan(nested, `${trail}.${key}`);
-              }
+            if (typeof value === 'object') for (const [key, nested] of Object.entries(value)) {
+              if (forbiddenKey.test(key)) throw new Error(`forbidden evidence key ${trail}.${key}`);
+              scan(nested, `${trail}.${key}`);
             }
           }
           for (const file of fs.readdirSync(root).filter((name) => name.endsWith('.json'))) scan(read(file), file);
           NODE
           if grep -RInE 'workerManager\.start\s*\(|submitAuthorizedLocalTask\s*\(|approveHumanGate\s*\(|rejectHumanGate\s*\(|retryStepAfterReview\s*\(|locks\.(acquire|release)\s*\(' src/application/s7-*.cjs; then
-            echo 'S7 contains forbidden direct local execution authority' >&2
-            exit 1
+            echo 'S7 contains forbidden direct local execution authority' >&2; exit 1
           fi
           if grep -RInE 's7:sync:(start|stop|focus|pause|resume|execute|approve|reject|retry|provider|deploy|promote|rollback|mutate)' src/preload/index.cjs src/application/s7-ipc.cjs src/renderer/s7-integrated.js; then
-            echo 'Unexpected S7 remote execution-authority IPC/control path' >&2
-            exit 1
+            echo 'Unexpected S7 remote execution-authority IPC/control path' >&2; exit 1
           fi
           if grep -RInE 'innerHTML\s*=|outerHTML\s*=|insertAdjacentHTML|document\.write' src/renderer/s7-integrated.js src/renderer/s7/*.cjs; then
-            echo 'Unsafe S7 mirror HTML rendering path' >&2
-            exit 1
+            echo 'Unsafe S7 mirror HTML rendering path' >&2; exit 1
           fi
       - name: Build portable manifest and checksums
         shell: bash
@@ -212,17 +184,10 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const files = fs.readdirSync('.').filter((name) => name !== 'manifest.json' && name !== 'SHA256SUMS.txt').sort();
-          fs.writeFileSync('manifest.json', JSON.stringify({
-            status: 'PASS',
-            productSha: process.env.S7_PRODUCT_SHA,
-            evidenceClass: 'github-hosted-native-apple-silicon-two-instance-collaboration',
-            files,
-          }, null, 2) + '\n');
+          fs.writeFileSync('manifest.json', JSON.stringify({ status: 'PASS', productSha: process.env.S7_PRODUCT_SHA, evidenceClass: 'github-hosted-native-apple-silicon-two-instance-collaboration', files }, null, 2) + '\n');
           NODE
           rm -f SHA256SUMS.txt
-          for file in $(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print | sed 's#^./##' | LC_ALL=C sort); do
-            shasum -a 256 "$file"
-          done > SHA256SUMS.txt
+          for file in $(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print | sed 's#^./##' | LC_ALL=C sort); do shasum -a 256 "$file"; done > SHA256SUMS.txt
           shasum -a 256 -c SHA256SUMS.txt
       - name: Upload privacy-safe immutable S7 evidence
         uses: actions/upload-artifact@v4
