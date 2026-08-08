@@ -89,7 +89,7 @@ test('S6 scheduler consumes policy proposal before S2 creates attempts and reser
   });
   try {
     recordPolicy(service);
-    prepareMission(service);
+    const revision = prepareMission(service);
     const started = service.startMission({ workspaceId: 'workspace-a', missionId: 's6-mission', revisionId: 's6-revision', runId: 's6-run' });
     assert.equal(started.run.state, 'running');
 
@@ -100,7 +100,7 @@ test('S6 scheduler consumes policy proposal before S2 creates attempts and reser
     assert.ok(attempts.every((item) => item.state === 'waiting_human'));
     assert.equal(state.humanGates.filter((gate) => gate.state === 'requested').length, 2);
 
-    const readPlan = state.plans.find((item) => item.id === 'missionplan-s6-revision');
+    const readPlan = state.plans.find((item) => item.id === revision.plan.id);
     assert.equal(readPlan.steps.find((item) => item.id === 'step-low').state, 'ready');
 
     const proposals = service.assignmentProposal.list().filter((item) => item.workspaceId === 'workspace-a');
@@ -164,6 +164,7 @@ test('priority metadata is immutable per plan step and defaults to normal', () =
         workerId: 's1-worker-chrome', dependsOn: [], declaredInputs: [], declaredOutputs: ['result'], evidenceRequirements: [], humanGatePolicy: 'action', resourceRequirements: [], priority: 'urgent',
       }],
     }), /Invalid S6 scheduling priority/);
+    assert.equal(service.missionRevision.get('s6-invalid-revision'), null, 'invalid priority must fail before S2 revision persistence');
   } finally {
     service.close();
   }
