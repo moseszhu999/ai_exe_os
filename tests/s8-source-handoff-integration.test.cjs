@@ -33,6 +33,23 @@ function service() {
   });
 }
 
+function canonicalMissionExecutionState(app) {
+  const state = app.queryMissionState('workspace-a');
+  return JSON.stringify({
+    workspaceId: state.workspaceId,
+    missions: state.missions,
+    revisions: state.revisions,
+    plans: state.plans,
+    missionRuns: state.missionRuns,
+    stepAttempts: state.stepAttempts,
+    checkpoints: state.checkpoints,
+    humanGates: state.humanGates,
+    outputs: state.outputs,
+    handoffs: state.handoffs,
+    evidence: state.evidence,
+  });
+}
+
 function prepareSourceMission(app, { missionId = 'source-mission', revisionId = 'source-revision-1' } = {}) {
   const install = app.installCapability({ workspaceId: 'workspace-a', packageId: 'local.mission-transform', version: '1.0.0' });
   app.grantCapability({
@@ -128,9 +145,11 @@ test('S8 receipt mirror alone does not mutate source canonical S2 execution trut
     const mission = prepareSourceMission(app);
     const request = bindOutboundDelegation(app, mission);
     app.startMission({ workspaceId: 'workspace-a', missionId: mission.mission.id, revisionId: mission.revision.id, runId: 'source-run-1' });
-    const before = JSON.stringify(app.queryMissionState('workspace-a'));
+    const before = canonicalMissionExecutionState(app);
+    const eventsBefore = app.queryMissionState('workspace-a').missionEvents.length;
     mirrorCompletedReceipt(app, request);
-    assert.equal(JSON.stringify(app.queryMissionState('workspace-a')), before);
+    assert.equal(canonicalMissionExecutionState(app), before);
+    assert.equal(app.queryMissionState('workspace-a').missionEvents.length, eventsBefore + 1, 'S8 mirror may append audit evidence without mutating canonical S2 projections');
     assert.equal(app.agentHandoff.list().length, 0);
   } finally { app.close(); }
 });
