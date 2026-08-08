@@ -1,5 +1,7 @@
 'use strict';
 
+const { createHash } = require('node:crypto');
+
 const CHANNELS = Object.freeze([
   's7:sync:query-state',
   's7:sync:configure',
@@ -11,6 +13,11 @@ const CHANNELS = Object.freeze([
 function safeObject(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('S7 sync command payload must be a plain object');
   return input;
+}
+
+function membershipId(input) {
+  if (input.id) return input.id;
+  return `membership-${createHash('sha256').update(`${input.workspaceId || ''}:${input.subjectId || ''}`).digest('hex').slice(0, 20)}`;
 }
 
 function registerS7Ipc({ ipcMain, assertSender, service }) {
@@ -33,9 +40,10 @@ function registerS7Ipc({ ipcMain, assertSender, service }) {
   });
   ipcMain.handle('s7:sync:membership:record', (event, input) => {
     assertSender(event);
-    return service.recordMembership(safeObject(input));
+    const value = safeObject(input);
+    return service.recordMembership({ ...value, id: membershipId(value) });
   });
   return CHANNELS;
 }
 
-module.exports = { CHANNELS, registerS7Ipc };
+module.exports = { CHANNELS, membershipId, registerS7Ipc };
