@@ -3,7 +3,6 @@
 const { ProjectionRepository } = require('./projection-repository.cjs');
 const {
   S6ApplicationService: S6PolicyApplicationService,
-  activeWorkerStatus,
   boundedId,
 } = require('./s6-index.cjs');
 const {
@@ -15,7 +14,7 @@ const { createStepAttempt } = require('../orchestration/mission-orchestrator.cjs
 const PRIORITIES = new Set(['critical', 'high', 'normal', 'low']);
 
 function workerRuntimeStatus(worker) {
-  if (worker?.status === 'idle') return 'eligible';
+  if (worker?.status === 'idle' || worker?.status === 'active') return 'eligible';
   if (worker?.status === 'draining') return 'draining';
   return 'unavailable';
 }
@@ -64,7 +63,14 @@ class S6SchedulingApplicationService extends S6PolicyApplicationService {
       && item.planId === run.planId
       && item.stepId === step.id
     ));
-    return Object.freeze({ ...record, priority: priority?.priority || record.priority || 'normal' });
+    return Object.freeze({
+      ...record,
+      priority: priority?.priority || record.priority || 'normal',
+      // A canonical ready step may declare a future action HumanGate. That is
+      // schedulable because S2/S1 will create the gate before execution. An
+      // already waiting_human step is still excluded by readyState itself.
+      humanGateClear: record.readyState === 'ready' && record.executionIdentityCurrent === true,
+    });
   }
 
   safeWorkerSnapshots(workspaceId) {
@@ -84,8 +90,8 @@ class S6SchedulingApplicationService extends S6PolicyApplicationService {
         workspaceId,
         status: locked ? 'unavailable' : workerRuntimeStatus(live),
         browserChannel,
-        activeAssignmentCount: locked || activeWorkerStatus(live) ? 1 : 0,
-        reusableSession: !locked && live?.status === 'idle',
+        activeAssignmentCount: locked ? 1 : 0,
+        reusableSession: !locked && (live?.status === 'idle' || live?.status === 'active'),
         safeCompatibilityKeys: [`profile-worker-${binding.id}`],
       });
     }));
@@ -94,15 +100,10 @@ class S6SchedulingApplicationService extends S6PolicyApplicationService {
   concurrencyBudgets(workspaceId, policy) {
     const globalAssignedWorkers = new Set();
     const workspaceAssignedWorkers = new Set();
-    const workspaceWorkerIds = new Set(this.workerBinding.list()
-      .filter((item) => item.workspaceId === workspaceId)
-      .map((item) => item.id));
 
-    for (const worker of this.workerManager.list()) {
-      if (!activeWorkerStatus(worker)) continue;
-      globalAssignedWorkers.add(worker.id);
-      if (workspaceWorkerIds.has(worker.id)) workspaceAssignedWorkers.add(worker.id);
-    }
+    // Browser processes/sessions are capacity supply, not assignment demand.
+    // S1 browser_profile locks are the canonical reservation signal for work
+    // that has already consumed a scheduling slot, including waiting_human.
     for (const lock of this.locks.list()) {
       if (lock.resourceType !== 'browser_profile') continue;
       globalAssignedWorkers.add(lock.resourceKey);
