@@ -71,6 +71,7 @@ function fakeClient({
   serverVersion = '1.6.0',
   protocolVersion = '2025-11-25',
   tools,
+  nextCursor = null,
   authAt = null,
   serverInfoExtra = {},
 } = {}) {
@@ -122,7 +123,10 @@ function fakeClient({
         return {
           jsonrpc: '2.0',
           id: message.id,
-          result: { tools: advertisedTools },
+          result: {
+            tools: advertisedTools,
+            ...(nextCursor ? { nextCursor } : {}),
+          },
         };
       }
       throw new Error(`Unexpected method: ${message.method}`);
@@ -148,6 +152,7 @@ test('accepts final TrainingOS 1.6.0 runtime above the v1.1 MCP 0.5.2 floor', as
   assert.equal(receipt.observedServerName, 'trainingos-agent-gateway');
   assert.equal(receipt.minimumServerVersion, '0.5.2');
   assert.equal(receipt.observedServerVersion, '1.6.0');
+  assert.equal(receipt.protocolVersion, '2025-11-25');
   assert.deepEqual(receipt.requiredObserveTools, [
     'get_class_learning_structure',
     'get_course_design_context',
@@ -178,6 +183,20 @@ test('fails closed on server identity drift', async () => {
   await assert.rejects(
     () => attestObserveOnlyMcpRuntime(attestationInput(fakeClient({ serverName: 'some-other-mcp' }))),
     /server identity mismatch/,
+  );
+});
+
+test('fails closed on unexpected MCP protocol negotiation', async () => {
+  await assert.rejects(
+    () => attestObserveOnlyMcpRuntime(attestationInput(fakeClient({ protocolVersion: '2025-06-18' }))),
+    /protocol negotiation mismatch/,
+  );
+});
+
+test('fails closed when tools/list is paginated because discovery is incomplete in v1', async () => {
+  await assert.rejects(
+    () => attestObserveOnlyMcpRuntime(attestationInput(fakeClient({ nextCursor: 'page-2' }))),
+    /discovery is incomplete/,
   );
 });
 
