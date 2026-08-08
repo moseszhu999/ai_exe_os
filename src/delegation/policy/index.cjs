@@ -6,6 +6,7 @@ const { digest, safeClone } = require('../../sync/envelope/index.cjs');
 
 const POLICY_STATES = Object.freeze(['active', 'superseded', 'revoked']);
 const PEER_STATES = Object.freeze(['active', 'suspended', 'revoked']);
+const CAPABILITY_VERSION_REFERENCE = /^([A-Za-z0-9][A-Za-z0-9._-]{0,63})@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
 
 function freezeDeep(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -32,9 +33,24 @@ function exactIdentifier(value, label) {
   return id;
 }
 
+function capabilityVersionReference(value, label = 'capability version id') {
+  const text = requiredText(value, label, 160);
+  const match = text.match(CAPABILITY_VERSION_REFERENCE);
+  if (!match) throw new TypeError(`${label} must be canonical packageId@semver`);
+  assertSafeIdentifier(match[1], 'capability package id');
+  return text;
+}
+
 function uniqueIdentifierList(value, label) {
   if (!Array.isArray(value) || value.length < 1) throw new TypeError(`${label} must be a non-empty array`);
   const items = value.map((item) => exactIdentifier(item, label));
+  if (new Set(items).size !== items.length) throw new Error(`${label} must not contain duplicates`);
+  return Object.freeze([...items].sort());
+}
+
+function uniqueCapabilityVersionList(value, label) {
+  if (!Array.isArray(value) || value.length < 1) throw new TypeError(`${label} must be a non-empty array`);
+  const items = value.map((item) => capabilityVersionReference(item, label));
   if (new Set(items).size !== items.length) throw new Error(`${label} must not contain duplicates`);
   return Object.freeze([...items].sort());
 }
@@ -79,7 +95,7 @@ function createDelegationPolicySnapshot(input) {
     peerBindingId: exactIdentifier(input.peerBindingId, 'peer binding id'),
     destinationWorkspaceId: exactIdentifier(input.destinationWorkspaceId, 'destination workspace id'),
     status,
-    allowedCapabilityVersionIds: uniqueIdentifierList(input.allowedCapabilityVersionIds, 'allowed capability version id'),
+    allowedCapabilityVersionIds: uniqueCapabilityVersionList(input.allowedCapabilityVersionIds, 'allowed capability version id'),
     allowedActions: uniqueIdentifierList(input.allowedActions, 'allowed action'),
     allowedTargets: uniqueTextList(input.allowedTargets, 'allowed target'),
     maxPendingRequests: positiveInteger(input.maxPendingRequests ?? 8, 'maxPendingRequests'),
@@ -120,7 +136,7 @@ function createDelegationRequest(input) {
     policyVersion: requiredText(input.policyVersion, 'delegation policy version', 80),
     sourceMissionId: input.sourceMissionId == null ? null : exactIdentifier(input.sourceMissionId, 'source mission id'),
     sourcePlanStepId: input.sourcePlanStepId == null ? null : exactIdentifier(input.sourcePlanStepId, 'source plan step id'),
-    capabilityVersionId: exactIdentifier(input.capabilityVersionId, 'capability version id'),
+    capabilityVersionId: capabilityVersionReference(input.capabilityVersionId, 'capability version id'),
     action: exactIdentifier(input.action, 'delegation action'),
     target: requiredText(input.target, 'delegation target', 2048),
     payloadClass: exactIdentifier(input.payloadClass || 'bounded-input', 'payload class'),
@@ -168,9 +184,11 @@ function createDelegationCancellationProposal(input) {
 }
 
 module.exports = {
+  CAPABILITY_VERSION_REFERENCE,
   PEER_STATES,
   POLICY_STATES,
   assertPolicyAllowsRequest,
+  capabilityVersionReference,
   classifyDelegationRequestAppend,
   createDelegationCancellationProposal,
   createDelegationPeerBinding,
