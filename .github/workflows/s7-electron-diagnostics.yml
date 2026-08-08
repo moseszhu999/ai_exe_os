@@ -1,0 +1,82 @@
+name: S7 dual-Electron diagnostic retention
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dual-electron-diagnostics:
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      S7_PRODUCT_SHA: 004bfc9f6972b0bfc0295256dcdb7aada308b70b
+      S7_ACCEPTANCE_OUTPUT: runtime/s7-acceptance
+    steps:
+      - name: Check out QA carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify QA-only carrier scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$S7_PRODUCT_SHA" HEAD
+          changed="$(git diff --name-only "$S7_PRODUCT_SHA" HEAD)"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -vE '^(scripts/s7-acceptance-|\.github/workflows/s7-|docs/results/S7-results\.md$)' | grep -q .; then
+            echo 'S7 diagnostic carrier modified product-owned paths' >&2
+            exit 1
+          fi
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify native Apple Silicon
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "arm64"
+          test "$(node -p 'process.arch')" = "arm64"
+          test "$(sysctl -in sysctl.proc_translated 2>/dev/null || echo 0)" != "1"
+      - name: Install runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npx playwright install chromium
+          if [[ ! -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ]]; then
+            brew install --cask google-chrome
+          fi
+      - name: Prepare evidence directory
+        run: mkdir -p "$S7_ACCEPTANCE_OUTPUT"
+      - name: Run dual-Electron matrix and retain stdout/stderr
+        id: electron
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/s7-acceptance-electron-two-instance.cjs 2>&1 | tee "$S7_ACCEPTANCE_OUTPUT/electron-run.log"
+      - name: Inventory partial evidence
+        if: always()
+        shell: bash
+        run: |
+          echo '=== partial evidence ==='
+          find "$S7_ACCEPTANCE_OUTPUT" -maxdepth 1 -type f -print -exec ls -lh {} \; || true
+          echo '=== tail electron-run.log ==='
+          tail -n 120 "$S7_ACCEPTANCE_OUTPUT/electron-run.log" || true
+      - name: Upload diagnostic artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s7-electron-diagnostics-${{ github.sha }}
+          path: runtime/s7-acceptance
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Preserve matrix verdict
+        if: steps.electron.outcome != 'success'
+        run: exit 1
