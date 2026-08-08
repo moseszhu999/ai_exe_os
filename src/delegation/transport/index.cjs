@@ -11,8 +11,10 @@ const OPERATIONS = Object.freeze({
   request: { path: 'delegations/requests', method: 'POST' },
   inbox: { path: 'delegations/inbox', method: 'GET' },
   ack: { path: 'delegations/acks', method: 'POST' },
+  receipt: { path: 'delegations/receipts', method: 'POST' },
   receipts: { path: 'delegations/receipts', method: 'GET' },
   cancellation: { path: 'delegations/cancellations', method: 'POST' },
+  cancellationInbox: { path: 'delegations/cancellations', method: 'GET' },
 });
 
 function assertDelegationEndpointUrl(value, { allowLoopback = false } = {}) {
@@ -155,6 +157,11 @@ class ProjectOwnedDelegationTransport {
     });
   }
 
+  submitReceipt(receipt) {
+    if (!receipt || typeof receipt !== 'object') throw new TypeError('delegation receipt is required');
+    return this.request({ operation: 'receipt', body: { receipt } });
+  }
+
   readReceipts({ sourceInstanceId, sourceWorkspaceId, sinceRevision = 0 }) {
     const revision = Number(sinceRevision);
     if (!Number.isInteger(revision) || revision < 0) throw new TypeError('sinceRevision must be a non-negative integer');
@@ -171,6 +178,19 @@ class ProjectOwnedDelegationTransport {
   submitCancellation(cancellationProposal) {
     if (!cancellationProposal || typeof cancellationProposal !== 'object') throw new TypeError('cancellationProposal is required');
     return this.request({ operation: 'cancellation', body: { cancellationProposal } });
+  }
+
+  readCancellations({ destinationInstanceId, destinationWorkspaceId, sinceSequence = 0 }) {
+    const sequence = Number(sinceSequence);
+    if (!Number.isInteger(sequence) || sequence < 0) throw new TypeError('sinceSequence must be a non-negative integer');
+    return this.request({
+      operation: 'cancellationInbox',
+      query: {
+        destinationInstanceId: assertSafeIdentifier(destinationInstanceId, 'destination instance id'),
+        destinationWorkspaceId: assertSafeIdentifier(destinationWorkspaceId, 'destination workspace id'),
+        sinceSequence: sequence,
+      },
+    });
   }
 }
 

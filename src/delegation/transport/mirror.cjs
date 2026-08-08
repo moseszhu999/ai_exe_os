@@ -14,6 +14,7 @@ class DelegationExchangeMirror {
     this.receiptsByKey = new Map();
     this.receiptOrder = [];
     this.cancellationsById = new Map();
+    this.cancellationOrder = [];
   }
 
   appendRequest(request) {
@@ -88,10 +89,28 @@ class DelegationExchangeMirror {
       if (JSON.stringify(existing) === JSON.stringify(cancellationProposal)) return freezeDeep({ state: 'duplicate', reasonCode: 'exact_duplicate', cancellationProposal: existing });
       return freezeDeep({ state: 'divergent', reasonCode: 'cancellation_id_conflict' });
     }
-    if (!this.requestsById.has(cancellationProposal.delegationRequestId)) return freezeDeep({ state: 'rejected', reasonCode: 'unknown_request' });
-    const stored = freezeDeep({ ...cancellationProposal });
+    const request = this.requestsById.get(cancellationProposal.delegationRequestId);
+    if (!request) return freezeDeep({ state: 'rejected', reasonCode: 'unknown_request' });
+    const stored = freezeDeep({
+      ...cancellationProposal,
+      sourceInstanceId: request.sourceInstanceId,
+      sourceWorkspaceId: request.sourceWorkspaceId,
+      destinationInstanceId: request.destinationInstanceId,
+      destinationWorkspaceId: request.destinationWorkspaceId,
+      requestSequence: request.requestSequence,
+    });
     this.cancellationsById.set(stored.id, stored);
+    this.cancellationOrder.push(stored.id);
     return freezeDeep({ state: 'accepted', reasonCode: 'stored', cancellationProposal: stored });
+  }
+
+  readCancellations({ destinationInstanceId, destinationWorkspaceId, sinceSequence = 0 }) {
+    return freezeDeep(this.cancellationOrder
+      .map((id) => this.cancellationsById.get(id))
+      .filter((item) => item.destinationInstanceId === destinationInstanceId
+        && item.destinationWorkspaceId === destinationWorkspaceId
+        && Number(item.requestSequence) > Number(sinceSequence))
+      .sort((a, b) => a.requestSequence - b.requestSequence));
   }
 }
 
