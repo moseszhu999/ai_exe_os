@@ -15,8 +15,9 @@ S1A
 current immutable draft CapabilityVersion
 → authenticated MCP initialize
 → exact server identity
+→ exact protocol negotiation
 → runtime version floor
-→ tools/list
+→ complete tools/list surface
 → required observe-tool annotations
 → bounded discovery receipt
 
@@ -46,7 +47,7 @@ S1A uses only the already-compiled capability metadata. It does not persist an I
 
 ## TrainingOS runtime truth used by this contract
 
-Current owning repository snapshot inspected for this slice:
+Owning repository snapshot inspected when this slice was authored:
 
 ```text
 repo: moseszhu999/training-learning-rails
@@ -83,7 +84,7 @@ This distinction is important because inner MCP layers may evolve independently 
 
 ## Authentication truth
 
-TrainingOS `initialize` itself calls the authenticated context provider. Therefore a real S1A network probe requires a current valid TrainingOS OAuth bearer.
+TrainingOS `initialize` itself calls the authenticated context provider. Therefore a real S1A network probe requires a current valid TrainingOS OAuth bearer or other already-approved delegated identity path.
 
 S1A does not mint, copy, persist or log that bearer.
 
@@ -103,6 +104,14 @@ verified = false
 ```
 
 It is never upgraded to a PASS.
+
+## Protocol truth
+
+S1A sends one explicit MCP protocol version for an attestation attempt. The server must negotiate exactly that requested version for v1.
+
+If the response reports another protocol version, even one that may be compatible in another client context, v1 fails closed with a protocol-negotiation mismatch.
+
+This is intentionally stricter than a general-purpose MCP client because an attestation receipt must describe the exact protocol surface that was tested. A later verifier version may add an explicit negotiated-version allowlist if needed; v1 does not infer compatibility.
 
 ## Observe-only scope
 
@@ -125,6 +134,20 @@ The final TrainingOS MCP may advertise many additional tools, including bounded 
 
 Only the observe tools declared in the immutable CapabilityVersion are attested.
 
+## Complete discovery boundary
+
+A `verified_discovery` receipt must be based on a complete tool surface for this v1 verifier.
+
+If `tools/list` returns a non-empty `nextCursor`, S1A fails closed instead of silently inspecting only the first page:
+
+```text
+nextCursor present
+→ discovery incomplete
+→ no verified_discovery receipt
+```
+
+This avoids both false missing-tool conclusions and a misleading PASS based on a partial server catalog. Pagination support, if required later, must be implemented explicitly with bounded cursor handling and its own tests.
+
 ## Required runtime checks
 
 A successful `verified_discovery` receipt requires all of the following:
@@ -132,13 +155,15 @@ A successful `verified_discovery` receipt requires all of the following:
 1. the compiled capability has exactly one required `trainingos.mcp` dependency;
 2. the capability is observe-only for this S1A slice;
 3. authenticated `initialize` succeeds;
-4. `serverInfo.name` is exactly `trainingos-agent-gateway`;
-5. observed stable server semver is greater than or equal to the manifest minimum;
-6. `tools/list` succeeds under the same caller context;
-7. every required observe tool appears exactly once;
-8. every required observe tool has `readOnlyHint=true`;
-9. every required observe tool has `destructiveHint=false`;
-10. the emitted receipt contains only a bounded normalized subset and no server/tool secret-shaped metadata.
+4. negotiated protocol exactly matches the attestation request;
+5. `serverInfo.name` is exactly `trainingos-agent-gateway`;
+6. observed stable server semver is greater than or equal to the manifest minimum;
+7. `tools/list` succeeds under the same caller context;
+8. `tools/list` is complete for v1 (`nextCursor` absent/empty);
+9. every required observe tool appears exactly once;
+10. every required observe tool has `readOnlyHint=true`;
+11. every required observe tool has `destructiveHint=false`;
+12. the emitted receipt contains only a bounded normalized subset and no server/tool secret-shaped metadata.
 
 Server extras are not copied into the receipt.
 
@@ -173,6 +198,26 @@ status = auth_required
 verified = false
 phase = initialize | tools/list
 ```
+
+Other protocol/server/tool drift raises a fail-closed verifier error and cannot produce `verified=true`.
+
+## Test contract
+
+The focused v1 suite locks 13 cases:
+
+1. current TrainingOS final server `1.6.0` satisfies Capability v1.1 minimum `0.5.2`;
+2. extra server write tools do not become capability grants;
+3. server version below floor fails;
+4. server identity drift fails;
+5. unexpected protocol negotiation fails;
+6. paginated/incomplete `tools/list` fails;
+7. missing required observe tool fails;
+8. lost read-only annotation fails;
+9. duplicate runtime tool identity fails;
+10. auth-required at initialize remains non-PASS;
+11. auth-required at tools/list remains non-PASS;
+12. draft/write capability authority is rejected by S1A;
+13. secret-shaped server/tool metadata is not copied into receipts.
 
 ## Truth boundary
 
@@ -223,8 +268,10 @@ or a truthful blocker such as:
 ```text
 auth_required
 network_unreachable
+protocol_negotiation_mismatch
 server_identity_mismatch
 version_below_floor
+incomplete_tool_discovery
 required_tool_missing
 required_tool_not_read_only
 ```
