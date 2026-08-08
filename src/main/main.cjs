@@ -11,13 +11,16 @@ const { S2ApplicationService } = require('../application/s2-index.cjs');
 const { S3ApplicationService } = require('../application/s3-index.cjs');
 const { S4ApplicationService } = require('../application/s4-index.cjs');
 const { S5ApplicationService: S1ApplicationServiceS5 } = require('../application/s5-index.cjs');
-const { S6ApplicationService: S1ApplicationService } = require('../application/s6-scheduler-service.cjs');
+const { S6ApplicationService: S1ApplicationServiceS6 } = require('../application/s6-scheduler-service.cjs');
+const { S7ApplicationService: S1ApplicationService } = require('../application/s7-index.cjs');
 const { registerS1Ipc } = require('../application/s1-ipc.cjs');
 const { registerS2Ipc } = require('../application/s2-ipc.cjs');
 const { registerS3Ipc } = require('../application/s3-ipc.cjs');
 const { registerS4Ipc } = require('../application/s4-ipc.cjs');
 const { registerS5Ipc } = require('../application/s5-ipc.cjs');
 const { registerS6Ipc } = require('../application/s6-ipc.cjs');
+const { registerS7Ipc } = require('../application/s7-ipc.cjs');
+const { ProjectOwnedSyncTransport, createSyncEndpoint } = require('../sync/transport/index.cjs');
 
 if (!(S3ApplicationService.prototype instanceof S2ApplicationService)) {
   throw new Error('S3 application service must preserve the accepted S2 public service chain');
@@ -28,11 +31,17 @@ if (!(S4ApplicationService.prototype instanceof S3ApplicationService)) {
 if (!(S1ApplicationServiceS5.prototype instanceof S4ApplicationService)) {
   throw new Error('S5 application service must preserve the accepted S4 public service chain');
 }
-if (!(S1ApplicationService.prototype instanceof S1ApplicationServiceS5)) {
+if (!(S1ApplicationServiceS6.prototype instanceof S1ApplicationServiceS5)) {
   throw new Error('S6 application service must preserve the accepted S5 public service chain');
 }
+if (!(S1ApplicationService.prototype instanceof S1ApplicationServiceS6)) {
+  throw new Error('S7 application service must preserve the accepted S6 public service chain');
+}
+if (!(S1ApplicationService.prototype instanceof S1ApplicationServiceS5)) {
+  throw new Error('S7 application service must preserve the accepted transitive S5 public service chain');
+}
 if (!(S1ApplicationService.prototype instanceof S4ApplicationService)) {
-  throw new Error('S6 application service must preserve the accepted transitive S4 public service chain');
+  throw new Error('S7 application service must preserve the accepted transitive S4 public service chain');
 }
 
 app.enableSandbox();
@@ -44,6 +53,19 @@ function configuredTestPort() {
     throw new RangeError('AI_EXE_OS_TEST_PORT must be an integer from 1024 to 65535');
   }
   return port;
+}
+
+function configuredSync() {
+  const raw = String(process.env.AI_EXE_OS_SYNC_ENDPOINT || '').trim();
+  if (!raw) return Object.freeze({ endpoint: null, transport: null });
+  const allowLoopback = process.env.AI_EXE_OS_SYNC_ALLOW_LOOPBACK === '1';
+  const endpoint = createSyncEndpoint({
+    id: 'configured-sync-endpoint',
+    url: raw,
+    status: 'active',
+    allowLoopback,
+  });
+  return Object.freeze({ endpoint, transport: new ProjectOwnedSyncTransport({ endpoint }) });
 }
 
 if (process.env.AI_EXE_OS_USER_DATA_DIR) {
@@ -142,6 +164,7 @@ function registerIpc() {
   registerS4Ipc({ ipcMain, assertSender, service: s1Service });
   registerS5Ipc({ ipcMain, assertSender, service: s1Service });
   registerS6Ipc({ ipcMain, assertSender, service: s1Service });
+  registerS7Ipc({ ipcMain, assertSender, service: s1Service });
 }
 
 async function createMainWindow() {
@@ -187,11 +210,14 @@ app.whenReady().then(async () => {
 
   const s1RuntimeRoot = join(userDataRoot, 's1-runtime');
   mkdirSync(s1RuntimeRoot, { recursive: true });
+  const sync = configuredSync();
   s1Service = new S1ApplicationService({
     databasePath: join(s1RuntimeRoot, 'state.sqlite'),
     workerManager,
     localTarget: `${testBaseUrl}/task-form.html`,
     githubToken: process.env.AI_EXE_OS_GITHUB_TOKEN || null,
+    syncEndpoint: sync.endpoint,
+    syncTransport: sync.transport,
   });
 
   registerIpc();

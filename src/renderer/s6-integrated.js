@@ -21,7 +21,6 @@
     if (text !== null) node.textContent = String(text);
     return node;
   };
-  const field = (parent, label, value) => parent.append(el('p', `${label}: ${value == null ? '—' : value}`));
   const currentWorkspaceId = () => document.querySelector('#s1-workspace')?.value || 'workspace-a';
 
   let snapshot = null;
@@ -229,3 +228,10 @@
   document.querySelector('#refresh')?.addEventListener('click', () => refresh().catch((error) => { summary.textContent = error.message; }));
   queueMicrotask(() => refresh().catch((error) => { summary.textContent = error.message; }));
 })();
+
+if (!document.querySelector('script[data-s7-sync]')) {
+  const s7Script = document.createElement('script');
+  s7Script.src = 's7-integrated.js';
+  s7Script.dataset.s7Sync = 'true';
+  document.body.append(s7Script);
+}
