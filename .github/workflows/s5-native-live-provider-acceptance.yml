@@ -1,0 +1,249 @@
+name: S5 native live provider acceptance
+
+on:
+  pull_request:
+    branches:
+      - agent/s5-provider-adapter-integration-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-product-source:
+    name: Exact frozen product source validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      S5_PRODUCT_SHA: 5b1933a284c00b86bf438a53af6beb94c8d6eda9
+    steps:
+      - name: Check out acceptance carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify carrier changes only acceptance-owned paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$S5_PRODUCT_SHA" HEAD
+          changed="$(git diff --name-only "$S5_PRODUCT_SHA" HEAD)"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -vE '^(scripts/s5-acceptance-|\.github/workflows/s5-|docs/results/S5-results\.md$)' | grep -q .; then
+            echo 'S5 acceptance carrier modified product-owned paths' >&2
+            exit 1
+          fi
+      - name: Validate exact frozen product head
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add ../s5-product "$S5_PRODUCT_SHA"
+          cd ../s5-product
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run validate | tee ../ai_exe_os/s5-exact-source-validation.txt
+      - name: Record exact product source evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$S5_PRODUCT_SHA" > exact-product-head.txt
+          sha256sum exact-product-head.txt s5-exact-source-validation.txt > s5-source-SHA256SUMS.txt
+          sha256sum -c s5-source-SHA256SUMS.txt
+      - name: Upload exact-source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: s5-exact-source-${{ github.sha }}
+          path: |
+            exact-product-head.txt
+            s5-exact-source-validation.txt
+            s5-source-SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  native-arm64-live-provider:
+    name: Native arm64 live provider + Electron acceptance
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      S5_PRODUCT_SHA: 5b1933a284c00b86bf438a53af6beb94c8d6eda9
+      S5_ACCEPTANCE_OUTPUT: runtime/s5-acceptance
+      S5_VERCEL_TARGET: https://chaintrace-eh6lm584p-aaronzhu1.vercel.app/
+      S5_NETLIFY_TARGET: https://chaintrace-app.netlify.app/
+    steps:
+      - name: Check out acceptance carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify frozen source ancestry and QA-only carrier scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$S5_PRODUCT_SHA" HEAD
+          changed="$(git diff --name-only "$S5_PRODUCT_SHA" HEAD)"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -vE '^(scripts/s5-acceptance-|\.github/workflows/s5-|docs/results/S5-results\.md$)' | grep -q .; then
+            echo 'S5 acceptance carrier modified product-owned paths' >&2
+            exit 1
+          fi
+      - name: Verify native Apple Silicon runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "arm64"
+          test "$(node -p 'process.arch')" = "arm64"
+          if [[ "$(sysctl -in sysctl.proc_translated 2>/dev/null || echo 0)" = "1" ]]; then
+            echo 'Rosetta-translated runner is not accepted' >&2
+            exit 1
+          fi
+      - name: Install pinned dependencies including Electron
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          node -e "const fs=require('node:fs'); const electron=require('electron'); if(!fs.existsSync(electron)) throw new Error('Electron executable missing')"
+      - name: Run full carrier/source validation on native arm64
+        run: npm run validate
+      - name: Record frozen product head
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$S5_ACCEPTANCE_OUTPUT"
+          printf '%s\n' "$S5_PRODUCT_SHA" > "$S5_ACCEPTANCE_OUTPUT/exact-product-head.txt"
+      - name: Run native live two-provider matrix
+        run: node scripts/s5-acceptance-provider-matrix.cjs
+      - name: Run real Electron provider UI and restart matrix
+        run: node scripts/s5-acceptance-electron-ui.cjs
+      - name: Verify S5 evidence, invariants, methods and privacy
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$S5_ACCEPTANCE_OUTPUT"
+          for file in \
+            exact-product-head.txt \
+            provider-target-bindings.json \
+            provider-observations.json \
+            provider-method-audit.json \
+            provider-safety-matrix.json \
+            provider-cockpit-state.json \
+            canonical-events.jsonl \
+            projection-restart-digests.json \
+            native-provider-matrix.json \
+            cleanup-audit.json \
+            electron-ui-audit.json \
+            electron-cleanup-audit.json \
+            s5-provider-before.png \
+            s5-provider-after-live.png \
+            s5-provider-after-restart.png; do
+            test -s "$root/$file"
+          done
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = process.env.S5_ACCEPTANCE_OUTPUT;
+          const productSha = process.env.S5_PRODUCT_SHA;
+          const vercel = new URL(process.env.S5_VERCEL_TARGET);
+          const netlify = new URL(process.env.S5_NETLIFY_TARGET);
+          const allowedOrigins = new Set([vercel.origin, netlify.origin]);
+          const read = (name) => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8'));
+          const native = read('native-provider-matrix.json');
+          const bindings = read('provider-target-bindings.json');
+          const observations = read('provider-observations.json');
+          const methods = read('provider-method-audit.json');
+          const safety = read('provider-safety-matrix.json');
+          const digests = read('projection-restart-digests.json');
+          const ui = read('electron-ui-audit.json');
+          const cleanup = read('cleanup-audit.json');
+          const electronCleanup = read('electron-cleanup-audit.json');
+
+          for (const doc of [native, bindings, observations, methods, safety, digests, ui]) {
+            if (doc.status !== 'PASS') throw new Error('S5 evidence document is not PASS');
+            if (doc.productSha !== productSha) throw new Error('S5 evidence product SHA mismatch');
+          }
+          if (fs.readFileSync(path.join(root, 'exact-product-head.txt'), 'utf8').trim() !== productSha) throw new Error('exact product head mismatch');
+          if (bindings.bindings.length !== 2) throw new Error('expected exactly two provider bindings');
+          if (observations.observations.length !== 2) throw new Error('expected exactly two provider observations');
+          const providers = new Map(observations.observations.map((item) => [item.provider, item]));
+          for (const provider of ['vercel','netlify']) {
+            const item = providers.get(provider);
+            if (!item || item.state !== 'succeeded') throw new Error(`${provider} live observation did not succeed`);
+          }
+          if (providers.get('vercel').exactTarget !== process.env.S5_VERCEL_TARGET) throw new Error('Vercel exact target mismatch');
+          if (providers.get('netlify').exactTarget !== process.env.S5_NETLIFY_TARGET) throw new Error('Netlify exact target mismatch');
+
+          const auditRows = [
+            ...(methods.audit || []),
+            ...(ui.firstProcess?.methodAudit || []),
+            ...(ui.restart?.methodAudit || []),
+          ];
+          if (!auditRows.length) throw new Error('provider method audit is empty');
+          for (const row of auditRows) {
+            if (!['GET','HEAD'].includes(row.method)) throw new Error(`write method in provider audit: ${row.method}`);
+            if (!allowedOrigins.has(new URL(row.target).origin)) throw new Error(`provider request escaped approved origin: ${row.target}`);
+          }
+          if ((digests.providerRequestsAfterRestart || 0) !== 0) throw new Error('direct restart replayed provider request');
+          if ((ui.restart?.methodAudit || []).length !== 0) throw new Error('Electron restart replayed provider request');
+          if ((ui.restart?.replayResults || []).some((item) => item.replayed !== true || item.networkRequested !== false)) throw new Error('Electron canonical replay was not network-free');
+          if ((ui.pageErrors || []).length || (ui.consoleErrors || []).length) throw new Error('Electron page/console errors present');
+          if ((cleanup.residualScopedProcesses || []).length || (electronCleanup.residualScopedProcesses || []).length) throw new Error('residual scoped process present');
+          if (digests.projectionBefore !== digests.projectionAfter || digests.eventCountBefore !== digests.eventCountAfter) throw new Error('restart projection/event digest drift');
+
+          const forbiddenKey = /^(authorization|proxy-authorization|cookie|cookies|set-cookie|password|passwd|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|private[_ -]?key|profilePath|profileDir|profileDirectory|browserProfile|userData|userDataDir|storageState|processId|pid|ppid|body|responseBody)$/i;
+          const forbiddenString = /(-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\bBearer\s+[A-Za-z0-9._~+/=-]{12,}|\b(?:sessionid|access_token|refresh_token)=)/i;
+          function scan(value, trail = '$') {
+            if (value === null || value === undefined) return;
+            if (typeof value === 'string') {
+              if (forbiddenString.test(value)) throw new Error(`sensitive string at ${trail}`);
+              return;
+            }
+            if (Array.isArray(value)) return value.forEach((item, index) => scan(item, `${trail}[${index}]`));
+            if (typeof value === 'object') {
+              for (const [key, nested] of Object.entries(value)) {
+                if (forbiddenKey.test(key)) throw new Error(`forbidden evidence key ${trail}.${key}`);
+                scan(nested, `${trail}.${key}`);
+              }
+            }
+          }
+          for (const file of fs.readdirSync(root).filter((name) => name.endsWith('.json'))) scan(read(file), file);
+          for (const [index, line] of fs.readFileSync(path.join(root, 'canonical-events.jsonl'), 'utf8').split('\n').filter(Boolean).entries()) scan(JSON.parse(line), `canonical-events.jsonl:${index + 1}`);
+          NODE
+          if grep -RInE 's5:provider:(deploy|promote|rollback|update|delete|post|put|patch)' src/preload/index.cjs src/application/s5-ipc.cjs src/application/s5-index.cjs src/renderer/s5-integrated.js; then
+            echo 'Unexpected S5 provider-write IPC/control path' >&2
+            exit 1
+          fi
+      - name: Build portable manifest and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$S5_ACCEPTANCE_OUTPUT"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const files = fs.readdirSync('.').filter((name) => name !== 'manifest.json' && name !== 'SHA256SUMS.txt').sort();
+          fs.writeFileSync('manifest.json', JSON.stringify({
+            status: 'PASS',
+            productSha: process.env.S5_PRODUCT_SHA,
+            evidenceClass: 'github-hosted-native-apple-silicon',
+            approvedTargets: {
+              vercel: process.env.S5_VERCEL_TARGET,
+              netlify: process.env.S5_NETLIFY_TARGET,
+            },
+            files,
+          }, null, 2) + '\n');
+          NODE
+          rm -f SHA256SUMS.txt
+          for file in $(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print | sed 's#^./##' | LC_ALL=C sort); do
+            shasum -a 256 "$file"
+          done > SHA256SUMS.txt
+          shasum -a 256 -c SHA256SUMS.txt
+      - name: Upload privacy-safe immutable S5 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: s5-native-live-provider-${{ github.sha }}
+          path: runtime/s5-acceptance
+          if-no-files-found: error
+          retention-days: 30
