@@ -70,7 +70,7 @@ jobs:
       S5_PRODUCT_SHA: 5b1933a284c00b86bf438a53af6beb94c8d6eda9
       S5_ACCEPTANCE_OUTPUT: runtime/s5-acceptance
       S5_VERCEL_TARGET: https://chaintrace-app.vercel.app/
-      S5_NETLIFY_TARGET: https://chaintrace-app.netlify.app/
+      S5_NETLIFY_TARGET: https://gleaming-cajeta-c158d9.netlify.app/
     steps:
       - name: Check out acceptance carrier
         uses: actions/checkout@v4
