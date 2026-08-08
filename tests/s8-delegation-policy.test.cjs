@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   assertPolicyAllowsRequest,
+  capabilityVersionReference,
   classifyDelegationRequestAppend,
   createDelegationCancellationProposal,
   createDelegationPeerBinding,
@@ -30,7 +31,7 @@ function policy(overrides = {}) {
     version: '1.0.0',
     peerBindingId: 'peer-a-to-b',
     destinationWorkspaceId: 'workspace-b',
-    allowedCapabilityVersionIds: ['local.form-submit-1'],
+    allowedCapabilityVersionIds: ['local.form-submit@1.0.0'],
     allowedActions: ['submit_payload'],
     allowedTargets: ['http://127.0.0.1:3210/task-form.html'],
     maxPendingRequests: 4,
@@ -53,7 +54,7 @@ function request(overrides = {}) {
     policyVersion: '1.0.0',
     sourceMissionId: 'mission-a',
     sourcePlanStepId: 'step-a',
-    capabilityVersionId: 'local.form-submit-1',
+    capabilityVersionId: 'local.form-submit@1.0.0',
     action: 'submit_payload',
     target: 'http://127.0.0.1:3210/task-form.html',
     payloadClass: 'bounded-input',
@@ -70,6 +71,14 @@ test('S8 peer binding is exact and distinct', () => {
   assert.equal(binding.status, 'active');
   assert.throws(() => peer({ destinationInstanceId: 'sync-source-a' }), /distinct source and destination/);
   assert.throws(() => peer({ destinationWorkspaceId: '*' }));
+});
+
+test('S8 delegation capability reference matches canonical package@semver identity', () => {
+  assert.equal(capabilityVersionReference('local.form-submit@1.0.0'), 'local.form-submit@1.0.0');
+  assert.equal(capabilityVersionReference('provider.observe@2.4.1-beta.2'), 'provider.observe@2.4.1-beta.2');
+  assert.throws(() => capabilityVersionReference('local.form-submit-1'), /packageId@semver/);
+  assert.throws(() => capabilityVersionReference('local.form-submit@latest'), /packageId@semver/);
+  assert.throws(() => capabilityVersionReference('*@1.0.0'), /packageId@semver/);
 });
 
 test('S8 delegation request digest is deterministic over semantic payload ordering', () => {
@@ -115,10 +124,11 @@ test('S8 peer scope rejects wrong source, destination and workspace', () => {
   assert.equal(classifyDelegationRequestAppend({ peerBinding: binding, request: request({ destinationWorkspaceId: 'workspace-x' }) }).reasonCode, 'cross_workspace');
 });
 
-test('S8 policy is a bounded allow-set and expiry/revocation fail closed', () => {
+test('S8 policy is a bounded canonical capability allow-set and expiry/revocation fail closed', () => {
   const req = request();
   assert.equal(assertPolicyAllowsRequest(policy(), req, { observedAt: '2026-08-08T12:02:00.000Z' }).allowed, true);
   assert.equal(assertPolicyAllowsRequest(policy({ allowedActions: ['observe'] }), req).reasonCode, 'action_not_allowed');
+  assert.equal(assertPolicyAllowsRequest(policy({ allowedCapabilityVersionIds: ['other.package@1.0.0'] }), req).reasonCode, 'capability_not_allowed');
   assert.equal(assertPolicyAllowsRequest(policy({ status: 'revoked' }), req).reasonCode, 'policy_revoked');
   assert.equal(assertPolicyAllowsRequest(policy({ expiresAt: '2026-08-08T12:00:30.000Z' }), req, { observedAt: '2026-08-08T12:02:00.000Z' }).reasonCode, 'policy_expired');
 });
