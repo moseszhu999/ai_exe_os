@@ -10,12 +10,14 @@ const { TaskRepository } = require('./task-repository.cjs');
 const { S2ApplicationService } = require('../application/s2-index.cjs');
 const { S3ApplicationService } = require('../application/s3-index.cjs');
 const { S4ApplicationService } = require('../application/s4-index.cjs');
-const { S5ApplicationService: S1ApplicationService } = require('../application/s5-index.cjs');
+const { S5ApplicationService: S1ApplicationServiceS5 } = require('../application/s5-index.cjs');
+const { S6ApplicationService: S1ApplicationService } = require('../application/s6-index.cjs');
 const { registerS1Ipc } = require('../application/s1-ipc.cjs');
 const { registerS2Ipc } = require('../application/s2-ipc.cjs');
 const { registerS3Ipc } = require('../application/s3-ipc.cjs');
 const { registerS4Ipc } = require('../application/s4-ipc.cjs');
 const { registerS5Ipc } = require('../application/s5-ipc.cjs');
+const { registerS6Ipc } = require('../application/s6-ipc.cjs');
 
 if (!(S3ApplicationService.prototype instanceof S2ApplicationService)) {
   throw new Error('S3 application service must preserve the accepted S2 public service chain');
@@ -23,8 +25,14 @@ if (!(S3ApplicationService.prototype instanceof S2ApplicationService)) {
 if (!(S4ApplicationService.prototype instanceof S3ApplicationService)) {
   throw new Error('S4 application service must preserve the accepted S3 public service chain');
 }
-if (!(S1ApplicationService.prototype instanceof S4ApplicationService)) {
+if (!(S1ApplicationServiceS5.prototype instanceof S4ApplicationService)) {
   throw new Error('S5 application service must preserve the accepted S4 public service chain');
+}
+if (!(S1ApplicationService.prototype instanceof S1ApplicationServiceS5)) {
+  throw new Error('S6 application service must preserve the accepted S5 public service chain');
+}
+if (!(S1ApplicationService.prototype instanceof S4ApplicationService)) {
+  throw new Error('S6 application service must preserve the accepted transitive S4 public service chain');
 }
 
 app.enableSandbox();
@@ -133,6 +141,7 @@ function registerIpc() {
   registerS3Ipc({ ipcMain, assertSender, service: s1Service });
   registerS4Ipc({ ipcMain, assertSender, service: s1Service });
   registerS5Ipc({ ipcMain, assertSender, service: s1Service });
+  registerS6Ipc({ ipcMain, assertSender, service: s1Service });
 }
 
 async function createMainWindow() {

@@ -28,6 +28,13 @@ function s5Input(input) {
   return input;
 }
 
+function s6Input(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('S6 scheduling command payload must be a plain object');
+  }
+  return input;
+}
+
 const s2Mission = Object.freeze({
   queryState: (workspaceId) => ipcRenderer.invoke('s2:mission:query-state', workspaceId || null),
   createMission: (input) => ipcRenderer.invoke('s2:mission:create', s2Input(input)),
@@ -64,6 +71,13 @@ const s5Provider = Object.freeze({
   observe: (input) => ipcRenderer.invoke('s5:provider:observe', s5Input(input)),
 });
 
+const s6Scheduling = Object.freeze({
+  queryState: (workspaceId) => ipcRenderer.invoke('s6:scheduling:query-state', workspaceId || null),
+  recordPolicy: (input) => ipcRenderer.invoke('s6:scheduling:record-policy', s6Input(input)),
+  computeDecision: (input) => ipcRenderer.invoke('s6:scheduling:compute-decision', s6Input(input)),
+  revalidateProposal: (input) => ipcRenderer.invoke('s6:scheduling:revalidate-proposal', s6Input(input)),
+});
+
 contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   getState: () => ipcRenderer.invoke('state:list'),
   createWorker: (input) => ipcRenderer.invoke('worker:create', input),
@@ -87,4 +101,5 @@ contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   s3: Object.freeze({ github: s3Github }),
   s4: Object.freeze({ console: s4Console }),
   s5: Object.freeze({ provider: s5Provider }),
+  s6: Object.freeze({ scheduling: s6Scheduling }),
 }));

@@ -140,3 +140,10 @@
   document.querySelector('#refresh')?.addEventListener('click', () => refresh().catch((error) => { observationDetail.textContent = error.message; }));
   queueMicrotask(() => refresh().catch((error) => { observationDetail.textContent = error.message; }));
 })();
+
+if (!document.querySelector('script[data-s6-scheduling]')) {
+  const s6Script = document.createElement('script');
+  s6Script.src = 's6-integrated.js';
+  s6Script.dataset.s6Scheduling = 'true';
+  document.body.append(s6Script);
+}
