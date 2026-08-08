@@ -43,7 +43,7 @@ class SharedDelegationExchange {
   }
   async readInbox({ destinationInstanceId, destinationWorkspaceId }) {
     this.calls.push('readInbox');
-    return this.requests.filter((item) => item.destinationInstanceId === destinationInstanceId && item.destinationWorkspaceId === destinationWorkspaceId).map(structuredClone);
+    return this.requests.filter((item) => item.destinationInstanceId === destinationInstanceId && item.destinationWorkspaceId === destinationWorkspaceId).map((item) => structuredClone(item));
   }
   async acknowledgeRequest(input) { this.calls.push('acknowledgeRequest'); return { ...input }; }
   async submitReceipt(receipt) {
@@ -54,7 +54,7 @@ class SharedDelegationExchange {
   }
   async readReceipts({ sourceInstanceId, sourceWorkspaceId }) {
     this.calls.push('readReceipts');
-    return this.receipts.filter((item) => item.sourceInstanceId === sourceInstanceId && item.sourceWorkspaceId === sourceWorkspaceId).map(structuredClone);
+    return this.receipts.filter((item) => item.sourceInstanceId === sourceInstanceId && item.sourceWorkspaceId === sourceWorkspaceId).map((item) => structuredClone(item));
   }
   async submitCancellation(cancellationProposal) {
     this.calls.push('submitCancellation');
@@ -65,7 +65,7 @@ class SharedDelegationExchange {
   }
   async readCancellations({ destinationInstanceId, destinationWorkspaceId }) {
     this.calls.push('readCancellations');
-    return this.cancellations.filter((item) => item.destinationInstanceId === destinationInstanceId && item.destinationWorkspaceId === destinationWorkspaceId).map(structuredClone);
+    return this.cancellations.filter((item) => item.destinationInstanceId === destinationInstanceId && item.destinationWorkspaceId === destinationWorkspaceId).map((item) => structuredClone(item));
   }
 }
 
