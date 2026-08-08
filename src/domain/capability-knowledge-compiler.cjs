@@ -217,6 +217,9 @@ function compileCapabilityKnowledgeManifest(manifest, context = {}) {
   const providerContractIds = normalizeStringArray(input.providerContractIds || [], 'providerContractIds', { identifiers: true });
   const uiResources = normalizeStringArray(input.uiResources || [], 'uiResources', { identifiers: true });
 
+  if (toolGrants.internalWrite.length > 0 && versionInput.humanGatePolicy === 'never') {
+    throw new Error('Internal writes require task- or action-level Human Gate policy');
+  }
   if (toolGrants.externalAction.length > 0 && versionInput.humanGatePolicy !== 'action') {
     throw new Error('External actions require action-level Human Gate policy');
   }
