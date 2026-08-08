@@ -1,0 +1,67 @@
+name: TrainingOS MCP runtime attestation v1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/mcp/runtime-attestation.cjs'
+      - 'tests/trainingos-mcp-runtime-attestation.test.cjs'
+      - 'docs/contracts/trainingos-mcp-runtime-attestation-v1.md'
+      - '.github/workflows/trainingos-mcp-runtime-attestation-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Check out immutable PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify immutable PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$TARGET_SHA"
+          echo "exact_head=$actual"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Resolve pinned development dependencies without install scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run source syntax validation
+        run: npm run check
+
+      - name: Run focused S1A contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/trainingos-mcp-runtime-attestation.test.cjs | tee "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
+          grep -Eq '# tests[[:space:]]+13$' "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
+          grep -Eq '# pass[[:space:]]+13$' "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
+          grep -Eq '# fail[[:space:]]+0$' "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
+
+      - name: Run full repository unit suite
+        run: npm test
+
+      - name: Enforce provider and secret boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RInE 'chatgpt\.com|api\.openai\.com|openai\.com' src test-pages package.json
+          ! grep -RInE '(accessToken|refreshToken|clientSecret|password|Authorization[[:space:]]*:|Bearer[[:space:]]+[A-Za-z0-9._-]+)' src/mcp/runtime-attestation.cjs
+          echo 'TrainingOS MCP runtime-attestation boundary: PASS'
