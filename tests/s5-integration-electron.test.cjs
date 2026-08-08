@@ -77,10 +77,12 @@ test('S5 provider panel is loaded from S4 cockpit and contains no free-form tran
   assert.match(s5Renderer, /Approved Targets/);
   assert.match(s5Renderer, /Provider Observations & Evidence/);
   assert.match(s5Renderer, /Observe selected approved target/);
+  assert.match(s5Renderer, /observe_public_deployment/);
   assert.doesNotMatch(s5Renderer, /createElement\(['"]input['"]\)/);
   assert.doesNotMatch(s5Renderer, /\bfetch\s*\(|XMLHttpRequest|node:sqlite|DatabaseSync|state\.sqlite/);
   assert.doesNotMatch(s5Renderer, /innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
-  assert.doesNotMatch(s5Renderer, /deploy|promote|rollback|POST|PUT|PATCH|DELETE/i);
+  assert.doesNotMatch(s5Renderer, /\b(?:deploy|promote|rollback)\s*\(|\b(?:POST|PUT|PATCH|DELETE)\b/i);
+  assert.doesNotMatch(s5Renderer, /bridge\.(?:deploy|promote|rollback|update|delete)\b/i);
 });
 
 test('S5 application observe path cannot accept arbitrary URL, headers or provider write method', () => {
