@@ -71,7 +71,7 @@ test('S5 IPC registers exactly three sender-validated explicit channels', async 
 test('S5 provider panel is loaded from S4 cockpit and contains no free-form transport or provider-write control', () => {
   assert.match(s4Renderer, /s5-integrated\.js/);
   assert.match(s4Renderer, /data-s5-provider|s5Provider/);
-  assert.match(s5Renderer, /#s4-cockpit/);
+  assert.match(s5Renderer, /getElementById\('s4-cockpit'\)/);
   assert.match(s5Renderer, /#s1-workspace/);
   assert.match(s5Renderer, /Approved Provider Adapters/);
   assert.match(s5Renderer, /Approved Targets/);
