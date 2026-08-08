@@ -12,7 +12,7 @@ const electronExecutable = require('electron');
 const PRODUCT_SHA = process.env.S5_PRODUCT_SHA || '5b1933a284c00b86bf438a53af6beb94c8d6eda9';
 const OUTPUT = process.env.S5_ACCEPTANCE_OUTPUT || join(process.cwd(), 'runtime', 's5-acceptance');
 const VERCEL_TARGET = process.env.S5_VERCEL_TARGET || 'https://chaintrace-app.vercel.app/';
-const NETLIFY_TARGET = process.env.S5_NETLIFY_TARGET || 'https://chaintrace-app.netlify.app/';
+const NETLIFY_TARGET = process.env.S5_NETLIFY_TARGET || 'https://gleaming-cajeta-c158d9.netlify.app/';
 const S0_METHODS = ['confirmLocalTask','createTask','createWorker','focusWorker','getState','observePullRequest','pauseWorker','resumeWorker','startWorker','stopWorker'];
 const S1_METHODS = ['approveHumanGate','createTask','grantCapability','installCapability','queryState','rejectHumanGate'];
 const S2_METHODS = ['cancelMission','createMission','createRevision','pauseMission','queryState','recordCheckpoint','resumeMission','retryStepAfterReview','startMission'];
@@ -66,6 +66,14 @@ async function bridgeAudit(page) {
 
 async function queryProvider(page) {
   return page.evaluate(() => window.aiExecutionOS.s5.provider.queryState('workspace-a'));
+}
+
+async function waitForUiReady(page, bindingId) {
+  await page.waitForFunction((expectedBindingId) => {
+    const select = document.getElementById('s5-binding-select');
+    const button = document.getElementById('s5-observe');
+    return select?.value === expectedBindingId && button && button.disabled === false;
+  }, bindingId);
 }
 
 async function rejected(page, operation, payload) {
@@ -152,17 +160,23 @@ async function main() {
     assert.equal(afterBlocked.methodAudit.length, auditCount, 'blocked Electron commands reached provider transport');
 
     await page.selectOption('#s5-binding-select', 's5-electron-vercel-binding');
+    await waitForUiReady(page, 's5-electron-vercel-binding');
     await page.click('#s5-observe');
     await page.waitForFunction(async () => {
       const state = await window.aiExecutionOS.s5.provider.queryState('workspace-a');
       return state.observations.some((item) => item.bindingId === 's5-electron-vercel-binding');
     });
+    await waitForUiReady(page, 's5-electron-vercel-binding');
+
     await page.selectOption('#s5-binding-select', 's5-electron-netlify-binding');
+    await waitForUiReady(page, 's5-electron-netlify-binding');
     await page.click('#s5-observe');
     await page.waitForFunction(async () => {
       const state = await window.aiExecutionOS.s5.provider.queryState('workspace-a');
-      return state.observations.some((item) => item.bindingId === 's5-electron-netlify-binding');
+      return state.observations.length === 2
+        && state.observations.some((item) => item.bindingId === 's5-electron-netlify-binding');
     });
+    await waitForUiReady(page, 's5-electron-netlify-binding');
 
     const liveState = await queryProvider(page);
     assert.equal(liveState.observations.length, 2);
@@ -212,6 +226,7 @@ async function main() {
     await page.click('#refresh');
     await page.waitForFunction(() => document.querySelectorAll('#s5-binding-select option').length >= 3);
     await page.selectOption('#s5-binding-select', 's5-electron-netlify-binding');
+    await waitForUiReady(page, 's5-electron-netlify-binding');
     await page.waitForFunction(() => document.getElementById('s5-observation')?.textContent.includes('evidenceDigest'));
     await page.screenshot({ path: join(OUTPUT, 's5-provider-after-restart.png'), fullPage: true });
 
