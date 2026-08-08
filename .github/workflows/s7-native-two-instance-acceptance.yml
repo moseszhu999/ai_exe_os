@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      S7_PRODUCT_SHA: 45c966c515d1a97bb109de867517d13dfd1fa657
+      S7_PRODUCT_SHA: 004bfc9f6972b0bfc0295256dcdb7aada308b70b
     steps:
       - name: Check out acceptance carrier
         uses: actions/checkout@v4
@@ -67,7 +67,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 45
     env:
-      S7_PRODUCT_SHA: 45c966c515d1a97bb109de867517d13dfd1fa657
+      S7_PRODUCT_SHA: 004bfc9f6972b0bfc0295256dcdb7aada308b70b
       S7_ACCEPTANCE_OUTPUT: runtime/s7-acceptance
     steps:
       - name: Check out acceptance carrier
