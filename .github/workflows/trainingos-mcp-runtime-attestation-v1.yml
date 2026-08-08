@@ -51,8 +51,8 @@ jobs:
         run: |
           set -euo pipefail
           node --test tests/trainingos-mcp-runtime-attestation.test.cjs | tee "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
-          grep -Eq '# tests[[:space:]]+11$' "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
-          grep -Eq '# pass[[:space:]]+11$' "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
+          grep -Eq '# tests[[:space:]]+13$' "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
+          grep -Eq '# pass[[:space:]]+13$' "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
           grep -Eq '# fail[[:space:]]+0$' "$RUNNER_TEMP/trainingos-mcp-runtime-attestation.tap"
 
       - name: Run full repository unit suite
