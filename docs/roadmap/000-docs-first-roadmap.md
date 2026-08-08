@@ -23,7 +23,7 @@ scheduling policy / bounded utilization
 optional collaboration / sync mirror
 ```
 
-Technical feasibility, provider-authorized use and collaboration authority remain separate gates.
+Technical feasibility, provider-authorized use, scheduling authority and collaboration authority remain separate gates.
 
 ## Canonical stage registry
 
@@ -37,43 +37,53 @@ S3  GitHub-Native Engineering Workflow                          COMPLETE — GO
 S4  Multi-Session Operator Console                              COMPLETE — GO
 S5  Approved Provider Adapters                                  COMPLETE — GO
 S6  Scheduling Policy                                           COMPLETE — GO
-S7  Optional Collaboration and Sync                             CURRENT — GATE 0
+S7  Optional Collaboration and Sync                             COMPLETE — GO
 ```
 
-Current baseline:
+No S8 stage is currently activated. A new stage requires a separate docs-first Gate 0 rather than silently expanding S7 authority.
+
+## Current accepted baseline
+
+S7 frozen accepted product head:
 
 ```text
-current main at S7 Gate 0 start: e7d2e7ee8d5ab0bfccbaaae59986dd97c016f0df
-S0 results: docs/spikes/S0-results.md
-S1 results: docs/results/S1-results.md
-S2 results: docs/results/S2-results.md
-S3 results: docs/results/S3-results.md
-S4 results: docs/results/S4-results.md
-S5 results: docs/results/S5-results.md
-S6 results: docs/results/S6-results.md
-canonical S7 issue: #103
+004bfc9f6972b0bfc0295256dcdb7aada308b70b
 ```
+
+Canonical result documents:
+
+```text
+S0: docs/spikes/S0-results.md
+S1: docs/results/S1-results.md
+S2: docs/results/S2-results.md
+S3: docs/results/S3-results.md
+S4: docs/results/S4-results.md
+S5: docs/results/S5-results.md
+S6: docs/results/S6-results.md
+S7: docs/results/S7-results.md
+```
+
+Canonical S7 coordination issue: #103.
 
 ## S0 — Technical feasibility and provider boundary
 
 Status: **COMPLETED — GO**
 
-Proved:
+Accepted foundation:
 
 ```text
 Electron operator control plane
 persistent Chrome / Chromium Workers
 profile lease exclusivity
 renderer → sandbox preload → IPC → browser execution
-stable loopback project-owned test surface
-unexpected-close reconciliation
-forced-crash recovery
+project-owned loopback test surface
+unexpected-close / forced-crash recovery
 no automatic duplicate submission
 native Apple Silicon operation
 provider boundary separation
 ```
 
-Permanent S0 evidence does not include ChatGPT website automation or unsupported third-party AI output extraction.
+S0 does not authorize unsupported third-party AI automation or output extraction.
 
 ## S1 — Local Execution Kernel and Workspace Interconnect
 
@@ -88,26 +98,14 @@ Marketplace capability
 → bind task/execution
 → reserve Worker/resources
 → persisted Human Gate
-→ execute bounded effect
+→ bounded effect
 → canonical SQLite event/projection
 → evidence / recovery
 ```
 
-Major durable assets:
+Canonical assets include Workspace isolation, CapabilityPackage/Version/Installation, Agent grants, Task/ExecutionGraph, ResourceLock, HumanGate, ExecutionRun and Evidence.
 
-```text
-SQLite canonical events/projections
-Workspace isolation
-CapabilityPackage / Version / Installation
-Agent / AgentCapabilityGrant
-Task / ExecutionGraph
-ResourceLock
-HumanGate
-ExecutionRun / Evidence
-integrated secure Electron UI
-```
-
-Normative documents:
+Normative/result documents:
 
 ```text
 docs/contracts/S1-workspace-marketplace-agent-interconnect.md
@@ -128,33 +126,15 @@ Mission objective
 → same-Workspace Agent/capability bindings
 → deterministic ready-set
 → local step OR S1 authorization/runtime
-→ typed StepOutput
-→ declared AgentHandoff
+→ typed StepOutput / AgentHandoff
 → pause/resume/cancel/recovery/checkpoint
 → terminal evidence
 → Mission completion
 ```
 
-Major durable assets:
+S2 retained sandboxed preload isolation and recovered safely without replaying uncertain external effects.
 
-```text
-Mission / MissionRevision
-ExecutionPlan / PlanStep / StepBinding
-MissionRun / StepAttempt
-StepOutput / AgentHandoff
-MissionCheckpoint
-S2 IPC + integrated Electron Mission UI
-```
-
-S2 final real Electron acceptance found and closed a sandbox-preload defect before GO. The accepted preload remains sandboxed and self-contained.
-
-Normative documents:
-
-```text
-docs/contracts/S2-durable-mission-orchestration.md (or canonical S2 contract documents in repository)
-docs/testing/S2-acceptance-matrix.md
-docs/results/S2-results.md
-```
+Result: `docs/results/S2-results.md`.
 
 ## S3 — GitHub-Native Engineering Workflow
 
@@ -168,38 +148,13 @@ registered repository
 → exact-head PR binding
 → GET-only PR/check/review/base observation
 → fail-closed delivery gate
-→ immutable merge evidence
+→ immutable delivery evidence
 → declared S2 Mission continuation release
 ```
 
-Major durable assets:
+GitHub provider authority remains read-only in S3. GitHub writes require a separately accepted contract.
 
-```text
-RepositoryRegistration / RepositoryBinding
-BranchReservation / PathOwnershipClaim
-PullRequestBinding / PullRequestSnapshot
-CheckObservation
-ReviewThreadObservation
-MergeOrderConstraint
-DeliveryGate
-DeliveryEvidence
-RepairProposal (proposal-only)
-canonical SQLite GitHub observation events/projections
-integrated Electron repository/PR/CI/review evidence UI
-```
-
-S3 provider authority remains read-only. GitHub writes are not part of S3 and require a future separately accepted write contract.
-
-Final acceptance proved exact-head invalidation, stale-base fail-closed behavior, required check/review evidence, ownership and merge-order constraints, restart idempotency, merge-only Mission dependency release, native Electron UI, live private-repository GET-only GitHub observation, and privacy-safe immutable evidence.
-
-Normative documents:
-
-```text
-docs/contracts/S3-github-native-engineering-workflow.md
-docs/architecture/004-s3-github-native-engineering-workflow.md
-docs/testing/S3-acceptance-matrix.md
-docs/results/S3-results.md
-```
+Result: `docs/results/S3-results.md`.
 
 ## S4 — Multi-Session Operator Console
 
@@ -209,174 +164,76 @@ Accepted architecture:
 
 ```text
 S0 Worker/session state
-+ S1 authorization / HumanGate / canonical events
++ S1 authorization / HumanGate
 + S2 Mission state
-+ S3 GitHub delivery evidence
-→ derived Workspace-scoped OperatorCockpitSnapshot
++ S3 delivery evidence
+→ Workspace-scoped OperatorCockpitSnapshot
 → explanation / attention / lineage
 → bounded selected-Worker controls delegated to existing runtime
-→ secure Electron cockpit
 ```
 
-Accepted surfaces:
+S4 introduced no second scheduler/store/HumanGate/provider authority.
 
-```text
-Cockpit / Overview
-Projects & Workspaces
-Missions / Execution Graph
-Workers & Sessions
-Agents / Capabilities / Provider Use
-Human Gate Inbox
-Blockers & Recovery
-GitHub Delivery
-Evidence & Event Lineage
-```
-
-S4 final native acceptance proved two concurrent unrelated Chrome/Chromium Workers, exact selected-worker focus/pause/resume/stop isolation, persisted Human Gate attention/evidence lineage, Workspace fail-closed behavior, deterministic restart with zero submission/Mission replay, real Electron operation on native arm64, privacy-safe immutable evidence and zero residual scoped processes.
-
-S4 did not introduce a second scheduler/store/HumanGate/provider authority and did not add GitHub writes.
-
-Normative/result documents:
-
-```text
-docs/contracts/S4-multi-session-operator-console.md
-docs/architecture/005-s4-multi-session-operator-console.md
-docs/testing/S4-acceptance-matrix.md
-docs/results/S4-results.md
-```
+Result: `docs/results/S4-results.md`.
 
 ## S5 — Approved Provider Adapters
 
 Status: **COMPLETED — GO**
 
-Accepted path:
+Accepted first slice:
 
 ```text
 accepted Workspace / Agent / Capability authority
-→ accepted ProviderUseContract snapshot
-→ exact approved provider target
-→ immutable provider adapter definition
-→ bounded HTTPS GET/HEAD observation
-→ normalized body-free ProviderObservation
-→ canonical SQLite evidence/event
-→ S4 Operator Cockpit explanation
+→ ProviderUseContract snapshot
+→ exact approved public provider target
+→ bounded GET/HEAD observation
+→ body-free ProviderObservation
+→ canonical SQLite evidence
+→ S4 explanation
 ```
 
-Accepted initial adapters:
+Initial accepted adapters cover public Vercel and Netlify deployment observation. No authenticated provider writes, arbitrary URL fetch, response-body harvesting, credential replication, deployment mutation or billing mutation are authorized by S5.
 
-```text
-Vercel public deployment observation
-Netlify public deployment observation
-```
-
-Final accepted live targets were explicit user-owned public production aliases. Native and real Electron acceptance proved HTTP 200 observations, exact-target/provider checks, GET/HEAD-only method audit, conservative redirect/private-target handling, canonical SQLite persistence, same-userData restart with zero provider replay, privacy-safe immutable artifacts, and no provider write path.
-
-S5 fail-closed evidence also retained rejected acceptance inputs: a Vercel generated deployment URL that redirected to SSO was not followed or bypassed, and a Netlify project with no current deployment was not treated as healthy.
-
-Permanent first-slice boundary:
-
-```text
-GET/HEAD only
-exact target required
-HTTPS external targets only
-bounded same-origin redirect/private-target policy
-no arbitrary URL fetch IPC
-no response-body harvesting/persistence
-no credential/token/cookie replication
-no authenticated provider API
-no deploy/promote/rollback/domain/env/secret/billing mutation
-restart never replays provider access
-```
-
-Normative/result documents:
-
-```text
-docs/contracts/S5-approved-provider-adapters.md
-docs/architecture/006-s5-approved-provider-adapters.md
-docs/testing/S5-acceptance-matrix.md
-docs/results/S5-results.md
-```
+Result: `docs/results/S5-results.md`.
 
 ## S6 — Scheduling Policy
 
 Status: **COMPLETED — GO**
+
+Frozen accepted product head:
+
+```text
+b9cce3a331b33c273e5eecd11fa3269fd5c9b135
+```
 
 Accepted path:
 
 ```text
 canonical ready S1/S2 work
 + immutable SchedulingPolicySnapshot
-+ global/per-Workspace concurrency budgets
-+ explicit provider/action capacity
++ global/per-Workspace/provider bounds
 + safe Worker/session compatibility
 → deterministic priority + bounded fairness
-→ SchedulingDecision
-→ AssignmentProposal
-→ existing S2/S1 authority revalidation
-→ existing S1 Task / ResourceLock / HumanGate path
-→ canonical scheduling decision evidence
+→ SchedulingDecision / AssignmentProposal
+→ existing S2/S1 revalidation
+→ existing ResourceLock / HumanGate / runtime authority
 ```
 
-S6 is a policy/selection layer, not a second execution authority.
+S6 remains a policy/selection layer, not a second execution authority. It cannot invent work, approve HumanGates, bypass locks, infer unlimited provider capacity or directly start external effects.
 
-Final native acceptance at frozen product head:
-
-```text
-b9cce3a331b33c273e5eecd11fa3269fd5c9b135
-```
-
-proved:
-
-```text
-301 / 301 source tests PASS
-three canonical ready candidates competing for two bounded slots
-two accepted assignments and one remaining eligible/deferred candidate
-hard global/per-Workspace caps
-S1 browser_profile and provider_surface lock authority
-HumanGate stops selected work before browser submission
-deterministic digest
-bounded aging without exceeding priority bound
-unknown/stale provider capacity fail closed
-cross-Workspace session reuse fail closed
-stale proposal rejection
-SQLite + real Electron restart with zero scheduling/execution replay
-page/console errors 0
-residual scoped processes 0
-privacy-safe immutable artifacts
-```
-
-The native-readiness phase found and repaired a real integration gap before GO: S6 proposals had to be consumed inside the inherited S2 scheduler before S2 created StepAttempts, and S1 provider-surface reservations had to be visible to the S6 resource set.
-
-Permanent boundary:
-
-```text
-no Task/Mission/PlanStep invention
-no HumanGate approval/rejection
-no direct Worker/provider effect start
-no silent retry of failed/uncertain work
-no stale-proposal execution
-no ResourceLock bypass
-no cross-Workspace profile/session reuse
-unknown/stale provider capacity is conservative
-no quota/rate/pricing/concurrency probing or circumvention
-```
-
-Normative/result documents:
-
-```text
-docs/contracts/S6-scheduling-policy.md
-docs/architecture/007-s6-scheduling-policy.md
-docs/testing/S6-acceptance-matrix.md
-docs/results/S6-results.md
-```
+Result: `docs/results/S6-results.md`.
 
 ## S7 — Optional Collaboration and Sync
 
-Status: **CURRENT — GATE 0**
+Status: **COMPLETED — GO**
 
-Goal: add an opt-in collaboration mirror between independent AI Execution OS instances while preserving local SQLite/S0–S6 execution authority and offline correctness.
+Frozen accepted product head:
 
-First S7 vertical slice:
+```text
+004bfc9f6972b0bfc0295256dcdb7aada308b70b
+```
+
+Accepted path:
 
 ```text
 canonical local collaboration-safe state
@@ -386,10 +243,10 @@ canonical local collaboration-safe state
 → append/idempotent remote mirror
 → WorkspaceMembership / TeamRole visibility
 → read-only SharedWorkspaceSnapshot
-→ S4/S7 sync-status explanation
+→ S4/S7 collaboration explanation
 ```
 
-Core first-slice objects:
+Accepted durable objects:
 
 ```text
 SyncConfiguration
@@ -404,14 +261,41 @@ SharedWorkspaceSnapshot
 RemoteWorkerPresence
 ```
 
-Hard boundary:
+Final acceptance proved:
+
+```text
+351 / 351 frozen-product tests PASS
+two independent stable source identities
+two independent SQLite/userData roots
+project-owned GET/POST-only mirror with no ambient Authorization/Cookie
+bidirectional collaboration-safe visibility
+membership/TeamRole visibility filtering
+exact duplicate idempotency
+conflict/gap/cross-Workspace/unknown-source fail closed
+local canonical execution invariance under remote mirror pulls
+real Electron A + B on native arm64
+real Chrome Worker A + Chromium Worker B
+canonical dual WorkerBinding presence explanation
+cross-instance local Worker control isolation
+browser submissions 0
+graceful shutdown and restart
+acknowledged envelope replay 0
+page errors 0
+console errors 0
+residual scoped processes 0
+privacy scan hits 0
+```
+
+S7-F v1 also found a real local-test-server shutdown defect. PR #111 repaired graceful shutdown by closing remaining active localhost HTTP connections and added a regression test before the final frozen-head acceptance.
+
+Permanent S7 authority boundary:
 
 ```text
 remote mirror never overwrites canonical local execution projections
 remote/member role cannot control Worker or HumanGate
 remote status cannot release Mission dependency or create local work
 S7 disabled/offline never breaks S0–S6 local correctness
-no arbitrary URL/method/header transport
+no arbitrary renderer URL/method/header transport
 no browser cookie/token/profile/process replication
 no raw canonical event forwarding without safe projection
 no last-write-wins conflict hiding
@@ -419,38 +303,13 @@ cross-Workspace envelope/membership access fails closed
 acknowledged envelopes do not replay as new effects after restart
 ```
 
-Consistency model:
-
-```text
-same envelope id + same digest   → idempotent duplicate
-same envelope id + new digest    → divergence / reject
-next monotonic cursor            → append
-cursor gap                       → gap/stale / reject beyond gap
-unknown source/schema/class      → reject
-```
-
-Initial TeamRole values affect collaboration visibility only, not execution authority.
-
-Gate 0 documents:
+Normative/result documents:
 
 ```text
 docs/contracts/S7-optional-collaboration-sync.md
 docs/architecture/008-s7-optional-collaboration-sync.md
 docs/testing/S7-acceptance-matrix.md
-```
-
-Canonical coordination issue: #103.
-
-Planned owner topology:
-
-```text
-S7-A docs-only Gate 0
-S7-B sync envelope/cursor/integrity/divergence domain
-S7-C membership/TeamRole/visibility domain
-S7-D project-owned transport + remote mirror protocol
-S7-E collaboration/sync explanation UI
-S7-I shared SQLite/application/IPC/S4 integration
-S7-F frozen-head two-instance native + real Electron acceptance
+docs/results/S7-results.md
 ```
 
 ## Parallelism rules
@@ -471,20 +330,23 @@ sync endpoint/mirror target
 local/cloud target when applicable
 ```
 
-Two writers may run concurrently only when their write sets and exclusive resources do not overlap. Sibling implementation owners may not import unmerged sibling branches.
+Two writers may run concurrently only when their write sets and exclusive resources do not overlap. Sibling implementation owners may not import unmerged sibling branches. Shared root integration must have one explicit owner.
 
-## Documentation required before each implementation wave
+## Documentation required before any future implementation wave
 
 ```text
 goal
+exact starting main
 allowed files
 forbidden/shared files
 state transitions
+authority boundary
 provider-use status
 Human Gates
 failure/recovery behavior
 acceptance evidence
 stop conditions
+owner topology
 ```
 
 ## Permanent product boundaries
@@ -503,11 +365,7 @@ Remote collaboration state is not execution authority unless a future separately
 ## Current next action
 
 ```text
-accept and merge S7 Gate 0 docs-only contract
-→ launch disjoint S7-B / S7-C / S7-D / S7-E owners from one exact latest main
-→ merge each independently after exact-head validation
-→ start S7-I shared application/SQLite/IPC/S4 integration only after B/C/D/E are merged
-→ freeze exact S7-I product head
-→ execute S7-F native arm64 two-instance + real Electron collaboration acceptance
-→ issue GO / GO WITH ARCHITECTURE CHANGE / NO-GO
+S0–S7 are COMPLETE — GO.
+No implementation stage is currently active.
+Any next product milestone must begin with a new docs-only Gate 0 issue/contract/architecture/acceptance definition from the latest main.
 ```
