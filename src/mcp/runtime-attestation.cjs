@@ -165,12 +165,13 @@ async function attestObserveOnlyMcpRuntime({
   const identity = capabilityIdentity(compiledCapability, manifest);
   const normalizedServerId = requireText(serverId, 'serverId');
   const normalizedServerName = requireText(expectedServerName, 'expectedServerName');
+  const requestedProtocolVersion = requireText(protocolVersion, 'protocolVersion', 80);
   const dependency = dependencyFor(manifest, normalizedServerId);
   if (!dependency.required) throw new Error(`S1A runtime attestation requires ${normalizedServerId} to be a required dependency`);
   const requiredTools = observeOnlyTools(manifest);
 
   const initialized = await rpc(client, 'initialize', {
-    protocolVersion,
+    protocolVersion: requestedProtocolVersion,
     capabilities: {},
     clientInfo: {
       name: 'ai-execution-os-runtime-attestation',
@@ -179,6 +180,17 @@ async function attestObserveOnlyMcpRuntime({
   });
   if (initialized.authRequired) {
     return authReceipt({ identity, serverId: normalizedServerId, phase: 'initialize', checkedAt });
+  }
+
+  const negotiatedProtocolVersion = requireText(
+    initialized.result.protocolVersion,
+    'MCP negotiated protocol version',
+    80,
+  );
+  if (negotiatedProtocolVersion !== requestedProtocolVersion) {
+    throw new Error(
+      `MCP protocol negotiation mismatch: requested ${requestedProtocolVersion}, observed ${negotiatedProtocolVersion}`,
+    );
   }
 
   const serverInfo = requireObject(initialized.result.serverInfo, 'MCP initialize serverInfo');
@@ -194,6 +206,9 @@ async function attestObserveOnlyMcpRuntime({
   const listed = await rpc(client, 'tools/list', {});
   if (listed.authRequired) {
     return authReceipt({ identity, serverId: normalizedServerId, phase: 'tools/list', checkedAt });
+  }
+  if (requireTextIfPresent(listed.result.nextCursor)) {
+    throw new Error('MCP tools/list returned nextCursor; S1A discovery is incomplete and pagination is not accepted in v1');
   }
   const tools = Array.isArray(listed.result.tools) ? listed.result.tools : [];
   const byName = new Map();
@@ -214,7 +229,7 @@ async function attestObserveOnlyMcpRuntime({
     serverName: observedServerName,
     serverVersion: observedVersion.text,
     minimumVersion: dependency.minVersion.text,
-    protocolVersion: requireText(initialized.result.protocolVersion || protocolVersion, 'MCP protocol version'),
+    protocolVersion: negotiatedProtocolVersion,
     requiredTools: observedRequiredTools,
   };
 
@@ -230,7 +245,7 @@ async function attestObserveOnlyMcpRuntime({
     observedServerName,
     minimumServerVersion: dependency.minVersion.text,
     observedServerVersion: observedVersion.text,
-    protocolVersion: evidenceShape.protocolVersion,
+    protocolVersion: negotiatedProtocolVersion,
     requiredObserveTools: Object.freeze([...requiredTools]),
     observedRequiredTools: Object.freeze(observedRequiredTools),
     discoveryDigest: sha256(evidenceShape),
@@ -243,6 +258,11 @@ async function attestObserveOnlyMcpRuntime({
       humanApprovalInferred: false,
     }),
   });
+}
+
+function requireTextIfPresent(value) {
+  if (value === undefined || value === null || value === '') return null;
+  return requireText(value, 'MCP pagination cursor', 1000);
 }
 
 module.exports = {
