@@ -27,10 +27,13 @@ class S6SchedulingApplicationService extends S6PolicyApplicationService {
   }
 
   createRevision(input) {
-    const result = super.createRevision(input);
     for (const step of input.steps || []) {
       const priority = step.priority || 'normal';
       if (!PRIORITIES.has(priority)) throw new Error(`Invalid S6 scheduling priority: ${priority}`);
+    }
+    const result = super.createRevision(input);
+    for (const step of input.steps || []) {
+      const priority = step.priority || 'normal';
       const id = boundedId('schedpriority', result.plan.id, step.id);
       const candidate = Object.freeze({
         id,
@@ -154,7 +157,7 @@ class S6SchedulingApplicationService extends S6PolicyApplicationService {
       const step = plan.steps.find((item) => item.id === sourceRecord.sourceId);
       if (!step || this.latestAttempt(runId, step.id)) break;
 
-      let attempt = this.stepAttempt.save(createStepAttempt({
+      const attempt = this.stepAttempt.save(createStepAttempt({
         run: this.missionRun.get(runId),
         step,
         attemptNumber: 1,
