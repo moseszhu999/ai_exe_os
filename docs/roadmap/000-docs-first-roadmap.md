@@ -20,9 +20,10 @@ provider adapters
 engineering-delivery evidence
 operator cockpit / explainability
 scheduling policy / bounded utilization
+optional collaboration / sync mirror
 ```
 
-Technical feasibility and provider-authorized use remain separate gates.
+Technical feasibility, provider-authorized use and collaboration authority remain separate gates.
 
 ## Canonical stage registry
 
@@ -35,21 +36,22 @@ S2  Durable Multi-Step Mission Orchestration                    COMPLETE — GO
 S3  GitHub-Native Engineering Workflow                          COMPLETE — GO
 S4  Multi-Session Operator Console                              COMPLETE — GO
 S5  Approved Provider Adapters                                  COMPLETE — GO
-S6  Scheduling Policy                                           CURRENT — GATE 0
-S7  Optional Collaboration and Sync                             FUTURE
+S6  Scheduling Policy                                           COMPLETE — GO
+S7  Optional Collaboration and Sync                             CURRENT — GATE 0
 ```
 
 Current baseline:
 
 ```text
-current main at S6 Gate 0 start: 0fe6601c20f7c75be739c8617f92a85f3f43510a
+current main at S7 Gate 0 start: e7d2e7ee8d5ab0bfccbaaae59986dd97c016f0df
 S0 results: docs/spikes/S0-results.md
 S1 results: docs/results/S1-results.md
 S2 results: docs/results/S2-results.md
 S3 results: docs/results/S3-results.md
 S4 results: docs/results/S4-results.md
 S5 results: docs/results/S5-results.md
-canonical S6 issue: #88
+S6 results: docs/results/S6-results.md
+canonical S7 issue: #103
 ```
 
 ## S0 — Technical feasibility and provider boundary
@@ -297,32 +299,57 @@ docs/results/S5-results.md
 
 ## S6 — Scheduling Policy
 
-Status: **CURRENT — GATE 0**
+Status: **COMPLETED — GO**
 
-Goal: optimize utilization only among work already authorized and already ready under accepted S1/S2 authority, while preserving hard resource/provider/HumanGate boundaries.
-
-First S6 vertical slice:
+Accepted path:
 
 ```text
 canonical ready S1/S2 work
 + immutable SchedulingPolicySnapshot
 + global/per-Workspace concurrency budgets
-+ explicit current provider/action capacity
++ explicit provider/action capacity
 + safe Worker/session compatibility
 → deterministic priority + bounded fairness
 → SchedulingDecision
 → AssignmentProposal
 → existing S2/S1 authority revalidation
-→ existing runtime start
+→ existing S1 Task / ResourceLock / HumanGate path
 → canonical scheduling decision evidence
 ```
 
-S6 is a policy layer, not a second scheduler authority.
+S6 is a policy/selection layer, not a second execution authority.
 
-Hard boundary:
+Final native acceptance at frozen product head:
 
 ```text
-eligible candidates are a strict subset of canonical ready work
+b9cce3a331b33c273e5eecd11fa3269fd5c9b135
+```
+
+proved:
+
+```text
+301 / 301 source tests PASS
+three canonical ready candidates competing for two bounded slots
+two accepted assignments and one remaining eligible/deferred candidate
+hard global/per-Workspace caps
+S1 browser_profile and provider_surface lock authority
+HumanGate stops selected work before browser submission
+deterministic digest
+bounded aging without exceeding priority bound
+unknown/stale provider capacity fail closed
+cross-Workspace session reuse fail closed
+stale proposal rejection
+SQLite + real Electron restart with zero scheduling/execution replay
+page/console errors 0
+residual scoped processes 0
+privacy-safe immutable artifacts
+```
+
+The native-readiness phase found and repaired a real integration gap before GO: S6 proposals had to be consumed inside the inherited S2 scheduler before S2 created StepAttempts, and S1 provider-surface reservations had to be visible to the S6 resource set.
+
+Permanent boundary:
+
+```text
 no Task/Mission/PlanStep invention
 no HumanGate approval/rejection
 no direct Worker/provider effect start
@@ -334,44 +361,97 @@ unknown/stale provider capacity is conservative
 no quota/rate/pricing/concurrency probing or circumvention
 ```
 
-Initial deterministic policy dimensions:
-
-```text
-critical | high | normal | low priority
-bounded aging / starvation prevention
-stable canonical-ID tie-break
-hard global/per-Workspace/provider capacity
-eligible/draining/unavailable Worker state
-compatible-only session reuse preference
-```
-
-No opaque ML ranking is required for S6 v1. Identical bounded snapshots must produce identical ordered candidates and decision digest.
-
-Normative Gate 0 documents:
+Normative/result documents:
 
 ```text
 docs/contracts/S6-scheduling-policy.md
 docs/architecture/007-s6-scheduling-policy.md
 docs/testing/S6-acceptance-matrix.md
+docs/results/S6-results.md
 ```
-
-Canonical coordination issue: #88.
 
 ## S7 — Optional Collaboration and Sync
 
-Status: **FUTURE**
+Status: **CURRENT — GATE 0**
 
-Possible work only after local correctness remains proven:
+Goal: add an opt-in collaboration mirror between independent AI Execution OS instances while preserving local SQLite/S0–S6 execution authority and offline correctness.
+
+First S7 vertical slice:
 
 ```text
-cloud event replication
-team roles
-shared Workspace/Mission state
-remote Worker inventory
-organization policy
+canonical local collaboration-safe state
+→ explicit safe projection compiler
+→ immutable SyncEnvelope / monotonic cursor / digest chain
+→ exact project-owned sync transport
+→ append/idempotent remote mirror
+→ WorkspaceMembership / TeamRole visibility
+→ read-only SharedWorkspaceSnapshot
+→ S4/S7 sync-status explanation
 ```
 
-Online databases are not required for S0–S6 local correctness.
+Core first-slice objects:
+
+```text
+SyncConfiguration
+SyncSourceInstance
+SyncEnvelope
+SyncCursor
+SyncAck
+SyncDivergence
+WorkspaceMembership
+TeamRole
+SharedWorkspaceSnapshot
+RemoteWorkerPresence
+```
+
+Hard boundary:
+
+```text
+remote mirror never overwrites canonical local execution projections
+remote/member role cannot control Worker or HumanGate
+remote status cannot release Mission dependency or create local work
+S7 disabled/offline never breaks S0–S6 local correctness
+no arbitrary URL/method/header transport
+no browser cookie/token/profile/process replication
+no raw canonical event forwarding without safe projection
+no last-write-wins conflict hiding
+cross-Workspace envelope/membership access fails closed
+acknowledged envelopes do not replay as new effects after restart
+```
+
+Consistency model:
+
+```text
+same envelope id + same digest   → idempotent duplicate
+same envelope id + new digest    → divergence / reject
+next monotonic cursor            → append
+cursor gap                       → gap/stale / reject beyond gap
+unknown source/schema/class      → reject
+```
+
+Initial TeamRole values affect collaboration visibility only, not execution authority.
+
+Gate 0 documents:
+
+```text
+docs/contracts/S7-optional-collaboration-sync.md
+docs/architecture/008-s7-optional-collaboration-sync.md
+docs/testing/S7-acceptance-matrix.md
+```
+
+Canonical coordination issue: #103.
+
+Planned owner topology:
+
+```text
+S7-A docs-only Gate 0
+S7-B sync envelope/cursor/integrity/divergence domain
+S7-C membership/TeamRole/visibility domain
+S7-D project-owned transport + remote mirror protocol
+S7-E collaboration/sync explanation UI
+S7-I shared SQLite/application/IPC/S4 integration
+S7-F frozen-head two-instance native + real Electron acceptance
+```
 
 ## Parallelism rules
 
@@ -386,6 +466,8 @@ Mission / PlanStep owner
 browser profile
 provider surface
 PR metadata target
+sync source identity
+sync endpoint/mirror target
 local/cloud target when applicable
 ```
 
@@ -415,16 +497,17 @@ No circumvention of pricing, metering, usage, rate, concurrency, quota, or restr
 No hidden external writes.
 No automatic production deployment or production database migration by default.
 No financial, payment, wallet, token, settlement, or legal irreversible execution in the initial product.
+Remote collaboration state is not execution authority unless a future separately accepted milestone explicitly says so.
 ```
 
 ## Current next action
 
 ```text
-accept and merge S6 Gate 0 docs-only contract
-→ launch disjoint S6-B / S6-C / S6-D / S6-E owners from one exact latest main
+accept and merge S7 Gate 0 docs-only contract
+→ launch disjoint S7-B / S7-C / S7-D / S7-E owners from one exact latest main
 → merge each independently after exact-head validation
-→ start S6-I shared application/SQLite/IPC/S4 integration only after B/C/D/E are merged
-→ freeze exact S6-I product head
-→ execute S6-F native arm64 multi-session bounded-scheduling acceptance
+→ start S7-I shared application/SQLite/IPC/S4 integration only after B/C/D/E are merged
+→ freeze exact S7-I product head
+→ execute S7-F native arm64 two-instance + real Electron collaboration acceptance
 → issue GO / GO WITH ARCHITECTURE CHANGE / NO-GO
 ```
