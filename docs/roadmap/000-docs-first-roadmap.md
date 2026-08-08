@@ -19,13 +19,14 @@ provider-use contracts
 provider adapters
 engineering-delivery evidence
 operator cockpit / explainability
+scheduling policy / bounded utilization
 ```
 
 Technical feasibility and provider-authorized use remain separate gates.
 
 ## Canonical stage registry
 
-This file is the current stage-number authority. Earlier versions of the roadmap had reserved `S2` for a GitHub-native workflow. During execution, the accepted product sequence inserted the more foundational durable Mission orchestration milestone as S2. The registry remains reconciled without renaming accepted S0/S1/S2 artifacts retroactively.
+This file is the current stage-number authority. Earlier roadmap versions reserved `S2` for a GitHub-native workflow. During execution, the accepted sequence inserted the more foundational durable Mission orchestration milestone as S2. Accepted historical stage artifacts are not renamed retroactively.
 
 ```text
 S0  Technical feasibility and provider boundary                  COMPLETE — GO
@@ -33,21 +34,22 @@ S1  Local Execution Kernel and Workspace Interconnect           COMPLETE — GO
 S2  Durable Multi-Step Mission Orchestration                    COMPLETE — GO
 S3  GitHub-Native Engineering Workflow                          COMPLETE — GO
 S4  Multi-Session Operator Console                              COMPLETE — GO
-S5  Approved Provider Adapters                                  CURRENT — GATE 0
-S6  Scheduling Policy                                           PLANNED
+S5  Approved Provider Adapters                                  COMPLETE — GO
+S6  Scheduling Policy                                           CURRENT — GATE 0
 S7  Optional Collaboration and Sync                             FUTURE
 ```
 
 Current baseline:
 
 ```text
-current main at S5 Gate 0 start: 4982b2bd6fd896f26c85f6dc5146653804ebec07
+current main at S6 Gate 0 start: 0fe6601c20f7c75be739c8617f92a85f3f43510a
 S0 results: docs/spikes/S0-results.md
 S1 results: docs/results/S1-results.md
 S2 results: docs/results/S2-results.md
 S3 results: docs/results/S3-results.md
 S4 results: docs/results/S4-results.md
-canonical S5 issue: #73
+S5 results: docs/results/S5-results.md
+canonical S6 issue: #88
 ```
 
 ## S0 — Technical feasibility and provider boundary
@@ -131,7 +133,7 @@ Mission objective
 → Mission completion
 ```
 
-Major assets:
+Major durable assets:
 
 ```text
 Mission / MissionRevision
@@ -243,11 +245,9 @@ docs/results/S4-results.md
 
 ## S5 — Approved Provider Adapters
 
-Status: **CURRENT — GATE 0**
+Status: **COMPLETED — GO**
 
-Goal: add reusable external-provider adapters only through explicitly accepted provider-use contracts and exact approved targets, without turning the product into a generic HTTP client or deployment engine.
-
-First vertical slice:
+Accepted path:
 
 ```text
 accepted Workspace / Agent / Capability authority
@@ -260,59 +260,102 @@ accepted Workspace / Agent / Capability authority
 → S4 Operator Cockpit explanation
 ```
 
-Initial provider-specific targets:
+Accepted initial adapters:
 
 ```text
 Vercel public deployment observation
 Netlify public deployment observation
 ```
 
-First-slice hard boundary:
+Final accepted live targets were explicit user-owned public production aliases. Native and real Electron acceptance proved HTTP 200 observations, exact-target/provider checks, GET/HEAD-only method audit, conservative redirect/private-target handling, canonical SQLite persistence, same-userData restart with zero provider replay, privacy-safe immutable artifacts, and no provider write path.
+
+S5 fail-closed evidence also retained rejected acceptance inputs: a Vercel generated deployment URL that redirected to SSO was not followed or bypassed, and a Netlify project with no current deployment was not treated as healthy.
+
+Permanent first-slice boundary:
 
 ```text
 GET/HEAD only
 exact target required
 HTTPS external targets only
-bounded redirect/private-target policy
+bounded same-origin redirect/private-target policy
 no arbitrary URL fetch IPC
 no response-body harvesting/persistence
 no credential/token/cookie replication
+no authenticated provider API
 no deploy/promote/rollback/domain/env/secret/billing mutation
-no GitHub write
-no Supabase/Neon data/schema/config mutation
 restart never replays provider access
 ```
 
-Authenticated provider APIs and every provider write action remain outside the first S5 contract. Any later write capability requires its own reviewed provider contract and Human-Gate semantics before implementation.
-
-Normative Gate 0 documents:
+Normative/result documents:
 
 ```text
 docs/contracts/S5-approved-provider-adapters.md
 docs/architecture/006-s5-approved-provider-adapters.md
 docs/testing/S5-acceptance-matrix.md
+docs/results/S5-results.md
 ```
-
-Canonical coordination issue: #73.
 
 ## S6 — Scheduling Policy
 
-Status: **PLANNED**
+Status: **CURRENT — GATE 0**
 
-Goal: optimize long-lived Worker and Mission utilization under bounded concurrency, evidence dependencies and provider rules.
+Goal: optimize utilization only among work already authorized and already ready under accepted S1/S2 authority, while preserving hard resource/provider/HumanGate boundaries.
 
-Potential work:
+First S6 vertical slice:
 
 ```text
-priority policy
-resource/session reuse policy
-local cost / throughput metrics
-retry / waiting-human policy
-Worker health scoring
-provider quota awareness
+canonical ready S1/S2 work
++ immutable SchedulingPolicySnapshot
++ global/per-Workspace concurrency budgets
++ explicit current provider/action capacity
++ safe Worker/session compatibility
+→ deterministic priority + bounded fairness
+→ SchedulingDecision
+→ AssignmentProposal
+→ existing S2/S1 authority revalidation
+→ existing runtime start
+→ canonical scheduling decision evidence
 ```
 
-The scheduler must not invent work, expand task scope, or circumvent pricing, metering, usage, rate, concurrency, or product restrictions.
+S6 is a policy layer, not a second scheduler authority.
+
+Hard boundary:
+
+```text
+eligible candidates are a strict subset of canonical ready work
+no Task/Mission/PlanStep invention
+no HumanGate approval/rejection
+no direct Worker/provider effect start
+no silent retry of failed/uncertain work
+no stale-proposal execution
+no ResourceLock bypass
+no cross-Workspace profile/session reuse
+unknown/stale provider capacity is conservative
+no quota/rate/pricing/concurrency probing or circumvention
+```
+
+Initial deterministic policy dimensions:
+
+```text
+critical | high | normal | low priority
+bounded aging / starvation prevention
+stable canonical-ID tie-break
+hard global/per-Workspace/provider capacity
+eligible/draining/unavailable Worker state
+compatible-only session reuse preference
+```
+
+No opaque ML ranking is required for S6 v1. Identical bounded snapshots must produce identical ordered candidates and decision digest.
+
+Normative Gate 0 documents:
+
+```text
+docs/contracts/S6-scheduling-policy.md
+docs/architecture/007-s6-scheduling-policy.md
+docs/testing/S6-acceptance-matrix.md
+```
+
+Canonical coordination issue: #88.
 
 ## S7 — Optional Collaboration and Sync
 
@@ -328,7 +371,7 @@ remote Worker inventory
 organization policy
 ```
 
-Online databases are not required for S0–S4.
+Online databases are not required for S0–S6 local correctness.
 
 ## Parallelism rules
 
@@ -368,7 +411,7 @@ stop conditions
 No credential, cookie, password, authorization-code, or copied-token replication.
 No CAPTCHA, identity-control, anti-abuse, fingerprint, user-agent, TCP, TLS, or protocol evasion.
 No automated third-party AI output extraction where terms prohibit it.
-No circumvention of pricing, metering, usage, rate, concurrency, or restrictions.
+No circumvention of pricing, metering, usage, rate, concurrency, quota, or restrictions.
 No hidden external writes.
 No automatic production deployment or production database migration by default.
 No financial, payment, wallet, token, settlement, or legal irreversible execution in the initial product.
@@ -377,11 +420,11 @@ No financial, payment, wallet, token, settlement, or legal irreversible executio
 ## Current next action
 
 ```text
-accept and merge S5 Gate 0 docs-only contract
-→ launch disjoint S5-B / S5-C / S5-D / S5-E owners from one exact latest main
+accept and merge S6 Gate 0 docs-only contract
+→ launch disjoint S6-B / S6-C / S6-D / S6-E owners from one exact latest main
 → merge each independently after exact-head validation
-→ start S5-I shared application/SQLite/IPC/S4 integration only after B/C/D/E are merged
-→ freeze exact S5-I product head
-→ execute S5-F native arm64 + live Vercel/Netlify read-only acceptance
+→ start S6-I shared application/SQLite/IPC/S4 integration only after B/C/D/E are merged
+→ freeze exact S6-I product head
+→ execute S6-F native arm64 multi-session bounded-scheduling acceptance
 → issue GO / GO WITH ARCHITECTURE CHANGE / NO-GO
 ```
