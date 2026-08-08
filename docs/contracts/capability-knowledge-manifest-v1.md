@@ -37,18 +37,9 @@ The manifest is a publication input. It is **not runtime authority**.
 
 ```text
 observe        read-only/live context
-Draft          proposal/draft creation only
+draft          proposal/draft creation only
 internalWrite  bounded canonical SaaS write
-aexternalAction external/public/irreversible action
-```
-
-Canonical field names are:
-
-```text
-observe
-draft
-internalWrite
-externalAction
+externalAction external/public/irreversible action
 ```
 
 An action may appear in exactly one class.
