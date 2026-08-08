@@ -10,7 +10,7 @@ const { deepFreeze, requiredText } = require('./workspace-model.cjs');
 
 const MANIFEST_SCHEMA = 'capability.knowledge.manifest.v1';
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
-const SKILL_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const AGENT_SKILL_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const KNOWLEDGE_POLICIES = new Set([
   'monitor-high',
   'review-quarterly',
@@ -24,7 +24,7 @@ const TOP_LEVEL_KEYS = new Set([
   'package',
   'version',
   'roleRefs',
-  'skillRefs',
+  'agentSkillRefs',
   'mcpDependencies',
   'toolGrants',
   'knowledge',
@@ -84,21 +84,23 @@ function normalizeVersion(value) {
   });
 }
 
-function normalizeSkillRefs(values, context) {
-  if (!Array.isArray(values) || values.length === 0) throw new Error('skillRefs requires at least one skill');
+function normalizeAgentSkillRefs(values, context) {
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error('agentSkillRefs requires at least one Agent Skill');
+  }
   const seen = new Set();
   return values.map((entry) => {
-    const input = assertPlainObject(entry, 'skillRef');
-    assertExactKeys(input, new Set(['skillId', 'version']), 'skillRef');
-    const skillId = requiredText(input.skillId, 'skill id', 64);
-    if (!SKILL_ID_PATTERN.test(skillId)) throw new Error(`Invalid skill id: ${skillId}`);
-    const version = requiredText(input.version, 'skill version', 80);
-    if (!VERSION_PATTERN.test(version)) throw new Error(`Invalid skill version for ${skillId}`);
+    const input = assertPlainObject(entry, 'agentSkillRef');
+    assertExactKeys(input, new Set(['skillId', 'version']), 'agentSkillRef');
+    const skillId = requiredText(input.skillId, 'Agent Skill id', 64);
+    if (!AGENT_SKILL_ID_PATTERN.test(skillId)) throw new Error(`Invalid Agent Skill id: ${skillId}`);
+    const version = requiredText(input.version, 'Agent Skill version', 80);
+    if (!VERSION_PATTERN.test(version)) throw new Error(`Invalid Agent Skill version for ${skillId}`);
     const key = `${skillId}@${version}`;
-    if (seen.has(key)) throw new Error(`Duplicate skill ref: ${key}`);
+    if (seen.has(key)) throw new Error(`Duplicate Agent Skill ref: ${key}`);
     seen.add(key);
-    if (context.skillCatalog && context.skillCatalog.has(key) === false) {
-      throw new Error(`Unknown skill ref: ${key}`);
+    if (context.agentSkillCatalog && context.agentSkillCatalog.has(key) === false) {
+      throw new Error(`Unknown Agent Skill ref: ${key}`);
     }
     return Object.freeze({ skillId, version });
   });
@@ -205,7 +207,7 @@ function compileCapabilityKnowledgeManifest(manifest, context = {}) {
   const sourceRefs = sourceCatalog ? new Set(sourceCatalog.keys()) : null;
   const versionInput = normalizeVersion(input.version);
   const roleRefs = normalizeStringArray(input.roleRefs, 'roleRefs', { identifiers: true, minItems: 1 });
-  const skillRefs = normalizeSkillRefs(input.skillRefs, context);
+  const agentSkillRefs = normalizeAgentSkillRefs(input.agentSkillRefs, context);
   const mcpDependencies = normalizeMcpDependencies(input.mcpDependencies, context);
   const toolGrants = normalizeToolGrants(input.toolGrants, mcpDependencies, context);
   const knowledge = normalizeKnowledge(input.knowledge, sourceRefs, context);
@@ -224,7 +226,7 @@ function compileCapabilityKnowledgeManifest(manifest, context = {}) {
     package: packageModel,
     version: versionInput,
     roleRefs,
-    skillRefs,
+    agentSkillRefs,
     mcpDependencies,
     toolGrants,
     knowledge,
@@ -259,7 +261,7 @@ function compileCapabilityKnowledgeManifest(manifest, context = {}) {
     version: capabilityVersion,
     metadata: {
       roleRefs,
-      skillRefs,
+      agentSkillRefs,
       mcpDependencies,
       toolGrants,
       knowledge,
