@@ -239,7 +239,7 @@ class S7ApplicationService extends S6SchedulingApplicationService {
       name: workspace.name || workspace.title || workspace.id,
       status: workspace.status,
       projectId: workspace.projectId || null,
-      updatedAt: workspace.updatedAt || workspace.createdAt || this.clock(),
+      updatedAt: workspace.updatedAt || workspace.createdAt || null,
     });
 
     for (const mission of missionState.missions || []) {
@@ -251,7 +251,7 @@ class S7ApplicationService extends S6SchedulingApplicationService {
         status: run?.state || mission.status || 'defined',
         revision: mission.currentRevision || mission.revision || null,
         runId: run?.id || null,
-        updatedAt: run?.updatedAt || run?.completedAt || run?.startedAt || mission.updatedAt || mission.createdAt || this.clock(),
+        updatedAt: run?.updatedAt || run?.completedAt || run?.startedAt || mission.updatedAt || mission.createdAt || null,
       });
     }
 
@@ -263,7 +263,7 @@ class S7ApplicationService extends S6SchedulingApplicationService {
           name: step.name || step.id,
           state: step.state,
           priority: step.priority || 'normal',
-          updatedAt: step.updatedAt || plan.updatedAt || plan.createdAt || this.clock(),
+          updatedAt: step.updatedAt || plan.updatedAt || plan.createdAt || null,
         });
       }
     }
@@ -276,7 +276,7 @@ class S7ApplicationService extends S6SchedulingApplicationService {
         state: gate.state,
         reasonCode: gate.reasonCode || gate.reason || null,
         requestedAt: gate.requestedAt || gate.createdAt || null,
-        updatedAt: gate.updatedAt || gate.decidedAt || gate.createdAt || this.clock(),
+        updatedAt: gate.updatedAt || gate.decidedAt || gate.createdAt || null,
       });
     }
 
@@ -289,7 +289,7 @@ class S7ApplicationService extends S6SchedulingApplicationService {
         reasonCodes: decision.reasonCodes || [],
         inputDigest: decision.inputDigest || null,
         decisionDigest: decision.decisionDigest || null,
-        evaluatedAt: decision.evaluatedAt || this.clock(),
+        evaluatedAt: decision.evaluatedAt || null,
       });
     }
 
@@ -302,7 +302,7 @@ class S7ApplicationService extends S6SchedulingApplicationService {
         headSha: gate.evaluatedHeadSha || binding?.expectedHeadSha || null,
         state: gate.state,
         gateState: gate.state,
-        observedAt: gate.evaluatedAt || gate.updatedAt || this.clock(),
+        observedAt: gate.evaluatedAt || gate.updatedAt || null,
       });
     }
 
@@ -333,7 +333,7 @@ class S7ApplicationService extends S6SchedulingApplicationService {
         statusClass,
         browserChannelClass: ['chrome', 'chromium'].includes(live?.browserChannel || binding.browserChannel) ? (live?.browserChannel || binding.browserChannel) : 'unknown',
         role: binding.role || live?.role || 'unknown',
-        observedAt: this.clock(),
+        observedAt: live?.updatedAt || live?.startedAt || binding.updatedAt || binding.createdAt || null,
       });
     }
 
