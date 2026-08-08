@@ -6,10 +6,10 @@ const { S6SchedulingApplicationService } = require('../src/application/s6-schedu
 const { boundedId } = require('../src/application/s6-index.cjs');
 
 class FakeWorkerManager {
-  constructor() {
+  constructor(status = 'idle') {
     this.workers = [
-      { id: 's1-worker-chrome', projectId: 's1-local-project', role: 'review', status: 'idle', browserChannel: 'chrome' },
-      { id: 's1-worker-chromium', projectId: 's1-local-project', role: 'implementation', status: 'idle', browserChannel: 'chromium' },
+      { id: 's1-worker-chrome', projectId: 's1-local-project', role: 'review', status, browserChannel: 'chrome' },
+      { id: 's1-worker-chromium', projectId: 's1-local-project', role: 'implementation', status, browserChannel: 'chromium' },
     ];
     this.startCalls = 0;
     this.submitCalls = 0;
@@ -39,7 +39,7 @@ function recordPolicy(service, overrides = {}) {
   });
 }
 
-function prepareMission(service) {
+function prepareMission(service, { includeLow = true } = {}) {
   const install = service.installCapability({ workspaceId: 'workspace-a', packageId: 'local.form-submit', version: '1.0.0' });
   service.grantCapability({
     workspaceId: 'workspace-a',
@@ -48,34 +48,37 @@ function prepareMission(service) {
     allowedActions: ['submit_payload'],
     allowedTargets: [service.localTarget],
   });
-  service.createMission({ id: 's6-mission', workspaceId: 'workspace-a', title: 'S6 bounded scheduling mission', objective: 'three ready steps for two assignment slots' });
+  service.createMission({ id: 's6-mission', workspaceId: 'workspace-a', title: 'S6 bounded scheduling mission', objective: 'ready steps for bounded assignment slots' });
+  const steps = [
+    {
+      id: 'step-normal', name: 'Normal priority Chromium work', agentId: 'agent-a', installationId: install.id,
+      capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: service.localTarget,
+      workerId: 's1-worker-chromium', dependsOn: [], declaredInputs: [], declaredOutputs: ['normal-result'],
+      evidenceRequirements: ['local result text'], humanGatePolicy: 'action', resourceRequirements: [], priority: 'normal', payload: 'normal',
+    },
+    {
+      id: 'step-high', name: 'High priority Chrome work', agentId: 'agent-a', installationId: install.id,
+      capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: service.localTarget,
+      workerId: 's1-worker-chrome', dependsOn: [], declaredInputs: [], declaredOutputs: ['high-result'],
+      evidenceRequirements: ['local result text'], humanGatePolicy: 'action', resourceRequirements: [], priority: 'high', payload: 'high',
+    },
+  ];
+  if (includeLow) {
+    steps.unshift({
+      id: 'step-low', name: 'Low priority Chrome work', agentId: 'agent-a', installationId: install.id,
+      capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: service.localTarget,
+      workerId: 's1-worker-chrome', dependsOn: [], declaredInputs: [], declaredOutputs: ['low-result'],
+      evidenceRequirements: ['local result text'], humanGatePolicy: 'action', resourceRequirements: [], priority: 'low', payload: 'low',
+    });
+  }
   return service.createRevision({
     id: 's6-revision',
     workspaceId: 'workspace-a',
     missionId: 's6-mission',
     revision: 1,
     objective: 'exercise priority and capacity before S2 creates attempts',
-    terminalStepIds: ['step-high', 'step-normal', 'step-low'],
-    steps: [
-      {
-        id: 'step-low', name: 'Low priority Chrome work', agentId: 'agent-a', installationId: install.id,
-        capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: service.localTarget,
-        workerId: 's1-worker-chrome', dependsOn: [], declaredInputs: [], declaredOutputs: ['low-result'],
-        evidenceRequirements: ['local result text'], humanGatePolicy: 'action', resourceRequirements: [], priority: 'low', payload: 'low',
-      },
-      {
-        id: 'step-normal', name: 'Normal priority Chromium work', agentId: 'agent-a', installationId: install.id,
-        capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: service.localTarget,
-        workerId: 's1-worker-chromium', dependsOn: [], declaredInputs: [], declaredOutputs: ['normal-result'],
-        evidenceRequirements: ['local result text'], humanGatePolicy: 'action', resourceRequirements: [], priority: 'normal', payload: 'normal',
-      },
-      {
-        id: 'step-high', name: 'High priority Chrome work', agentId: 'agent-a', installationId: install.id,
-        capabilityVersionId: 'local.form-submit@1.0.0', action: 'submit_payload', target: service.localTarget,
-        workerId: 's1-worker-chrome', dependsOn: [], declaredInputs: [], declaredOutputs: ['high-result'],
-        evidenceRequirements: ['local result text'], humanGatePolicy: 'action', resourceRequirements: [], priority: 'high', payload: 'high',
-      },
-    ],
+    terminalStepIds: steps.map((step) => step.id),
+    steps,
   });
 }
 
@@ -128,6 +131,46 @@ test('S6 scheduler consumes policy proposal before S2 creates attempts and reser
   }
 });
 
+test('ready action-gated work is schedulable, while the resulting waiting_human attempt is not re-scheduled', () => {
+  const service = new S6SchedulingApplicationService({
+    databasePath: ':memory:', workerManager: new FakeWorkerManager(), clock: () => '2026-08-08T00:05:00.000Z',
+    localTarget: 'http://127.0.0.1:43119/task-form.html',
+  });
+  try {
+    recordPolicy(service, { globalMaxActive: 1, workspaceMaxActive: 1 });
+    prepareMission(service, { includeLow: false });
+    service.startMission({ workspaceId: 'workspace-a', missionId: 's6-mission', revisionId: 's6-revision', runId: 's6-run-gate' });
+    const state = service.queryMissionState('workspace-a');
+    const attempts = state.stepAttempts.filter((item) => item.missionRunId === 's6-run-gate');
+    assert.equal(attempts.length, 1);
+    assert.equal(attempts[0].stepId, 'step-high');
+    assert.equal(attempts[0].state, 'waiting_human');
+    assert.equal(service.assignmentProposal.list().length, 1);
+    assert.equal(service.querySchedulingState('workspace-a').eligibleQueue.some((item) => item.id === boundedId('schedcand', 's6-run-gate', 'step-high')), false);
+  } finally {
+    service.close();
+  }
+});
+
+test('live browser sessions are eligible capacity supply until S1 browser-profile locks reserve them', () => {
+  const workerManager = new FakeWorkerManager('active');
+  const service = new S6SchedulingApplicationService({
+    databasePath: ':memory:', workerManager, clock: () => '2026-08-08T00:05:00.000Z',
+    localTarget: 'http://127.0.0.1:43119/task-form.html',
+  });
+  try {
+    const policy = recordPolicy(service);
+    const workers = service.safeWorkerSnapshots('workspace-a');
+    assert.deepEqual(workers.map((item) => item.status), ['eligible', 'eligible']);
+    assert.deepEqual(workers.map((item) => item.activeAssignmentCount), [0, 0]);
+    const budgets = service.concurrencyBudgets('workspace-a', policy);
+    assert.equal(budgets.globalBudget.activeObserved, 0);
+    assert.equal(budgets.workspaceBudget.activeObserved, 0);
+  } finally {
+    service.close();
+  }
+});
+
 test('without an S6 policy the inherited S2 scheduler behavior remains unchanged', () => {
   const workerManager = new FakeWorkerManager();
   const service = new S6SchedulingApplicationService({
@@ -137,17 +180,17 @@ test('without an S6 policy the inherited S2 scheduler behavior remains unchanged
     localTarget: 'http://127.0.0.1:43119/task-form.html',
   });
   try {
-    prepareMission(service);
+    prepareMission(service, { includeLow: false });
     service.startMission({ workspaceId: 'workspace-a', missionId: 's6-mission', revisionId: 's6-revision', runId: 's6-run-no-policy' });
     const attempts = service.queryMissionState('workspace-a').stepAttempts.filter((item) => item.missionRunId === 's6-run-no-policy');
-    assert.equal(attempts.length, 3, 'legacy S2 eagerly schedules the complete root ready-set when no S6 policy exists');
+    assert.equal(attempts.length, 2, 'legacy S2 eagerly schedules the distinct-worker root ready-set when no S6 policy exists');
     assert.equal(service.schedulingDecision.list().length, 0);
   } finally {
     service.close();
   }
 });
 
-test('priority metadata is immutable per plan step and defaults to normal', () => {
+test('priority metadata is immutable per plan step and invalid priority fails before S2 persistence', () => {
   const workerManager = new FakeWorkerManager();
   const service = new S6SchedulingApplicationService({ databasePath: ':memory:', workerManager, localTarget: 'http://127.0.0.1:43119/task-form.html' });
   try {
