@@ -168,7 +168,8 @@ test('unknown provider capacity and held S1 resources fail closed', () => {
   assert.equal(result.proposal, null);
   const reasons = result.decision.deferred[0].reasonCodes;
   assert.ok(reasons.includes('provider_capacity_unknown'));
-  assert.ok(reasons.includes('resource_conflict'));
+  assert.ok(reasons.includes('no_compatible_worker'));
+  assert.ok(result.inputs.blockedResources.includes(lockedId));
   service.close();
 });
 
