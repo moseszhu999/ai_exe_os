@@ -27,7 +27,7 @@ const S3_CHANNELS = [
   's3:github:repair:propose',
 ];
 
-test('legacy GitHub JSONL observer is removed and S4 preserves the accepted S3→S2 public service chain', () => {
+test('legacy GitHub JSONL observer is removed and S5 preserves the accepted S4→S3→S2 public service chain', () => {
   assert.doesNotMatch(main, /GitHubStateObserver|GitHubReadOnlyAdapter/);
   assert.doesNotMatch(main, /githubObserver\s*=|githubObserver\.observePullRequest/);
   assert.match(main, /github:observe-pr/);
@@ -35,11 +35,12 @@ test('legacy GitHub JSONL observer is removed and S4 preserves the accepted S3�
   assert.match(main, /githubToken:\s*process\.env\.AI_EXE_OS_GITHUB_TOKEN\s*\|\|\s*null/);
   assert.match(main, /registerS3Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
   assert.match(main, /S3ApplicationService\.prototype instanceof S2ApplicationService/);
-  assert.match(main, /S1ApplicationService\.prototype instanceof S3ApplicationService/);
+  assert.match(main, /S4ApplicationService\.prototype instanceof S3ApplicationService/);
+  assert.match(main, /S1ApplicationService\.prototype instanceof S4ApplicationService/);
   assert.equal((main.match(/state\.sqlite/g) || []).length >= 1, true);
 });
 
-test('sandbox preload preserves S0/S1/S2 and exactly seven nested S3 GitHub methods while S4 is additive', () => {
+test('sandbox preload preserves S0/S1/S2 and exactly seven nested S3 GitHub methods while later stages are additive', () => {
   assert.equal((preload.match(/\brequire\s*\(/g) || []).length, 1);
   assert.match(preload, /require\('electron'\)/);
   assert.doesNotMatch(preload, /require\(['"]\.\.?\//);

@@ -25,14 +25,16 @@ const SURFACES = [
   'Agents / Capabilities / Provider Use', 'Human Gate Inbox', 'Blockers & Recovery', 'GitHub Delivery', 'Evidence & Event Lineage',
 ];
 
-test('root composition instantiates S4 over accepted S3/S2 chain before IPC and BrowserWindow', () => {
+test('root composition preserves S5→S4→S3→S2 chain before IPC and BrowserWindow', () => {
   const serviceIndex = main.indexOf('s1Service = new S1ApplicationService');
   const registerIndex = main.lastIndexOf('registerIpc();');
   const windowIndex = main.indexOf('await createMainWindow();');
   assert.ok(serviceIndex >= 0 && serviceIndex < registerIndex && registerIndex < windowIndex);
-  assert.match(main, /S4ApplicationService: S1ApplicationService/);
+  assert.match(main, /S4ApplicationService/);
+  assert.match(main, /S5ApplicationService: S1ApplicationService/);
   assert.match(main, /S3ApplicationService\.prototype instanceof S2ApplicationService/);
-  assert.match(main, /S1ApplicationService\.prototype instanceof S3ApplicationService/);
+  assert.match(main, /S4ApplicationService\.prototype instanceof S3ApplicationService/);
+  assert.match(main, /S1ApplicationService\.prototype instanceof S4ApplicationService/);
   assert.match(main, /registerS4Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
   assert.match(main, /databasePath: join\(s1RuntimeRoot, 'state\.sqlite'\)/);
   for (const security of ['contextIsolation: true', 'nodeIntegration: false', 'sandbox: true', 'webSecurity: true']) assert.ok(main.includes(security), security);

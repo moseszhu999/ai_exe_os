@@ -148,3 +148,10 @@
   document.querySelector('#refresh')?.addEventListener('click', () => refresh().catch((error) => { summary.textContent = error.message; }));
   queueMicrotask(() => refresh().catch((error) => { summary.textContent = error.message; }));
 })();
+
+if (!document.querySelector('script[data-s5-provider]')) {
+  const s5Script = document.createElement('script');
+  s5Script.src = 's5-integrated.js';
+  s5Script.dataset.s5Provider = 'true';
+  document.body.append(s5Script);
+}
