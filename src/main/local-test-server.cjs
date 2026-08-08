@@ -59,7 +59,14 @@ class LocalTestServer {
     const server = this.server;
     this.server = null;
     this.port = null;
-    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+      // Node's http.Server.close() waits for active requests/connections. During
+      // application shutdown a browser may leave an in-flight localhost socket
+      // behind even after its context exits. Stop accepting new connections first,
+      // then force-close remaining HTTP connections so Electron quit cannot hang.
+      if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+    });
   }
 }
 
