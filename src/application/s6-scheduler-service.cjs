@@ -4,6 +4,7 @@ const { ProjectionRepository } = require('./projection-repository.cjs');
 const {
   S6ApplicationService: S6PolicyApplicationService,
   boundedId,
+  resourceIdentifier,
 } = require('./s6-index.cjs');
 const {
   createConcurrencyBudget,
@@ -63,9 +64,18 @@ class S6SchedulingApplicationService extends S6PolicyApplicationService {
       && item.planId === run.planId
       && item.stepId === step.id
     ));
+    const binding = this.stepBinding.get(step.bindingId);
+    const providerSurfaceResource = binding?.target
+      ? resourceIdentifier({ type: 'provider_surface', key: binding.target })
+      : null;
+    const requiredResources = [...new Set([
+      ...(record.requiredResources || []),
+      ...(providerSurfaceResource ? [providerSurfaceResource] : []),
+    ])];
     return Object.freeze({
       ...record,
       priority: priority?.priority || record.priority || 'normal',
+      requiredResources,
       // A canonical ready step may declare a future action HumanGate. That is
       // schedulable because S2/S1 will create the gate before execution. An
       // already waiting_human step is still excluded by readyState itself.
