@@ -54,19 +54,21 @@ jobs:
           fi
       - name: Prepare evidence directory
         run: mkdir -p "$S7_ACCEPTANCE_OUTPUT"
-      - name: Run dual-Electron matrix and retain stdout/stderr
+      - name: Run traced binding-aware dual-Electron matrix
         id: electron
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          node scripts/s7-acceptance-electron-two-instance.cjs 2>&1 | tee "$S7_ACCEPTANCE_OUTPUT/electron-run.log"
+          node scripts/s7-acceptance-electron-two-instance-v2.cjs 2>&1 | tee "$S7_ACCEPTANCE_OUTPUT/electron-run.log"
       - name: Inventory partial evidence
         if: always()
         shell: bash
         run: |
           echo '=== partial evidence ==='
           find "$S7_ACCEPTANCE_OUTPUT" -maxdepth 1 -type f -print -exec ls -lh {} \; || true
+          echo '=== tail electron-trace.jsonl ==='
+          tail -n 120 "$S7_ACCEPTANCE_OUTPUT/electron-trace.jsonl" || true
           echo '=== tail electron-run.log ==='
           tail -n 120 "$S7_ACCEPTANCE_OUTPUT/electron-run.log" || true
       - name: Upload diagnostic artifact
