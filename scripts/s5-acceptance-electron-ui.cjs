@@ -11,7 +11,7 @@ const electronExecutable = require('electron');
 
 const PRODUCT_SHA = process.env.S5_PRODUCT_SHA || '5b1933a284c00b86bf438a53af6beb94c8d6eda9';
 const OUTPUT = process.env.S5_ACCEPTANCE_OUTPUT || join(process.cwd(), 'runtime', 's5-acceptance');
-const VERCEL_TARGET = process.env.S5_VERCEL_TARGET || 'https://chaintrace-eh6lm584p-aaronzhu1.vercel.app/';
+const VERCEL_TARGET = process.env.S5_VERCEL_TARGET || 'https://chaintrace-app.vercel.app/';
 const NETLIFY_TARGET = process.env.S5_NETLIFY_TARGET || 'https://chaintrace-app.netlify.app/';
 const S0_METHODS = ['confirmLocalTask','createTask','createWorker','focusWorker','getState','observePullRequest','pauseWorker','resumeWorker','startWorker','stopWorker'];
 const S1_METHODS = ['approveHumanGate','createTask','grantCapability','installCapability','queryState','rejectHumanGate'];
