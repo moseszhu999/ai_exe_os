@@ -1,0 +1,62 @@
+name: S8 integration diagnostics
+
+on:
+  pull_request:
+    branches:
+      - agent/s8-controlled-delegation-integration-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Isolate S8 integration failures
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out diagnostic carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run S8 diagnostic groups
+        id: diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p runtime/s8-diagnostics
+          overall=0
+          run_group() {
+            name="$1"
+            shift
+            echo "===== $name =====" | tee "runtime/s8-diagnostics/${name}.log"
+            "$@" 2>&1 | tee -a "runtime/s8-diagnostics/${name}.log"
+            status=${PIPESTATUS[0]}
+            printf '%s\n' "$status" > "runtime/s8-diagnostics/${name}.status"
+            if [[ "$status" -ne 0 ]]; then overall=1; fi
+          }
+          run_group policy node --test tests/s8-delegation-policy.test.cjs
+          run_group admission node --test tests/s8-delegation-admission.test.cjs
+          run_group transport node --test tests/s8-delegation-transport.test.cjs
+          run_group ui node --test tests/s8-delegation-ui.test.cjs
+          run_group integration-service node --test tests/s8-integration-service.test.cjs
+          run_group source-handoff node --test tests/s8-source-handoff-integration.test.cjs
+          run_group integration-electron node --test tests/s8-integration-electron.test.cjs
+          run_group runtime-composition node --test tests/s8-renderer-runtime-composition.test.cjs
+          run_group full-node-tests npm test
+          printf '{"overall":%s}\n' "$overall" > runtime/s8-diagnostics/summary.json
+          exit "$overall"
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s8-integration-diagnostics-${{ github.sha }}
+          path: runtime/s8-diagnostics
+          if-no-files-found: error
+          retention-days: 7
