@@ -1,0 +1,74 @@
+{
+  "schema": "capability.knowledge.manifest.v1",
+  "package": {
+    "id": "training.course-design-draft",
+    "name": "TrainingOS Course Design Draft",
+    "publisher": "project-owned",
+    "description": "Compile the merged TrainingOS course-design AgentSkills with the currently proven read-only TrainingOS MCP learning-structure tool into a non-installable draft capability version."
+  },
+  "version": {
+    "semver": "1.0.0",
+    "inputSchema": {
+      "type": "object",
+      "required": ["classId"],
+      "properties": {
+        "classId": { "type": "string", "format": "uuid" },
+        "authorizedSourceRefs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "required": ["status", "canonicalWritePerformed"],
+      "properties": {
+        "status": { "enum": ["draft", "blocked"] },
+        "canonicalWritePerformed": { "const": false },
+        "sourceRefs": { "type": "array", "items": { "type": "string" } },
+        "ownerQuestions": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "humanGatePolicy": "never",
+    "status": "draft"
+  },
+  "roleRefs": [
+    "training.teacher",
+    "training.instructional-designer"
+  ],
+  "agentSkillRefs": [
+    { "skillId": "training-learning-outcomes", "version": "1.0.0" },
+    { "skillId": "training-course-alignment", "version": "1.0.0" },
+    { "skillId": "training-assessment-plan", "version": "1.0.0" }
+  ],
+  "mcpDependencies": [
+    { "serverId": "trainingos.mcp", "minVersion": "0.5.1", "required": true }
+  ],
+  "toolGrants": {
+    "observe": ["get_class_learning_structure"],
+    "draft": [],
+    "internalWrite": [],
+    "externalAction": []
+  },
+  "knowledge": {
+    "sourceRefs": [
+      "trainingos-agent-skill-pilot-v1",
+      "trainingos-industry-role-pack-foundation-v1"
+    ],
+    "freshnessPolicy": "review-release",
+    "blockWhenReviewRequired": true
+  },
+  "humanGates": [],
+  "evidenceRequirements": [
+    "trainingos-learning-structure-snapshot",
+    "agent-skill-trace",
+    "source-provenance"
+  ],
+  "resourceRequirements": [
+    "trainingos-teacher-owned-class"
+  ],
+  "providerContractIds": [],
+  "uiResources": []
+}
