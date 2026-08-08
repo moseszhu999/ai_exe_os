@@ -66,6 +66,7 @@ function context() {
       ['training.mcp', new Set([
         'training_get_course_map',
         'training_create_alignment_draft',
+        'training_update_course',
         'training_publish_course',
       ])],
     ]),
@@ -164,6 +165,25 @@ test('never includes external actions in the recommended Agent grant', () => {
     'training_create_alignment_draft',
   ]);
   assert.deepEqual(compiled.externalActionCandidates, ['training_publish_course']);
+});
+
+test('internal writes cannot compile with Human Gate policy never', () => {
+  const input = manifest({
+    version: {
+      ...manifest().version,
+      humanGatePolicy: 'never',
+    },
+    toolGrants: {
+      observe: ['training_get_course_map'],
+      draft: [],
+      internalWrite: ['training_update_course'],
+      externalAction: [],
+    },
+  });
+  assert.throws(
+    () => compileCapabilityKnowledgeManifest(input, context()),
+    /Internal writes require task- or action-level Human Gate policy/,
+  );
 });
 
 test('external action candidates require action-level Human Gate policy', () => {
