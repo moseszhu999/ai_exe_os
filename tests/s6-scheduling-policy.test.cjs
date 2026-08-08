@@ -63,7 +63,7 @@ test('bounded aging lifts priority by no more than configured tiers', () => {
 test('candidate ordering is deterministic independent of input collection order', () => {
   const value = policy();
   const candidates = [
-    candidate('candidate-normal-new', 'normal', '2026-08-08T00:04:00.000Z'),
+    candidate('candidate-normal-new', 'normal', '2026-08-08T00:04:30.000Z'),
     candidate('candidate-low-old', 'low', '2026-08-08T00:00:00.000Z'),
     candidate('candidate-high', 'high', '2026-08-08T00:04:50.000Z'),
   ];
