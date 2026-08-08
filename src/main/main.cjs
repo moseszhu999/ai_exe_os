@@ -31,6 +31,9 @@ if (!(S1ApplicationServiceS5.prototype instanceof S4ApplicationService)) {
 if (!(S1ApplicationService.prototype instanceof S1ApplicationServiceS5)) {
   throw new Error('S6 application service must preserve the accepted S5 public service chain');
 }
+if (!(S1ApplicationService.prototype instanceof S4ApplicationService)) {
+  throw new Error('S6 application service must preserve the accepted transitive S4 public service chain');
+}
 
 app.enableSandbox();
 
