@@ -35,6 +35,13 @@ function s6Input(input) {
   return input;
 }
 
+function s7Input(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('S7 collaboration sync command payload must be a plain object');
+  }
+  return input;
+}
+
 const s2Mission = Object.freeze({
   queryState: (workspaceId) => ipcRenderer.invoke('s2:mission:query-state', workspaceId || null),
   createMission: (input) => ipcRenderer.invoke('s2:mission:create', s2Input(input)),
@@ -78,6 +85,14 @@ const s6Scheduling = Object.freeze({
   revalidateProposal: (input) => ipcRenderer.invoke('s6:scheduling:revalidate-proposal', s6Input(input)),
 });
 
+const s7Sync = Object.freeze({
+  queryState: (workspaceId) => ipcRenderer.invoke('s7:sync:query-state', workspaceId || null),
+  configureSync: (input) => ipcRenderer.invoke('s7:sync:configure', s7Input(input)),
+  pushPending: (input) => ipcRenderer.invoke('s7:sync:push-pending', s7Input(input)),
+  pullMirror: (input) => ipcRenderer.invoke('s7:sync:pull-mirror', s7Input(input)),
+  recordMembership: (input) => ipcRenderer.invoke('s7:sync:membership:record', s7Input(input)),
+});
+
 contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   getState: () => ipcRenderer.invoke('state:list'),
   createWorker: (input) => ipcRenderer.invoke('worker:create', input),
@@ -102,4 +117,5 @@ contextBridge.exposeInMainWorld('aiExecutionOS', Object.freeze({
   s4: Object.freeze({ console: s4Console }),
   s5: Object.freeze({ provider: s5Provider }),
   s6: Object.freeze({ scheduling: s6Scheduling }),
+  s7: Object.freeze({ sync: s7Sync }),
 }));
