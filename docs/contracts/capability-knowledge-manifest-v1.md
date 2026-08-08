@@ -84,7 +84,17 @@ externalAction external/public/irreversible action
 
 An action may appear in exactly one class.
 
+Human Gate requirements are fail-closed:
+
+```text
+observe / draft only     humanGatePolicy may be never | task | action
+internalWrite present    humanGatePolicy must be task | action
+externalAction present   humanGatePolicy must be action
+```
+
 The compiler deliberately excludes `externalAction` entries from `recommendedGrantActions`. External action candidates require a separately explicit Agent grant and action-level Human Gate policy.
+
+An `internalWrite` may be included in a recommended grant only when the immutable capability version itself requires a task- or action-level Human Gate. A manifest cannot declare canonical write authority with `humanGatePolicy=never`.
 
 ## Knowledge freshness
 
