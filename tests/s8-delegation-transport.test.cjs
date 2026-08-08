@@ -28,6 +28,8 @@ test('S8 delegation endpoint is exact, credential-free and fixed-origin', () => 
   const ep = endpoint();
   assert.equal(ep.origin, 'http://127.0.0.1:4567');
   assert.match(operationUrl(ep, 'request').pathname, /\/api\/delegations\/requests$/);
+  assert.match(operationUrl(ep, 'receipt').pathname, /\/api\/delegations\/receipts$/);
+  assert.match(operationUrl(ep, 'cancellationInbox').pathname, /\/api\/delegations\/cancellations$/);
   assert.throws(() => createDelegationEndpoint({ id: 'bad', url: 'http://user:pass@127.0.0.1:4567/', allowLoopback: true }), /URL credentials/);
   assert.throws(() => createDelegationEndpoint({ id: 'bad', url: 'http://example.com/' }), /external delegation endpoint must use HTTPS/);
   assert.throws(() => operationUrl(ep, 'worker-control'), /unsupported/);
@@ -45,9 +47,11 @@ test('S8 transport uses only schema-defined GET/POST and omits ambient credentia
   await transport.submitRequest({ id: 'request-1', requestDigest: 'sha256:a' });
   await transport.readInbox({ destinationInstanceId: 'sync-source-b', destinationWorkspaceId: 'workspace-b', sinceSequence: 0 });
   await transport.acknowledgeRequest({ requestId: 'request-1', requestDigest: 'sha256:a', state: 'accepted' });
+  await transport.submitReceipt({ id: 'receipt-1', delegationRequestId: 'request-1', receiptDigest: 'sha256:r' });
   await transport.readReceipts({ sourceInstanceId: 'sync-source-a', sourceWorkspaceId: 'workspace-a', sinceRevision: 0 });
   await transport.submitCancellation({ id: 'cancel-1', delegationRequestId: 'request-1' });
-  assert.deepEqual(calls.map((call) => call.options.method), ['POST', 'GET', 'POST', 'GET', 'POST']);
+  await transport.readCancellations({ destinationInstanceId: 'sync-source-b', destinationWorkspaceId: 'workspace-b', sinceSequence: 0 });
+  assert.deepEqual(calls.map((call) => call.options.method), ['POST', 'GET', 'POST', 'POST', 'GET', 'POST', 'GET']);
   for (const call of calls) {
     assert.equal(call.options.credentials, 'omit');
     assert.equal(call.options.redirect, 'manual');
@@ -98,7 +102,7 @@ test('S8 exchange mirror does not mix destination workspaces', () => {
   assert.deepEqual(mirror.readInbox({ destinationInstanceId: 'sync-source-b', destinationWorkspaceId: 'workspace-b' }).map((item) => item.id), ['request-b']);
 });
 
-test('S8 receipts are append-only and exact duplicates are idempotent', () => {
+test('S8 receipts are append-only, exact duplicate safe, and readable by source scope', () => {
   const mirror = new DelegationExchangeMirror();
   const receipt = {
     id: 'receipt-1', delegationRequestId: 'request-1', sourceInstanceId: 'sync-source-a', sourceWorkspaceId: 'workspace-a',
@@ -110,7 +114,7 @@ test('S8 receipts are append-only and exact duplicates are idempotent', () => {
   assert.deepEqual(mirror.readReceipts({ sourceInstanceId: 'sync-source-a', sourceWorkspaceId: 'workspace-a' }).map((item) => item.id), ['receipt-1']);
 });
 
-test('S8 cancellation is stored as proposal data and cannot become process control', () => {
+test('S8 cancellation is stored as proposal data, destination-scoped, and not process control', () => {
   const mirror = new DelegationExchangeMirror();
   mirror.appendRequest({
     id: 'request-1', requestDigest: 'sha256:a', requestSequence: 1, sourceInstanceId: 'sync-source-a', sourceWorkspaceId: 'workspace-a',
@@ -120,4 +124,6 @@ test('S8 cancellation is stored as proposal data and cannot become process contr
   assert.equal(result.state, 'accepted');
   assert.equal('workerId' in result.cancellationProposal, false);
   assert.equal('processId' in result.cancellationProposal, false);
+  assert.deepEqual(mirror.readCancellations({ destinationInstanceId: 'sync-source-b', destinationWorkspaceId: 'workspace-b' }).map((item) => item.id), ['cancel-1']);
+  assert.deepEqual(mirror.readCancellations({ destinationInstanceId: 'sync-source-c', destinationWorkspaceId: 'workspace-c' }), []);
 });
