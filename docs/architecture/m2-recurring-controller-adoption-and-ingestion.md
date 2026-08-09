@@ -52,7 +52,7 @@ evidenceRefs
 observedAt
 ```
 
-The builder then performs the same operation an adopting Controller should perform:
+The builder performs the same operation an adopting Controller should perform:
 
 ```text
 explicit Domain facts
@@ -84,7 +84,7 @@ TrainingOS, TradeOS and Video/Shared Media already have Controller-style outputs
 
 They only need to publish, through an out-of-band channel which does not change the attested git head, one source body conforming to the existing M2.7 envelope.
 
-Current target repositories and provider-observed heads at the second real capture:
+Current target repositories and provider-observed heads at the corrected second real capture:
 
 ```text
 TrainingOS   moseszhu999/training-learning-rails  0b69d1d7ad2c67c4ba36294ec153280c3da69352
@@ -111,16 +111,38 @@ fixtures/management/m2-live-github-observation-capture-2026-08-09.json
 capturedAt = 2026-08-09T15:31:29Z
 ```
 
-Second independent provider read:
+Corrected second independent provider read:
 
 ```text
 fixtures/management/m2-live-github-observation-capture-2026-08-10.json
-capturedAt = 2026-08-09T22:54:07Z
+capturedAt = 2026-08-09T22:58:48Z
 ```
 
 Both were produced from authorized read-only GitHub connector observations of the registered portfolio repositories and explicit repository-scoped open PR reads.
 
-Across the two real captures, default-branch heads remained stable:
+### Provider completeness incident
+
+An initial second-capture assembly at `2026-08-09T22:54:07Z` saw only four TrainingOS open PRs. A subsequent live GitHub index read showed that TrainingOS PR #674 had actually been created at `2026-08-09T22:53:59Z` and was already part of the open-work set.
+
+That initial assembly was therefore **not accepted as complete evidence**. The capture was re-read and repaired before M2.8 validation.
+
+Corrected TrainingOS open-work truth in the second capture:
+
+```text
+open PR count = 5
+includes PR #674
+PR #674 head = acc1c03369e6b885bdf2b574e3923589c0ad5f28
+```
+
+This incident reinforces an existing M2.6 invariant:
+
+```text
+provider returned rows != automatically complete provider truth
+```
+
+A live capture intended to assert an explicit open-work set must be completeness-checked when the provider index is changing near the observation boundary.
+
+Across the two accepted real captures, default-branch heads remained stable:
 
 ```text
 AIEXE        7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
@@ -129,7 +151,7 @@ TradeOS      355a7169bfe8e48c7f78fa874cc422a394553d56
 Video/Media  24996407449df28b2d83fce1a145b3200fff168a
 ```
 
-Open-work evidence did change. In particular, AIEXE PR #125 advanced from the first-capture management-plane head/title to the repaired M2.7 exact head and updated PR metadata while `main` itself remained unchanged.
+Open-work evidence did change. In particular, AIEXE PR #125 advanced materially and TrainingOS gained PR #674 while the relevant default-branch heads remained unchanged.
 
 That distinction matters:
 
@@ -182,6 +204,8 @@ multiRunIngestionObserved = true
 stableDefaultBranchHeadsAcrossRuns = true
 openWorkChangedAcrossRuns = true
 ```
+
+The corrected second-capture test also pins the provider-completeness repair by asserting the TrainingOS open-work count and PR #674 exact head.
 
 ## 4. No schedule overclaim
 
@@ -246,6 +270,7 @@ Improvement:
 ```text
 one-shot real capture                 PASS
 second independent real capture       PASS
+provider completeness repair          PASS
 immutable multi-run verification      PASS
 changed open-work observation         PASS
 scheduled recurring ingestion         NOT PROVEN
