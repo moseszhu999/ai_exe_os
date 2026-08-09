@@ -18,9 +18,14 @@ function plainObject(value, label) {
   return value;
 }
 
+function requiredInstant(value, label) {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) throw new TypeError(`${label} must be an ISO timestamp`);
+  return value;
+}
+
 function buildExternalProviderManagementCycle(input) {
   plainObject(input, 'external provider management cycle input');
-  const allowed = new Set(['capture', 'attestationSources', 'portfolioId', 'freshnessWindowMinutes']);
+  const allowed = new Set(['capture', 'attestationSources', 'portfolioId', 'freshnessWindowMinutes', 'evaluatedAt']);
   for (const key of Object.keys(input)) {
     if (!allowed.has(key)) throw new Error(`external provider management cycle input contains unsupported field: ${key}`);
   }
@@ -33,13 +38,15 @@ function buildExternalProviderManagementCycle(input) {
     throw new TypeError('live provider capture requires observations');
   }
   if (!Array.isArray(input.attestationSources)) throw new TypeError('attestationSources must be an array');
+  const evaluatedAt = requiredInstant(input.evaluatedAt, 'cycle evaluated at');
+  if (Date.parse(evaluatedAt) < Date.parse(capture.capturedAt)) throw new Error('cycle evaluatedAt cannot predate provider capture');
 
   const observations = capture.observations.map((row) => createLiveGithubProviderObservation(row));
   const envelopes = input.attestationSources.map((source) => parseControllerAttestationEnvelope(source));
   const attestations = envelopes.map((envelope) => envelope.attestation);
   const cycle = buildReadOnlyManagementObservationCycle({
     portfolioId: input.portfolioId || 'group-portfolio',
-    observedAt: capture.capturedAt,
+    observedAt: evaluatedAt,
     githubObservations: observations,
     controllerAttestations: attestations,
     freshnessWindowMinutes: input.freshnessWindowMinutes,
@@ -48,7 +55,8 @@ function buildExternalProviderManagementCycle(input) {
   return freezeDeep({
     schema: LIVE_PROVIDER_CYCLE_SCHEMA,
     evidenceClass: 'REAL_PROVIDER_OBSERVATION_PLUS_CONTROLLER_ATTESTATION',
-    observedAt: capture.capturedAt,
+    providerCapturedAt: capture.capturedAt,
+    evaluatedAt,
     providerTransport: 'external-read-only-connector',
     providerObservationSupplied: true,
     providerFetchPerformedInProcess: false,
