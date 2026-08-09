@@ -160,13 +160,45 @@ False and missed escalations are separate because they create different organiza
 - false escalation -> unnecessary owner interruption;
 - missed escalation -> silent management risk.
 
-A later acceptance dataset should be built from real historical controller incidents rather than synthetic success claims.
+## First evidence-linked historical replay corpus
+
+The first replay corpus is now implemented at:
+
+```text
+fixtures/management/m2-historical-controller-replay-v1.json
+tests/m2-historical-controller-replay.test.cjs
+```
+
+It contains six manually labelled cases derived from explicit historical controller/PR dispositions, including:
+
+- Video Operation PR #104 — bounded implementation integrated/merged while publication remained a separate authority boundary;
+- TradeOS PR #620 — explicit readiness verdict `BLOCKED`;
+- TrainingOS PR #576 — old exact-head PASS superseded and fresh exact-head revalidation required;
+- Video Operation PR #90 — final visual validation incomplete and human design approval explicitly false;
+- TradeOS PR #618 — focused visible-adapter validation explicitly not independently proven;
+- AIEXE PR #125 — repository CI can prove exact-head source integrity but cannot substitute for an authoritative Domain Controller receipt.
+
+Labels are stored separately from the deterministic engine and each case carries evidence references plus a human-readable label-evidence statement. The engine does not generate its own expected answers.
+
+Observed replay result:
+
+```text
+cases: 6
+exact matches: 6
+exact rate: 1.0
+false escalations: 0
+missed escalations: 0
+```
+
+This result is intentionally treated as **mechanism evidence, not broad manager-quality evidence**. Six hand-curated historical cases are too small and too correlated with the policy design to justify a general performance claim. The corpus should expand across more dates, projects, clean-continue cases and ambiguous cases before any autonomy threshold is raised.
 
 ## Current implementation files
 
 ```text
 src/management/portfolio/attention-engine.cjs
 tests/m2-attention-engine.test.cjs
+fixtures/management/m2-historical-controller-replay-v1.json
+tests/m2-historical-controller-replay.test.cjs
 ```
 
 M2 composes with:
@@ -186,36 +218,35 @@ M0  management object contracts
 M1  GitHub read-only observations
 M1.1 exact-head Domain Controller receipts
 M2  deterministic attention queue/cockpit/replay scoring
+M2R evidence-linked historical replay
 ```
 
-Observed result before repository publication:
+Observed result:
 
 ```text
-23 tests
-23 pass
+25 tests
+25 pass
 0 fail
 ```
 
+A previous exact head of this same management branch also received a successful repository `S0 source validation` GitHub Actions run covering exact-head checkout, syntax/unit validation and provider-boundary enforcement. The replay-head workflow result must still be checked independently before claiming remote validation for the newer head.
+
 ## Current completion boundary
 
-M2 engine implementation is present, but **real historical replay acceptance is not yet claimed**.
+M2's deterministic engine and first historical replay corpus are implemented. What is **not** yet claimed:
 
-The next evidence task is to construct a bounded replay corpus from real prior events such as:
+- statistical reliability of AI management decisions;
+- coverage of all management failure modes;
+- safe autonomous execution based on these proposals;
+- M3 S8 execution wiring.
 
-- owner conflicts;
-- stale exact-head claims;
-- validation failures;
-- policy blocks;
-- duplicated shared-capability implementations;
-- clean, evidence-backed continue cases.
-
-The replay corpus must preserve the historical evidence that existed at decision time; it must not label cases using hindsight-only facts.
+The next replay expansion should include more real owner conflicts, validation failures, policy blocks, duplicated shared-capability implementations and clean evidence-backed continue cases, preserving only evidence that existed at the historical decision time.
 
 ## Path to M3
 
 M3 must not create a new orchestration or delegation runtime.
 
-Once M2 decision quality is measured, eligible A2 bounded actions should flow only through the existing S8 chain:
+Eligible A2 bounded actions should flow only through the existing S8 chain after policy and replay gates are strong enough:
 
 ```text
 M2 management proposal
