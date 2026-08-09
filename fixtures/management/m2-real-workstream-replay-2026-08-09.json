@@ -1,7 +1,7 @@
 {
   "schema": "aiexe.real-workstream-replay.v1",
   "capturedAt": "2026-08-09T09:55:00Z",
-  "labelPolicy": "Labels are derived from explicit current project/controller/PR boundaries. A blocked workstream must not be promoted into a project-wide pause when independent safe work remains.",
+  "labelPolicy": "Labels are derived from explicit current project/controller/PR boundaries. Complete work is not active safe capacity, and project-wide pause requires either authoritative project status or an explicitly complete workstream decision scope.",
   "projects": [
     {
       "project": {
@@ -12,7 +12,7 @@
         "sourceOfTruth": "github:moseszhu999/training-learning-rails@main",
         "owner": "trainingos-hourly-controller",
         "milestone": "owner-safe current-main progress",
-        "summary": "Current main can advance through bounded owner-safe lines even though Course Video and Marketplace branches still have acceptance gates.",
+        "summary": "Course Video and Marketplace are held; Shared Media smoke is complete, but this replay does not claim a complete inventory of all TrainingOS workstreams.",
         "attentionSignals": [],
         "evidenceRefs": [
           "github:moseszhu999/training-learning-rails:main@987afdbeeb8fe996813fbca7180d2c848c798bb9",
@@ -20,6 +20,7 @@
         ],
         "observedAt": "2026-08-09T09:55:00Z"
       },
+      "decisionScopeComplete": false,
       "workstreams": [
         {
           "projectId": "trainingos",
@@ -66,10 +67,12 @@
         }
       ],
       "expected": {
-        "type": "reprioritize",
+        "type": "escalate",
         "bucket": "needs_attention",
+        "primaryReason": "decision_scope_incomplete",
         "projectWidePause": false,
-        "continueEligibleWorkstreamIds": ["shared-media-mac-smoke"],
+        "continueEligibleWorkstreamIds": [],
+        "completedWorkstreamIds": ["shared-media-mac-smoke"],
         "heldWorkstreamIds": ["course-video-shared-media", "marketplace-live-workspace"]
       }
     },
@@ -82,7 +85,7 @@
         "sourceOfTruth": "github:moseszhu999/chaintrace-app@main",
         "owner": "tradeos-controller",
         "milestone": "parallel bounded product and shared-contract progress",
-        "summary": "N2 persistence remains held, while backend-neutral BusinessChannel work and P2 planning can continue independently.",
+        "summary": "N2 persistence remains held, while backend-neutral BusinessChannel work can continue independently; P2 planning is already complete.",
         "attentionSignals": [],
         "evidenceRefs": [
           "github:moseszhu999/chaintrace-app:main@d2bba1b34590f8f04aed9f0e9b4ab717f2e06f27",
@@ -90,6 +93,7 @@
         ],
         "observedAt": "2026-08-09T09:55:00Z"
       },
+      "decisionScopeComplete": false,
       "workstreams": [
         {
           "projectId": "tradeos",
@@ -138,8 +142,10 @@
       "expected": {
         "type": "reprioritize",
         "bucket": "needs_attention",
+        "primaryReason": "partial_workstream_block",
         "projectWidePause": false,
-        "continueEligibleWorkstreamIds": ["business-channel-contract-core", "p2-bottom-up-cockpit-plan"],
+        "continueEligibleWorkstreamIds": ["business-channel-contract-core"],
+        "completedWorkstreamIds": ["p2-bottom-up-cockpit-plan"],
         "heldWorkstreamIds": ["n2-market-shared-case-proposal"]
       }
     },
@@ -152,7 +158,7 @@
         "sourceOfTruth": "github:moseszhu999/global-tool-radar@main",
         "owner": "video-operation-controller",
         "milestone": "M10 human full-candidate review",
-        "summary": "The current social-native candidate and provenance are merged; the earliest real business gate is still full human review before publication preparation.",
+        "summary": "The current decision scope is the M10→M11 critical path; both observed workstreams are held and no additional independent workstream is claimed inside this decision scope.",
         "attentionSignals": [],
         "evidenceRefs": [
           "github:moseszhu999/global-tool-radar:main@e4728a0b1694bb9e89bd17f7f03bc3d3746e61e8",
@@ -160,6 +166,7 @@
         ],
         "observedAt": "2026-08-09T09:55:00Z"
       },
+      "decisionScopeComplete": true,
       "workstreams": [
         {
           "projectId": "video-operation-shared-media",
@@ -196,8 +203,10 @@
       "expected": {
         "type": "pause",
         "bucket": "blocked",
+        "primaryReason": "all_decision_scope_critical_workstreams_held",
         "projectWidePause": true,
         "continueEligibleWorkstreamIds": [],
+        "completedWorkstreamIds": [],
         "heldWorkstreamIds": ["m10-human-full-review", "m11-publication"]
       }
     }
