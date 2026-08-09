@@ -1,8 +1,8 @@
 {
   "schema": "aiexe.live-github-observation-capture.v1",
   "evidenceClass": "REAL_PROVIDER_OBSERVATION",
-  "capturedAt": "2026-08-09T22:54:07Z",
-  "captureMethod": "GitHub connector read-only search_commits plus repository-scoped open pull-request reads on each registered default branch; no Domain OS status or owner scope inferred from repository activity",
+  "capturedAt": "2026-08-09T22:58:48Z",
+  "captureMethod": "GitHub connector read-only search_commits plus repository-scoped open pull-request reads on each registered default branch; provider completeness was rechecked after an initial index read omitted newly-created TrainingOS PR #674; no Domain OS status or owner scope inferred from repository activity",
   "domainFactPolicy": "unknown-without-current-explicit-controller-attestation",
   "openWorkPolicy": "openPullRequests is always explicit; [] means provider-confirmed zero and omission is forbidden in the live-provider wrapper",
   "ownerScopePolicy": "ownerScope is omitted unless supplied by an explicit authoritative owner source; PR titles are not owner evidence",
@@ -12,11 +12,11 @@
       "repository": "moseszhu999/ai_exe_os",
       "defaultBranch": "main",
       "headSha": "7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48",
-      "observedAt": "2026-08-09T22:54:07Z",
-      "now": "2026-08-09T22:54:07Z",
-      "openPullRequestsObservedAt": "2026-08-09T22:54:07Z",
+      "observedAt": "2026-08-09T22:58:48Z",
+      "now": "2026-08-09T22:58:48Z",
+      "openPullRequestsObservedAt": "2026-08-09T22:58:48Z",
       "openPullRequests": [
-        {"number":125,"title":"M0-M2.7: establish AIEXE group management-plane foundation","headSha":"4d8cb3c453ff8444c7dd9d6bc64a9c0cac296f77","draft":true,"updatedAt":"2026-08-09T16:14:22Z"}
+        {"number":125,"title":"M0-M2.7: establish AIEXE group management-plane foundation","headSha":"2084fcc4da2bcca820bf5c16b3814a7e1fd92d35","draft":true,"updatedAt":"2026-08-09T22:58:08Z"}
       ],
       "evidenceRefs": ["github:moseszhu999/ai_exe_os:commit:7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48"]
     },
@@ -25,10 +25,11 @@
       "repository": "moseszhu999/training-learning-rails",
       "defaultBranch": "main",
       "headSha": "0b69d1d7ad2c67c4ba36294ec153280c3da69352",
-      "observedAt": "2026-08-09T22:54:07Z",
-      "now": "2026-08-09T22:54:07Z",
-      "openPullRequestsObservedAt": "2026-08-09T22:54:07Z",
+      "observedAt": "2026-08-09T22:58:48Z",
+      "now": "2026-08-09T22:58:48Z",
+      "openPullRequestsObservedAt": "2026-08-09T22:58:48Z",
       "openPullRequests": [
+        {"number":674,"title":"feat(trainingos): add group Work Entry capability adapter v1","headSha":"acc1c03369e6b885bdf2b574e3923589c0ad5f28","draft":true,"updatedAt":"2026-08-09T22:55:40Z"},
         {"number":671,"title":"ci: TradeOS N2 post-656 strict final exact-head acceptance v4","headSha":"89214b28f8488f01d59e4cf4c41738bf27238dd4","draft":true,"updatedAt":"2026-08-09T15:21:33Z"},
         {"number":665,"title":"ci: TradeOS N2 final exact-head authentic acceptance v1","headSha":"7767775bd9e07d7fca45fd7e5ae21333231d2c71","draft":true,"updatedAt":"2026-08-09T14:17:21Z"},
         {"number":645,"title":"ci: final TradeOS N1 exact-head authentic acceptance","headSha":"4ba488789dd6bead2e6c530a6bdb1fe64652727b","draft":true,"updatedAt":"2026-08-08T21:48:26Z"},
@@ -41,9 +42,9 @@
       "repository": "moseszhu999/chaintrace-app",
       "defaultBranch": "main",
       "headSha": "355a7169bfe8e48c7f78fa874cc422a394553d56",
-      "observedAt": "2026-08-09T22:54:07Z",
-      "now": "2026-08-09T22:54:07Z",
-      "openPullRequestsObservedAt": "2026-08-09T22:54:07Z",
+      "observedAt": "2026-08-09T22:58:48Z",
+      "now": "2026-08-09T22:58:48Z",
+      "openPullRequestsObservedAt": "2026-08-09T22:58:48Z",
       "openPullRequests": [
         {"number":649,"title":"F1: lock Agentic Trade Execution group target and entry gates","headSha":"318423f445eaf24ed57814d9b0f7e3bb85ac2a46","draft":true,"updatedAt":"2026-08-09T11:05:50Z"},
         {"number":647,"title":"P2: add Bottom-up Cockpit truth-state read model","headSha":"dc6fb4901291cfb5d17f674a3143a6b6cd08e33f","draft":false,"updatedAt":"2026-08-09T10:17:11Z"},
@@ -67,9 +68,9 @@
       "repository": "moseszhu999/global-tool-radar",
       "defaultBranch": "main",
       "headSha": "24996407449df28b2d83fce1a145b3200fff168a",
-      "observedAt": "2026-08-09T22:54:07Z",
-      "now": "2026-08-09T22:54:07Z",
-      "openPullRequestsObservedAt": "2026-08-09T22:54:07Z",
+      "observedAt": "2026-08-09T22:58:48Z",
+      "now": "2026-08-09T22:58:48Z",
+      "openPullRequestsObservedAt": "2026-08-09T22:58:48Z",
       "openPullRequests": [],
       "evidenceRefs": ["github:moseszhu999/global-tool-radar:commit:24996407449df28b2d83fce1a145b3200fff168a"]
     }
@@ -78,7 +79,7 @@
   "expected": {
     "projectCount": 4,
     "attestedProjectCount": 0,
-    "openPullRequestCounts": {"aiexe":1,"trainingos":4,"tradeos":14,"video-operation-shared-media":0},
+    "openPullRequestCounts": {"aiexe":1,"trainingos":5,"tradeos":14,"video-operation-shared-media":0},
     "providerObservationCaptured": true,
     "providerRunnerProven": false,
     "scheduledRuntimeProven": false
