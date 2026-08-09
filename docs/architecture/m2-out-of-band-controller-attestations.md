@@ -50,13 +50,13 @@ schema = aiexe.external-controller-attestation-envelope.v1
 
 A source body must contain exactly one marker pair:
 
-```text
+````text
 <!-- aiexe.external-controller-attestation.v1 -->
 ```json
 { ... explicit fields only ... }
 ```
 <!-- /aiexe.external-controller-attestation.v1 -->
-```
+````
 
 Eligible payload fields are fixed:
 
@@ -238,7 +238,7 @@ fail = 0
 Provider boundary scan = PASS
 ```
 
-A final exact-head validation must be rerun after documentation/readiness closure commits.
+The final exact-head validation is recorded out of band on PR #125 after documentation closure so the validation receipt does not advance the branch it attests.
 
 ## Boundary
 
