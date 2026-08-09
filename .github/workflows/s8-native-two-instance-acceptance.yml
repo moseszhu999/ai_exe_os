@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      S8_PRODUCT_SHA: ad69c480106f517970e9c851ee32255cf48e94e1
+      S8_PRODUCT_SHA: 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,7 +63,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 45
     env:
-      S8_PRODUCT_SHA: ad69c480106f517970e9c851ee32255cf48e94e1
+      S8_PRODUCT_SHA: 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
       S8_ACCEPTANCE_OUTPUT: runtime/s8-acceptance
     steps:
       - uses: actions/checkout@v4
