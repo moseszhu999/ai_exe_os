@@ -72,6 +72,8 @@ test('S8 integrated renderer explains destination sovereignty and exposes no rem
   assert.doesNotMatch(renderer, /bridge\.(startWorker|stopWorker|focusWorker|pauseWorker|resumeWorker|approveHumanGate|rejectHumanGate)/);
   assert.match(renderer, /destination remains sovereign/);
   assert.match(renderer, /Remote source cannot decide this gate/);
+  assert.match(renderer, /gateAuthorityNote\.id = 's8-gate-authority-note'/);
+  assert.match(renderer, /gateCard\.append\(proposalSelect, approve, reject, gateAuthorityNote, gateState\)/);
   assert.match(renderer, /Actual execution remains under this destination instance’s S6\/S2\/S1 scheduler/);
   assert.match(renderer, /Post-start remote cancellation is non-authoritative/);
   assert.match(renderer, /consumeDelegationReceipt/);
