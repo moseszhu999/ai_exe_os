@@ -77,8 +77,9 @@
     const proposalSelect = document.createElement('select'); proposalSelect.id = 's8-proposal-select'; proposalSelect.setAttribute('aria-label', 'Incoming delegation proposal');
     const approve = el('button', 'Accept proposal locally'); approve.id = 's8-approve-local'; approve.type = 'button';
     const reject = el('button', 'Reject proposal locally', 'danger'); reject.id = 's8-reject-local'; reject.type = 'button';
-    const gateState = el('pre', 'Remote source cannot decide this gate.'); gateState.id = 's8-gate-state';
-    gateCard.append(proposalSelect, approve, reject, gateState);
+    const gateAuthorityNote = el('p', 'Remote source cannot decide this gate.'); gateAuthorityNote.id = 's8-gate-authority-note';
+    const gateState = el('pre', 'No incoming proposal selected.'); gateState.id = 's8-gate-state';
+    gateCard.append(proposalSelect, approve, reject, gateAuthorityNote, gateState);
 
     const cancellationCard = el('article');
     cancellationCard.append(el('h3', 'Cancellation proposal'));
@@ -149,7 +150,7 @@
       acceptCancel.disabled = pending || selectedCancellation?.state !== 'pending_local_decision';
       rejectCancel.disabled = pending || selectedCancellation?.state !== 'pending_local_decision';
       proposeCancel.disabled = pending || !selectedRequestId;
-      cancellationState.textContent = selectedCancellation ? JSON.stringify(selectedCancellation, null, 2) : 'Post-start remote cancellation remains non-authoritative.';
+      cancellationState.textContent = selectedCancellation ? JSON.stringify(selectedCancellation, null, 2) : 'Post-start remote cancellation is non-authoritative.';
 
       receiptSelect.replaceChildren(el('option', 'Select receipt'));
       receiptSelect.firstChild.value = '';
