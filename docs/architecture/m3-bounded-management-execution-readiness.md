@@ -1,8 +1,8 @@
 # M3 Bounded Management Execution — Readiness Gate
 
-Date: 2026-08-09  
+Date: 2026-08-10 JST  
 Parent: `docs/architecture/m2-workstream-scoped-attention.md`  
-Implementation owner for this readiness note: PR #125 only  
+Implementation owner: PR #125 only  
 Execution owner: not created
 
 ## Verdict
@@ -11,13 +11,11 @@ Execution owner: not created
 BLOCKED
 ```
 
-M0-M2.5 provide a credible read-only management foundation, a non-binding A2 eligibility policy, real exact-head attestation temporal evidence, workstream-scoped attention and an explicitly simulated adversarial replay corpus. AIEXE is still **not authorized to cross from management proposal into autonomous A2 execution**.
+M0-M2.7 now provide a read-only management foundation, non-binding A2 eligibility policy, workstream-scoped attention, historical and simulated replay, real GitHub provider observation, and a deterministic out-of-band Controller-attestation path.
 
-S8 controlled delegation is now an accepted runtime baseline. The remaining work is to close replay/evaluation, recurring Controller-attestation, A2 end-to-end proof and live read-only observation gates without creating a second orchestration path or forcing AIEXE plumbing into every Domain OS.
+AIEXE is still **not authorized to cross from management proposal into autonomous A2 execution**. M3 starts only when all five gates below are `PASS`.
 
 ## Gate 1 — accepted S8 controlled-delegation runtime baseline
-
-The unique controlled-delegation integration path is in `main` through PR #122 and bounded S8 repairs. No second S8 owner is required or permitted.
 
 Accepted product path:
 
@@ -27,7 +25,7 @@ PR #128  Electron product-root authority repair      MERGED
 PR #130  persistent destination-gate explanation     MERGED
 ```
 
-Final frozen S8-F product head:
+Frozen S8 product head:
 
 ```text
 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
@@ -36,23 +34,17 @@ Final frozen S8-F product head:
 Authoritative acceptance:
 
 ```text
-S0 source validation run 31320581931                   SUCCESS
-S8 native two-instance acceptance run 31320581924      SUCCESS
+S0 source run 31320581931                    SUCCESS
+S8 native two-instance run 31320581924       SUCCESS
 native artifact 9040050861
-native artifact digest sha256:3e8c244baaab227fd200aa831e9c1e54e48c024596d24430db9f1ffb9157034f
+sha256:3e8c244baaab227fd200aa831e9c1e54e48c024596d24430db9f1ffb9157034f
 source artifact 9040039600
-source artifact digest sha256:45f1d7e6f70b79b4d76c07e28083ddffc4a306cf56b2c2fca0abc64b853a0c21
+sha256:45f1d7e6f70b79b4d76c07e28083ddffc4a306cf56b2c2fca0abc64b853a0c21
+Issue #115                                    CLOSED / completed / GO
+QA carrier #129                              CLOSED UNMERGED
 ```
 
-The native Apple Silicon matrix validated the exact frozen product, two independent real Electron instances, Google Chrome + Playwright Chromium, bilateral policy, destination-local admission/HumanGate sovereignty, exact-one execution binding/idempotency, receipt/cancellation/restart boundaries, zero automatic network replay, privacy-safe artifacts and zero residual scoped processes. Independent post-run verification rechecked `SHA256SUMS.txt`, found zero forbidden sensitive fields/strings in JSON/JSONL evidence, and visually rechecked both instances before/after restart.
-
-QA carrier PR #129 was closed unmerged after recording the final verdict. Issue #115 was closed `completed` with final verdict:
-
-```text
-S8 = GO
-```
-
-M3 must reuse this accepted path. The S8 GO does not grant payment, production deployment, credential forwarding, remote Worker control or remote HumanGate authority.
+S8 proves controlled delegation only. It does not grant payment, deployment, credential forwarding, remote Worker control or remote HumanGate authority.
 
 Status:
 
@@ -62,103 +54,110 @@ PASS
 
 ## Gate 2 — broader replay/evaluation evidence
 
-The original evidence-linked historical replay corpus contains six project-level cases and reproduces all six manual labels.
+Evidence now includes:
 
-M2.3 added a real workstream evidence set. M2.4 corrected a truth-boundary defect exposed by that set:
+```text
+historical project-level replay          6 labelled cases
+real workstream replay                    TrainingOS / TradeOS / Video-Media
+SIMULATED adversarial replay              11 cases
+```
+
+The workstream model preserves:
 
 ```text
 complete != active safe capacity
 observed workstreams != complete decision scope
 ```
 
-The corrected real-workstream replay is:
+Current real-workstream replay:
 
 ```text
-TrainingOS                     -> ESCALATE incomplete decision scope; no project-wide pause
-TradeOS                        -> REPRIORITIZE around blocked N2; active BusinessChannel can continue
-Video Operation / Shared Media -> PAUSE current critical path only because decision scope is explicit and complete
+TrainingOS   -> ESCALATE incomplete decision scope
+TradeOS      -> REPRIORITIZE around blocked N2 while active safe work can continue
+Video/Media  -> PAUSE only where current critical decision scope is explicit and complete
 ```
 
-M2.5 adds an explicitly labelled simulation corpus:
+M2.5 adversarial simulation covers owner conflict, stale→recovery, duplicate Controller attestations, blocked+active work, incomplete/complete decision scope, unknown truth and A2 allow/deny boundaries. It is explicitly `SIMULATED` and is not represented as real history.
 
-```text
-schema = aiexe.management-adversarial-replay.v1
-evidenceClass = SIMULATED
-cases = 11
-```
-
-The adversarial cases cover:
-
-- explicit owner conflict;
-- exact-head stale attestation and exact-head recovery;
-- duplicate/conflicting Controller attestations;
-- critical blocked work plus independent active safe work;
-- held work with incomplete decision scope;
-- held work with explicitly complete decision scope;
-- unknown workstream truth;
-- forbidden A2 merge;
-- policy-eligible but still non-binding approved test execution;
-- scheduling without an existing approval reference.
-
-This strengthens deterministic failure-mode coverage and explicitly measures false/missed escalation for the workstream adversaries. It does **not** convert simulated cases into real project history and therefore does not, by itself, prove general management quality.
-
-Remaining evidence gaps include:
-
-- more real owner-conflict / duplicate-owner episodes;
-- real stale/recovery sequences from multiple projects;
-- policy blocks and duplicate shared-capability episodes;
-- ambiguous/conflicting real Controller sources;
-- false-positive escalation and false project-wide pause measured over a larger labelled set;
-- missed escalation adversarial and real cases;
-- recovery after blockers clear in real workstreams;
-- independent parallel work becoming newly unsafe;
-- incorrect or stale decision-scope completeness claims from real Controller output.
+Remaining gaps include more real owner-conflict, stale/recovery, policy-block, false-pause, false/missed escalation and recovery-after-blocker-clear episodes across multiple projects.
 
 Status:
 
 ```text
 PARTIAL / BLOCKED FOR M3
-adversarial simulation coverage = EXPANDED
-real replay breadth = INSUFFICIENT FOR PASS
 ```
 
-## Gate 3 — real project-owned controller/status attestations
+## Gate 3 — recurring real Controller attestations
 
-Domain OS repositories do not need AIEXE-specific receipt producer code.
-
-AIEXE owns:
+AIEXE owns the consumer side:
 
 ```text
 aiexe.external-controller-attestation.v1
 -> aiexe.domain-controller-receipt.v1
 ```
 
-Each managed project only needs a real project-owned controller or canonical status source capable of emitting explicit structured attestation fields for the exact observed head. The attestation must be explicit; AIEXE may not infer domain status from GitHub activity or unstructured prose.
-
-The current executable temporal sample uses the Video Operation handoff:
+M2.7 adds a deterministic out-of-band envelope:
 
 ```text
-handoff exact head = 0eb4a4ee1bdf27567edc4e2c6cf2dd6a5daa3a42
-M10 human review = blocked
+aiexe.external-controller-attestation-envelope.v1
 ```
 
-At that exact observed head the attestation is accepted. After the repository advances to a newer head, the same old handoff becomes non-authoritative:
+Only a marked JSON payload with explicit fields and a verified SHA-256 source digest can be promoted. Surrounding prose is non-authoritative and LLM fact extraction is forbidden.
+
+This solves an exact-head self-reference problem discovered in real Video/Media evidence:
 
 ```text
-accepted = false
-reason = exact_head_mismatch
-project status = unknown
+observe main H
+-> commit an exact-head receipt for H into the same main
+-> main advances to H+1
+-> receipt is stale immediately
 ```
 
-This is positive evidence that stale Controller truth cannot silently ride forward with newer code.
+Current exact-head receipts therefore need an out-of-band transport such as a coordinator issue/PR comment, automation receipt store or external status service which does not mutate the attested git head.
+
+### Real current-head proof
+
+A structured AIEXE receipt was posted out of band on PR #125:
+
+```text
+sourceRef = https://github.com/moseszhu999/ai_exe_os/pull/125#issuecomment-5232406288
+sourceDigest = sha256:9893c901cb3a397b28f69afb3c98b2e7b2ff4a3944336ef8cb4db79d95294ac5
+attested main = 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
+current main = 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
+promotion = accepted
+```
+
+Executable tests prove:
+
+```text
+verified current structured envelope -> accepted
+same envelope with old exact head      -> exact_head_mismatch -> unknown
+human-readable prose only              -> rejected
+digest mismatch                        -> rejected
+duplicate envelope                     -> rejected
+unsupported inferred field             -> rejected
+```
+
+### Cross-project read-only scan
+
+Real Controller evidence was observed for all four portfolio sources, but current promotion status is:
+
+```text
+AIEXE        structured out-of-band current receipt     PROMOTABLE
+TrainingOS   recurring human-readable controller issue  NOT PROMOTABLE
+TradeOS      recurring human-readable controller issue  NOT PROMOTABLE
+Video/Media  repo-contained controller receipt          NOT PROMOTABLE
+```
+
+TrainingOS and TradeOS do have recurring Controllers; the sampled outputs are not canonical current structured envelopes and their reported heads lag current main. Video/Media's repo-contained receipt is current-source evidence but is exact-head stale after its own publication commit.
 
 Current state:
 
 ```text
-consumer/adapter contract                         IMPLEMENTED
-real exact-head temporal attestation sample       IMPLEMENTED
-domain repository plumbing requirement            REMOVED
-recurring structured attestations from all repos  NOT YET PROVEN
+structured out-of-band schema/parser              PASS
+real AIEXE current-head structured receipt         PASS
+external Domain current structured receipt         0 / 3
+recurring structured adoption across all projects NOT PROVEN
 ```
 
 Status:
@@ -167,43 +166,18 @@ Status:
 PARTIAL / BLOCKED FOR M3
 ```
 
-## Gate 4 — A2 action allow-set and policy envelope
+## Gate 4 — A2 action allow-set and accepted execution path
 
-M2.2 implements:
+M2.2 defines:
 
 ```text
 aiexe.a2-management-action-policy.v1
 aiexe.a2-management-action-eligibility.v1
 ```
 
-Initial allow-set:
+Allowed candidates remain narrow read/plan/approved-test/preapproved-work actions. Consequential actions such as merge, deploy, payment, credentials, policy widening, Domain truth mutation and production mutation are mechanically denied.
 
-```text
-collect_project_status
-prepare_non_binding_plan
-request_controller_attestation
-request_existing_ci_validation
-run_approved_test_profile
-schedule_preapproved_bounded_work
-```
-
-Mechanically forbidden from A2:
-
-```text
-credential_grant_or_write
-deploy
-domain_truth_mutation
-external_contractual_commitment
-human_impersonation
-merge
-payment
-policy_widening
-production_mutation
-```
-
-Eligibility requires explicit policy preapproval, evidence, canonical `package@semver` capability references where applicable, and an existing approval reference for preapproved bounded work scheduling.
-
-Every positive eligibility result still fixes:
+Every positive eligibility result remains:
 
 ```text
 binding = false
@@ -213,7 +187,7 @@ humanGateDecisionCreated = false
 domainWritePerformed = false
 ```
 
-An accepted S8 runtime path now exists, but the management A2 policy has not yet been proven end-to-end through that path. S8 acceptance is a prerequisite, not implicit A2 execution authorization.
+S8 is now an accepted runtime path, but the management A2 policy has not been proven end-to-end through that path. S8 acceptance is a prerequisite, not implicit A2 authorization.
 
 Status:
 
@@ -221,39 +195,58 @@ Status:
 PARTIAL / BLOCKED FOR M3
 ```
 
-## Gate 5 — live read-only management observation cycle
+## Gate 5 — live provider-backed read-only observation cycle
 
-M2.1 implements:
+M2.6 captured real GitHub facts for all four registered repositories and fixed two source-truth ambiguities:
 
 ```text
-GitHub read-only observations
-+ external controller attestations
--> exact-head/freshness reconciliation
--> Portfolio
--> Attention Queue
--> Cockpit
+missing open-work observation != zero open PRs
+PR title != owner evidence
 ```
 
-M2.4 extends the decision model beneath a project:
+M2.7 now composes the real provider capture with verified out-of-band attestations:
 
 ```text
-project truth
-+ explicit workstream facts
-+ explicit decision-scope completeness
--> workstream attention
--> project workstream rollup
--> continue / reprioritize / escalate / pause proposal
+REAL_PROVIDER_OBSERVATION
++ verified structured Controller sources
+-> aiexe.management-live-provider-cycle.v1
 ```
 
-The implementation remains intentionally input-bounded:
+Using the real four-project provider capture plus the real AIEXE receipt yields:
 
 ```text
-providerFetchPerformed = false
+projectCount = 4
+attestedProjectCount = 1
+AIEXE = active
+TrainingOS = unknown
+TradeOS = unknown
+Video/Media = unknown
+unresolvedProjectIds = [tradeos, trainingos, video-operation-shared-media]
+```
+
+That is the required fail-closed behavior.
+
+Transport/runtime remains explicit:
+
+```text
+providerTransport = external-read-only-connector
+providerFetchPerformedInProcess = false
 scheduledRuntimeStarted = false
+recurringIngestionProven = false
 writeAuthority = none
 ```
 
-There is still no accepted live scheduled/provider-backed runner periodically supplying observations, Controller attestations, workstream facts and scope-completeness evidence.
+TrainingOS and TradeOS are private repositories. PR #125 does not add cross-repository credentials, hidden tokens or credential forwarding to make an AIEXE repository-scoped Actions token read them. Current evidence is fetched through an authorized external read-only connector and then processed deterministically by AIEXE.
+
+Current state:
+
+```text
+one-shot real provider capture                 PASS
+real provider + current receipt cycle          PASS
+fail-closed unresolved Domain truth            PASS
+recurring authorized ingestion                 NOT PROVEN
+scheduled provider-backed runner               NOT PROVEN
+```
 
 Status:
 
@@ -261,58 +254,65 @@ Status:
 PARTIAL / BLOCKED FOR M3
 ```
 
-## Required M3 entry package
+## M2.7 validation
 
-Current gate state:
+First implementation exact head:
+
+```text
+a888a33d7af681ebcaf03c956a487a494a27dafe
+S0 source validation run 31322592857   SUCCESS
+job 93267772322                       SUCCESS
+Source syntax check                   PASS
+tests                                 469 / 469 PASS
+Provider boundary scan                PASS
+```
+
+A fresh exact-head validation is required after this readiness/documentation closure commit.
+
+## Required M3 entry package
 
 ```text
 G1 final S8-F controlled-delegation runtime acceptance  PASS
 G2 broader replay/evaluation acceptance                 PARTIAL
-G3 recurring real controller attestations               PARTIAL
+G3 recurring real Controller attestations               PARTIAL
 G4 A2 policy proven through accepted execution path      PARTIAL
 G5 live provider-backed read-only observation cycle      PARTIAL
 ```
 
-M3 may start only when all five gates are `PASS`.
-
-If any gate is false:
+If any gate is not `PASS`:
 
 ```text
 managementAuthority = observe-and-propose
 A2 execution = blocked
 ```
 
-## Target execution chain after gates close
+## Target execution chain after all gates close
 
 ```text
-External project facts
-+ exact-head project-owned Controller attestation
-+ explicit workstream facts
-+ explicit decision-scope completeness
+External source facts
++ current exact-head structured Controller attestation
++ explicit workstream facts / decision-scope completeness
         |
         v
 AIEXE canonical Domain Controller Receipt
         |
         v
-Observed Portfolio + Workstreams
-        |
-        v
-Workstream Attention + Project Rollup
+Portfolio + Workstream Attention
         |
         v
 Evidence-backed ManagementProposal (A1)
         |
         v
-A2 policy eligibility check
+A2 policy eligibility
         |
         v
 canonical capability package@version
         |
         v
-existing S8 delegation policy
+accepted S8 delegation policy
         |
         v
-destination-local admission / HumanGate as required
+destination-local admission / HumanGate
         |
         v
 bounded execution
@@ -321,7 +321,7 @@ bounded execution
 receipt/evidence
         |
         v
-next management observation
+next read-only observation
 ```
 
 ## Authority principles
@@ -330,6 +330,9 @@ next management observation
 WorkstreamPause != ProjectPause
 Complete != Active
 Observed != CompleteScope
+GitHubActivity != DomainStatus
+HumanReadableControllerProse != CanonicalAttestation
+RepoContainedReceipt != CurrentExactHeadReceipt
 ManagementProposal != A2 eligibility
 A2 eligibility != DelegationPolicy
 A2 eligibility != HumanGate approval
@@ -337,22 +340,14 @@ A2 eligibility != Capability grant
 A2 eligibility != Domain write authority
 ```
 
-A `reprioritize` proposal means only: contain explicitly blocked workstreams and prefer already-authorized **active** safe work. It does not schedule, delegate, create or approve work.
+## Non-overlapping work allowed before M3
 
-An `escalate` caused by incomplete decision scope means AIEXE lacks evidence to choose between project-wide pause and continued work. It must not guess either direction.
-
-## Non-overlapping work that may continue before M3
-
-1. broaden project-level and workstream-level real replay;
-2. standardize recurring Controller/automation output to explicit attestation and decision-scope fields without adding Domain OS runtime frameworks;
-3. connect an authorized read-only provider runner to the observation-cycle contract;
-4. measure false escalation, false project-wide pause and missed escalation;
-5. test A2 policy against broader replay without executing actions;
-6. build the read-only owner cockpit around workstream-aware outputs.
-
-## Exit condition
-
-This note should be superseded only when all five M3 gates have exact evidence.
+1. broaden real replay/evaluation evidence;
+2. migrate recurring Controller outputs toward the out-of-band structured envelope without adding Domain OS runtime frameworks;
+3. prove recurring authorized read-only ingestion of provider facts and structured receipts;
+4. measure false escalation, false project-wide pause and missed escalation over larger real labelled sets;
+5. test A2 policy against broader evidence without executing actions;
+6. maintain the read-only owner cockpit around current bounded truth.
 
 ## Boundary
 
@@ -361,8 +356,11 @@ S8 files changed = NO
 second S8 owner = NO
 A2 execution enabled = NO
 Domain OS receipt framework added = NO
-Domain OS changes = NO
+Domain OS repository changes = NO
+cross-repository credentials added = NO
 Domain writes = NO
+Merge PR #125 = NO while gated
 Deploy = NO
 Production mutation = NO
+Payment / settlement / wallet / token action = NO
 ```
