@@ -1,0 +1,10 @@
+{
+  "schema": "aiexe.controller-attestation-source-sample.v1",
+  "evidenceClass": "REAL_OUT_OF_BAND_CONTROLLER_ATTESTATION",
+  "sourceKind": "coordinator-issue",
+  "sourceRef": "https://github.com/moseszhu999/ai_exe_os/pull/125#issuecomment-5232406288",
+  "sourceDigest": "sha256:9893c901cb3a397b28f69afb3c98b2e7b2ff4a3944336ef8cb4db79d95294ac5",
+  "currentProviderHead": "7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48",
+  "capturedAt": "2026-08-09T15:55:00Z",
+  "body": "## M2.7 out-of-band Controller attestation — AIEXE current-head sample\n\nThis comment is a read-only domain-status attestation transport sample. It does not change `main`, authorize M3/A2 execution, or widen any permission.\n\n<!-- aiexe.external-controller-attestation.v1 -->\n```json\n{\n  \"projectId\": \"aiexe\",\n  \"controllerId\": \"group-management-plane-controller\",\n  \"repository\": \"moseszhu999/ai_exe_os\",\n  \"exactHeadSha\": \"7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48\",\n  \"domainStatus\": \"active\",\n  \"owner\": \"AIEXE Group Management Plane Controller\",\n  \"milestone\": \"S8 GO; Group Management Plane M2.6 Draft; M3 blocked at G2-G5\",\n  \"blockerCodes\": [\n    \"m3_g2_partial\",\n    \"m3_g3_partial\",\n    \"m3_g4_partial\",\n    \"m3_g5_partial\"\n  ],\n  \"evidenceRefs\": [\n    \"github:moseszhu999/ai_exe_os:issue:115:s8-go\",\n    \"github:moseszhu999/ai_exe_os:pull:125\"\n  ],\n  \"observedAt\": \"2026-08-09T15:55:00Z\"\n}\n```\n<!-- /aiexe.external-controller-attestation.v1 -->\n\nTransport rule: AIEXE must hash the exact comment body and bind the resulting digest plus this comment URL as source metadata before promotion. Surrounding prose is non-authoritative; only the marked JSON envelope is eligible for deterministic parsing."
+}
