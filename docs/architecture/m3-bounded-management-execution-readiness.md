@@ -13,25 +13,36 @@ BLOCKED
 
 M0-M2.4 provide a credible read-only management foundation, a non-binding A2 eligibility policy, real exact-head attestation temporal evidence and workstream-scoped attention. AIEXE is still **not authorized to cross from management proposal into autonomous A2 execution**.
 
-The correct next move is to close evidence, live-observation and S8-baseline gates, not to create a second orchestration path or force AIEXE plumbing into every Domain OS.
+The correct next move is to close evidence, live-observation and final S8 runtime-acceptance gates, not to create a second orchestration path or force AIEXE plumbing into every Domain OS.
 
-## Gate 1 — existing S8 owner is still open
+## Gate 1 — S8 integration merged; final runtime acceptance pending
 
-The current unique controlled-delegation integration owner is:
+The unique controlled-delegation integration path is now in `main` through PR #122 and subsequent bounded S8 repairs. No second S8 owner is required or permitted.
+
+Current accepted product path includes:
 
 ```text
-AIEXE PR #122
-agent/s8-controlled-delegation-integration-v1
+PR #122  S8-I controlled delegation integration     MERGED
+PR #128  Electron product-root authority repair      MERGED
+PR #130  persistent destination-gate explanation     MERGED
 ```
 
-M3 must reuse that accepted integration path. It must not create parallel delegation, remote worker control, HumanGate bypass or a second receipt protocol.
+The current frozen S8-F product head is:
 
-Until #122 is accepted into the baseline, PR #125 must not wire management proposals into S8 internals.
+```text
+7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
+```
+
+M3 must reuse this accepted integration path. It must not create parallel delegation, remote Worker control, HumanGate bypass or a second receipt protocol.
+
+However, merge evidence alone is not enough to authorize management execution. Issue #115 remains open while QA carrier PR #129 reruns the full native Apple Silicon two-instance Electron/Chrome/Chromium acceptance matrix against the frozen product head. The earlier native runs already demonstrated that real-runtime acceptance can expose defects after source CI passes, so M3 must fail closed until S8-F produces final authoritative acceptance evidence.
 
 Status:
 
 ```text
-BLOCKED
+PARTIAL / BLOCKED FOR M3
+integration owner merged = PASS
+final S8-F runtime acceptance = PENDING
 ```
 
 ## Gate 2 — broader replay evidence
@@ -175,7 +186,7 @@ humanGateDecisionCreated = false
 domainWritePerformed = false
 ```
 
-The policy contract is implemented, but end-to-end proof through an accepted S8 baseline does not exist.
+The policy contract is implemented, but end-to-end proof through a final S8-F accepted runtime path does not yet exist.
 
 Status:
 
@@ -228,11 +239,11 @@ PARTIAL / BLOCKED FOR M3
 M3 may start only after:
 
 ```text
-G1 S8 #122 accepted baseline                         PASS
-G2 broader replay/evaluation acceptance              PASS
-G3 recurring real controller attestations            PASS
-G4 A2 policy proven through accepted execution path   PASS
-G5 live provider-backed read-only observation cycle   PASS
+G1 final S8-F controlled-delegation runtime acceptance  PASS
+G2 broader replay/evaluation acceptance                 PASS
+G3 recurring real controller attestations               PASS
+G4 A2 policy proven through accepted execution path      PASS
+G5 live provider-backed read-only observation cycle      PASS
 ```
 
 If any gate is false:
@@ -312,7 +323,7 @@ An `escalate` caused by incomplete decision scope means AIEXE lacks evidence to 
 
 ## Exit condition
 
-This note should be superseded only when the current S8 integration owner is accepted and all five M3 gates have exact evidence.
+This note should be superseded only when final S8-F acceptance and all remaining M3 gates have exact evidence.
 
 ## Boundary
 
