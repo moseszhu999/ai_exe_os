@@ -17,8 +17,9 @@ test('M2.6 fixture is a real provider observation capture, not a Domain truth re
   assert.equal(fixture.schema, 'aiexe.live-github-observation-capture.v1');
   assert.equal(fixture.evidenceClass, 'REAL_PROVIDER_OBSERVATION');
   assert.match(fixture.captureMethod, /GitHub connector read-only/i);
-  assert.match(fixture.captureMethod, /no Domain OS status inferred/i);
+  assert.match(fixture.captureMethod, /no Domain OS status or owner scope inferred/i);
   assert.match(fixture.openWorkPolicy, /explicit/i);
+  assert.match(fixture.ownerScopePolicy, /PR titles are not owner evidence/i);
   assert.equal(fixture.controllerAttestations.length, 0);
   assert.equal(fixture.observations.length, 4);
 });
@@ -37,6 +38,7 @@ test('M2.6 current exact GitHub heads and open PRs are explicit while Domain sta
   assert.ok(rows.every((row) => row.source.freshness.state === 'current'));
   assert.ok(rows.every((row) => row.providerCapture.openPullRequestsObserved === true));
   assert.ok(rows.every((row) => row.providerCapture.inferenceAllowed === false));
+  assert.ok(rows.every((row) => row.openWork.pullRequests.every((pr) => pr.ownerScope === null)));
   assert.ok(rows.every((row) => row.snapshot.status === 'unknown'));
   assert.ok(rows.every((row) => row.snapshot.owner === null));
   assert.ok(rows.every((row) => row.snapshot.milestone === null));
