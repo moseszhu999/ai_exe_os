@@ -182,11 +182,38 @@ const queryDelegation = (instance) => instance.page.evaluate((workspaceId) => wi
 const queryMission = (instance) => instance.page.evaluate((workspaceId) => window.aiExecutionOS.s2.mission.queryState(workspaceId), WORKSPACE);
 const queryS1 = (instance) => instance.page.evaluate((workspaceId) => window.aiExecutionOS.s1.queryState(workspaceId), WORKSPACE);
 
+async function canonicalMissionExecutionState(instance) {
+  const state = await queryMission(instance);
+  return JSON.stringify({
+    workspaces: state.workspaces,
+    missions: state.missions,
+    revisions: state.revisions,
+    plans: state.plans,
+    missionRuns: state.missionRuns,
+    stepAttempts: state.stepAttempts,
+    stepOutputs: state.stepOutputs,
+    agentHandoffs: state.agentHandoffs,
+    checkpoints: state.checkpoints,
+    humanGates: state.humanGates,
+    evidence: state.evidence,
+    missionEvents: state.missionEvents,
+    activeWorkspaceId: state.activeWorkspaceId,
+  });
+}
+
 async function createAndStartWorker(instance, input) {
   return instance.page.evaluate(async (worker) => {
     await window.aiExecutionOS.createWorker(worker);
     return window.aiExecutionOS.startWorker(worker.id);
   }, input);
+}
+
+async function recordPolicy(destination, target, { id, status = 'active', createdAt, expiresAt }) {
+  return destination.page.evaluate((policy) => window.aiExecutionOS.s8.delegation.recordDelegationPolicy(policy), {
+    id, version: '1.0.0', peerBindingId: 'peer-a-to-b', destinationWorkspaceId: WORKSPACE, workspaceId: WORKSPACE,
+    status, allowedCapabilityVersionIds: ['local.form-submit@1.0.0'], allowedActions: ['submit_payload'],
+    allowedTargets: [target], maxPendingRequests: 8, maxAcceptedNotStarted: 2, createdAt, expiresAt,
+  });
 }
 
 async function setupBilateral(source, destination, destinationTarget) {
@@ -211,11 +238,14 @@ async function setupBilateral(source, destination, destinationTarget) {
     workspaceId: 'workspace-a', agentId: 'agent-a', installationId, allowedActions: ['submit_payload'], allowedTargets: [target],
   }), { installationId: install.id, target: destinationTarget });
   const now = Date.now();
-  await destination.page.evaluate((policy) => window.aiExecutionOS.s8.delegation.recordDelegationPolicy(policy), {
-    id: 'policy-a-to-b-v1', version: '1.0.0', peerBindingId: peer.id, destinationWorkspaceId: WORKSPACE, workspaceId: WORKSPACE,
-    status: 'active', allowedCapabilityVersionIds: ['local.form-submit@1.0.0'], allowedActions: ['submit_payload'],
-    allowedTargets: [destinationTarget], maxPendingRequests: 8, maxAcceptedNotStarted: 2,
-    createdAt: new Date(now).toISOString(), expiresAt: new Date(now + 6 * 60 * 60 * 1000).toISOString(),
+  await recordPolicy(destination, destinationTarget, {
+    id: 'policy-a-to-b-v1', status: 'active', createdAt: new Date(now).toISOString(), expiresAt: new Date(now + 6 * 60 * 60 * 1000).toISOString(),
+  });
+  await recordPolicy(destination, destinationTarget, {
+    id: 'policy-revoked-v1', status: 'revoked', createdAt: new Date(now - 60 * 60 * 1000).toISOString(), expiresAt: new Date(now + 6 * 60 * 60 * 1000).toISOString(),
+  });
+  await recordPolicy(destination, destinationTarget, {
+    id: 'policy-expired-v1', status: 'active', createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(), expiresAt: new Date(now - 60 * 60 * 1000).toISOString(),
   });
   return { peer, sourceInstanceId: sourceState.localInstanceId, destinationInstanceId: destinationState.localInstanceId };
 }
@@ -317,6 +347,24 @@ async function main() {
     assert.notEqual(missingProposal.state, 'waiting_human');
     assert.match(String(missingProposal.reasonCode || ''), /policy/i);
 
+    const revokedRequest = await createRequest(a, targetB, 'revoked-policy', 'policy-revoked-v1');
+    await push(a, revokedRequest.id);
+    await pullInbox(b);
+    stateB = await queryDelegation(b);
+    const revokedProposal = stateB.incomingProposals.find((item) => item.delegationRequestId === revokedRequest.id);
+    assert.ok(revokedProposal);
+    assert.equal(revokedProposal.reasonCode, 'policy_revoked');
+    assert.notEqual(revokedProposal.state, 'waiting_human');
+
+    const expiredRequest = await createRequest(a, targetB, 'expired-policy', 'policy-expired-v1');
+    await push(a, expiredRequest.id);
+    await pullInbox(b);
+    stateB = await queryDelegation(b);
+    const expiredProposal = stateB.incomingProposals.find((item) => item.delegationRequestId === expiredRequest.id);
+    assert.ok(expiredProposal);
+    assert.equal(expiredProposal.reasonCode, 'policy_expired');
+    assert.notEqual(expiredProposal.state, 'waiting_human');
+
     const second = await createRequest(a, targetB, 'execute exactly once');
     await push(a, second.id);
     await pullInbox(b);
@@ -337,10 +385,10 @@ async function main() {
     const executed = await b.page.evaluate((gateId) => window.aiExecutionOS.s1.approveHumanGate({ gateId }), actionGate.id);
     assert.equal(executed.delegationReceipt.state, 'completed');
 
-    const sourceMissionBeforePull = JSON.stringify(await queryMission(a));
+    const sourceMissionBeforePull = await canonicalMissionExecutionState(a);
     const pullReceipts = await a.page.evaluate(() => window.aiExecutionOS.s8.delegation.pullDelegationReceipts({ workspaceId: 'workspace-a' }));
     assert.equal(pullReceipts.accepted, 1);
-    assert.equal(JSON.stringify(await queryMission(a)), sourceMissionBeforePull, 'receipt pull mutated source canonical S2 truth');
+    assert.equal(await canonicalMissionExecutionState(a), sourceMissionBeforePull, 'receipt pull mutated source canonical S2 truth');
     const stateAWithReceipt = await queryDelegation(a);
     const mirroredReceipt = stateAWithReceipt.receipts.find((item) => item.direction === 'inbound' && item.delegationRequestId === second.id);
     assert.ok(mirroredReceipt);
@@ -419,6 +467,8 @@ async function main() {
       sourceA: beforeRestart.sourceA, sourceB: beforeRestart.sourceB,
       bilateralPolicyRequired: true,
       missingPolicyFailedClosed: missingProposal.reasonCode,
+      revokedPolicyFailedClosed: revokedProposal.reasonCode,
+      expiredPolicyFailedClosed: expiredProposal.reasonCode,
       localRejectionCreatesExecution: false,
       destinationBindingId: accepted.binding.id,
       duplicateAcceptanceSameBinding: true,
@@ -431,7 +481,7 @@ async function main() {
       pageErrors: audit.pageErrors,
       consoleErrors: audit.consoleErrors,
       requestAudit: exchange.requestAudit,
-      evidenceDigest: digest({ bilateral, requestIds: [first.id, missingPolicy.id, second.id, third.id], bindingId: accepted.binding.id, receiptDigest: executed.delegationReceipt.receiptDigest }),
+      evidenceDigest: digest({ bilateral, requestIds: [first.id, missingPolicy.id, revokedRequest.id, expiredRequest.id, second.id, third.id], bindingId: accepted.binding.id, receiptDigest: executed.delegationReceipt.receiptDigest }),
     };
     privacyScan(result);
     writeJson('s8-electron-two-instance-audit.json', result);
