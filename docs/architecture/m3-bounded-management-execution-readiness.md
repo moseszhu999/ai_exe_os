@@ -1,7 +1,7 @@
 # M3 Bounded Management Execution — Readiness Gate
 
 Date: 2026-08-09  
-Parent: `docs/architecture/m2-a2-management-action-policy.md`  
+Parent: `docs/architecture/m2-workstream-scoped-attention.md`  
 Implementation owner for this readiness note: PR #125 only  
 Execution owner: not created
 
@@ -11,7 +11,7 @@ Execution owner: not created
 BLOCKED
 ```
 
-M0-M2.2 provide a credible read-only management foundation plus a non-binding A2 eligibility policy, but AIEXE is **not yet authorized to cross from management proposal into autonomous A2 execution**.
+M0-M2.3 provide a credible read-only management foundation, a non-binding A2 eligibility policy, real exact-head attestation temporal evidence and workstream-scoped attention. AIEXE is still **not authorized to cross from management proposal into autonomous A2 execution**.
 
 The correct next move is to close evidence, live-observation and S8-baseline gates, not to create a second orchestration path or force AIEXE plumbing into every Domain OS.
 
@@ -34,47 +34,86 @@ Status:
 BLOCKED
 ```
 
-## Gate 2 — replay evidence is still small
+## Gate 2 — broader replay evidence
 
-The first evidence-linked historical replay corpus contains six cases and reproduces all six manual labels.
+The original evidence-linked historical replay corpus contains six project-level cases and reproduces all six manual labels.
 
-That proves the deterministic policy is executable and auditable. It does **not** prove general management quality.
+M2.3 now adds a second real evidence set captured from the current portfolio:
 
-Before raising authority from A1 `propose` to A2 `execute bounded`, the replay set should contain materially broader evidence across clean continue cases, owner conflicts, stale/exact-head mismatch, validation failures and recovery, policy blocks, duplicate shared-capability cases, ambiguous evidence, false-positive escalations and missed-escalation adversarial cases.
+```text
+TrainingOS                     -> REPRIORITIZE, not project-wide pause
+TradeOS                        -> REPRIORITIZE, not project-wide pause
+Video Operation / Shared Media -> PAUSE current critical path
+```
+
+The fixture contains eight explicitly evidenced workstreams across the three projects and tests the distinction:
+
+```text
+WorkstreamPause != ProjectPause
+```
+
+This materially improves the replay base because it exercises the false-project-pause failure mode that the original project-only engine could not represent.
+
+It still does **not** prove general management quality. More replay is required for:
+
+- owner conflicts and duplicate owners;
+- exact-head stale/recovery sequences;
+- policy blocks and duplicate shared capabilities;
+- ambiguous/conflicting Controller sources;
+- false-positive escalation and false project-wide pause;
+- missed escalation adversarial cases;
+- recovery after a blocker clears;
+- independent parallel work becoming newly unsafe.
 
 Status:
 
 ```text
-BLOCKED
+PARTIAL / BLOCKED FOR M3
 ```
 
 ## Gate 3 — real project-owned controller/status attestations
 
-The earlier version of this gate incorrectly implied that TrainingOS, TradeOS and Shared Media should each add AIEXE-specific receipt producer code. That requirement is superseded.
+Domain OS repositories do not need AIEXE-specific receipt producer code.
 
-Current domain operating rules make that dependency undesirable:
-
-- TradeOS rejects infrastructure expansion that does not remove a current product critical-path blocker.
-- Video Operation rejects new orchestration/receipt framework work while M10 human review remains the earliest business blocker.
-- TrainingOS requires shared infrastructure to remain bounded and non-duplicative.
-
-AIEXE now owns:
+AIEXE owns:
 
 ```text
 aiexe.external-controller-attestation.v1
 -> aiexe.domain-controller-receipt.v1
 ```
 
-Each managed project only needs a real project-owned controller or canonical status source capable of emitting explicit structured attestation fields for the exact observed head. No Domain OS repository code change is required.
+Each managed project only needs a real project-owned controller or canonical status source capable of emitting explicit structured attestation fields for the exact observed head. The attestation must be explicit; AIEXE may not infer domain status from GitHub activity or unstructured prose.
 
-The attestation must be explicit; AIEXE may not infer domain status from GitHub activity or unstructured prose.
+M2.3 adds an executable real temporal sample using the Video Operation current handoff:
+
+```text
+handoff exact head = 0eb4a4ee1bdf27567edc4e2c6cf2dd6a5daa3a42
+M10 human review = blocked
+```
+
+At that exact observed head the attestation is accepted. After the repository advances through #106/#107 to:
+
+```text
+current main = e4728a0b1694bb9e89bd17f7f03bc3d3746e61e8
+```
+
+the same old handoff becomes:
+
+```text
+accepted = false
+reason = exact_head_mismatch
+project status = unknown
+```
+
+This is positive evidence that stale Controller truth cannot silently ride forward with newer code.
 
 Current state:
 
 ```text
-consumer/adapter contract                     IMPLEMENTED
-domain repository plumbing requirement        REMOVED
-recurring real attestations from all projects NOT YET PROVEN
+consumer/adapter contract                         IMPLEMENTED
+real exact-head temporal attestation sample       IMPLEMENTED
+domain repository plumbing requirement            REMOVED
+recurring structured attestations from all repos  NOT YET PROVEN
 ```
 
 Status:
@@ -85,7 +124,7 @@ PARTIAL / BLOCKED FOR M3
 
 ## Gate 4 — A2 action allow-set and policy envelope
 
-M2.2 now implements an executable eligibility policy:
+M2.2 implements:
 
 ```text
 aiexe.a2-management-action-policy.v1
@@ -129,7 +168,7 @@ humanGateDecisionCreated = false
 domainWritePerformed = false
 ```
 
-So the action taxonomy and policy contract are implemented, but end-to-end execution proof through an accepted S8 baseline does not yet exist.
+The policy contract is implemented, but end-to-end proof through an accepted S8 baseline does not exist.
 
 Status:
 
@@ -139,7 +178,7 @@ PARTIAL / BLOCKED FOR M3
 
 ## Gate 5 — live read-only management observation cycle
 
-M2.1 implements the canonical composition cycle:
+M2.1 implements:
 
 ```text
 GitHub read-only observations
@@ -150,13 +189,17 @@ GitHub read-only observations
 -> Cockpit
 ```
 
-Schema:
+M2.3 extends the decision model beneath a project:
 
 ```text
-aiexe.management-observation-cycle.v1
+project truth
++ explicit workstream facts
+-> workstream attention
+-> project workstream rollup
+-> continue / reprioritize / escalate / pause proposal
 ```
 
-The current implementation is intentionally a bounded input cycle:
+The implementation remains intentionally input-bounded:
 
 ```text
 providerFetchPerformed = false
@@ -164,7 +207,7 @@ scheduledRuntimeStarted = false
 writeAuthority = none
 ```
 
-So the contract/composition portion is implemented, but there is still no accepted live scheduled/provider-backed runner that periodically supplies current observations and attestations.
+There is still no accepted live scheduled/provider-backed runner periodically supplying observations, Controller attestations and workstream facts.
 
 Status:
 
@@ -174,11 +217,11 @@ PARTIAL / BLOCKED FOR M3
 
 ## Required M3 entry package
 
-M3 may start only after all of the following are true:
+M3 may start only after:
 
 ```text
 G1 S8 #122 accepted baseline                         PASS
-G2 broader M2 replay acceptance                      PASS
+G2 broader replay/evaluation acceptance              PASS
 G3 recurring real controller attestations            PASS
 G4 A2 policy proven through accepted execution path   PASS
 G5 live provider-backed read-only observation cycle   PASS
@@ -195,16 +238,17 @@ A2 execution = blocked
 
 ```text
 External project facts
-+ exact-head project-owned controller attestation
++ exact-head project-owned Controller attestation
++ explicit workstream facts
         |
         v
 AIEXE canonical Domain Controller Receipt
         |
         v
-Observed Portfolio
+Observed Portfolio + Workstreams
         |
         v
-Deterministic Attention Queue
+Workstream Attention + Project Rollup
         |
         v
 Evidence-backed ManagementProposal (A1)
@@ -231,11 +275,10 @@ receipt/evidence
 next management observation
 ```
 
-## Authority principle
-
-A management recommendation is not execution authority.
+## Authority principles
 
 ```text
+WorkstreamPause != ProjectPause
 ManagementProposal != A2 eligibility
 A2 eligibility != DelegationPolicy
 A2 eligibility != HumanGate approval
@@ -243,18 +286,16 @@ A2 eligibility != Capability grant
 A2 eligibility != Domain write authority
 ```
 
-M3 must preserve those separations mechanically.
+A `reprioritize` proposal means only: contain explicitly blocked workstreams and prefer already-authorized safe work. It does not schedule, delegate, create or approve work.
 
 ## Non-overlapping work that may continue before M3
 
-While M3 is blocked, the following work is safe and useful without touching S8 ownership or Domain OS product paths:
-
-1. expand the evidence-linked M2 replay corpus;
-2. standardize controller/automation output to the external attestation fields without adding Domain OS runtime frameworks;
-3. connect an authorized read-only provider runner to the M2.1 observation-cycle contract;
-4. test the A2 policy against broader replay and adversarial cases without executing actions;
-5. build the read-only owner cockpit around M2 outputs;
-6. measure attention reduction, false escalation and missed escalation.
+1. broaden project-level and workstream-level replay;
+2. standardize recurring Controller/automation output to explicit attestation fields without adding Domain OS runtime frameworks;
+3. connect an authorized read-only provider runner to the observation-cycle contract;
+4. measure false escalation, false project-wide pause and missed escalation;
+5. test A2 policy against broader replay without executing actions;
+6. build the read-only owner cockpit around workstream-aware outputs.
 
 ## Exit condition
 
@@ -267,6 +308,7 @@ S8 files changed = NO
 second S8 owner = NO
 A2 execution enabled = NO
 Domain OS receipt framework added = NO
+Domain OS changes = NO
 Domain writes = NO
 Merge = NO
 Deploy = NO
