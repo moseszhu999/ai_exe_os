@@ -26,8 +26,9 @@ test('root composition instantiates S6 over accepted S5→S4→S3→S2 chain bef
   const windowIndex = main.indexOf('await createMainWindow();');
   assert.ok(serviceIndex >= 0 && serviceIndex < registerIndex && registerIndex < windowIndex);
   assert.match(main, /S5ApplicationService: S1ApplicationServiceS5/);
-  assert.match(main, /S6ApplicationService: S1ApplicationService/);
-  assert.match(main, /S1ApplicationService\.prototype instanceof S1ApplicationServiceS5/);
+  assert.match(main, /S6ApplicationService: S1ApplicationServiceS6/);
+  assert.match(main, /S1ApplicationServiceS6\.prototype instanceof S1ApplicationServiceS5/);
+  assert.match(main, /S1ApplicationService\.prototype instanceof S1ApplicationServiceS6/);
   assert.match(main, /registerS6Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
   assert.match(main, /databasePath: join\(s1RuntimeRoot, 'state\.sqlite'\)/);
   for (const security of ['contextIsolation: true', 'nodeIntegration: false', 'sandbox: true', 'webSecurity: true']) assert.ok(main.includes(security), security);

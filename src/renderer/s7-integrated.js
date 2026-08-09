@@ -202,4 +202,11 @@
   document.querySelector('#s1-workspace')?.addEventListener('change', () => refresh().catch((error) => { summary.textContent = error.message; }));
   document.querySelector('#refresh')?.addEventListener('click', () => refresh().catch((error) => { summary.textContent = error.message; }));
   queueMicrotask(() => refresh().catch((error) => { summary.textContent = error.message; }));
+
+  if (!document.querySelector('script[data-ai-exe-os-s8]')) {
+    const script = document.createElement('script');
+    script.src = './s8-integrated.js';
+    script.dataset.aiExeOsS8 = 'true';
+    document.body.append(script);
+  }
 })();
