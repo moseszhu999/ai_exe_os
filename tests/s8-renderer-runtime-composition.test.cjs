@@ -6,13 +6,20 @@ const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const { S7ApplicationService } = require('../src/application/s7-index.cjs');
 const { S8SourceHandoffApplicationService } = require('../src/application/s8-source-handoff-service.cjs');
+const { S8DestinationAuthorityApplicationService } = require('../src/application/s8-destination-authority-service.cjs');
+const { S8ProductApplicationService } = require('../src/application/s8-product-service.cjs');
 
 function source(path) { return readFileSync(join(__dirname, '..', path), 'utf8'); }
 
-test('S8 product runtime uses the source-handoff-aware service and preserves S7 ancestry', () => {
+test('S8 Electron root uses the composed product service with source handoff and destination authority', () => {
+  assert.equal(S8ProductApplicationService.prototype instanceof S8SourceHandoffApplicationService, true);
   assert.equal(S8SourceHandoffApplicationService.prototype instanceof S7ApplicationService, true);
+  for (const method of ['requestDelegationGate', 'decideDelegationGate', 'approveDelegationProposal', 'rejectDelegationProposal']) {
+    assert.equal(S8ProductApplicationService.prototype[method], S8DestinationAuthorityApplicationService.prototype[method]);
+  }
   const main = source('src/main/main.cjs');
-  assert.match(main, /S8ApplicationService: S1ApplicationService \} = require\('\.\.\/application\/s8-source-handoff-service\.cjs'\)/);
+  assert.match(main, /S8ApplicationService: S1ApplicationService \} = require\('\.\.\/application\/s8-product-service\.cjs'\)/);
+  assert.doesNotMatch(main, /S8ApplicationService: S1ApplicationService \} = require\('\.\.\/application\/s8-source-handoff-service\.cjs'\)/);
   assert.doesNotMatch(main, /S8ApplicationService: S1ApplicationService \} = require\('\.\.\/application\/s8-index\.cjs'\)/);
 });
 
