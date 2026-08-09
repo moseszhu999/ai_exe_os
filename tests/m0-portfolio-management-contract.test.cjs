@@ -59,6 +59,20 @@ test('M0 portfolio snapshot composes canonical project snapshots and explicit at
   assert.equal(snapshot.managementAuthority, 'observe-and-propose');
 });
 
+test('M0 unknown project state is visible in the attention projection', () => {
+  const unknown = createManagedProjectSnapshot(project({
+    status: 'unknown',
+    attentionSignals: ['domain_status_unknown'],
+  }));
+  const snapshot = buildPortfolioSnapshot({
+    portfolioId: 'group-portfolio',
+    observedAt: '2026-08-09T08:01:00.000Z',
+    projects: [unknown],
+  });
+  assert.equal(snapshot.statusCounts.unknown, 1);
+  assert.deepEqual(snapshot.attention.map((item) => item.projectId), ['trainingos']);
+});
+
 test('M0 management proposals are non-binding and evidence-backed', () => {
   const proposal = createManagementProposal({
     id: 'proposal-pause-tradeos',
