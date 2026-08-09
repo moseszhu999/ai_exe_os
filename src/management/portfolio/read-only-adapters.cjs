@@ -4,6 +4,10 @@ const { buildPortfolioSnapshot, createManagedProjectSnapshot } = require('./inde
 
 const OBSERVATION_SCHEMA = 'aiexe.project-observation.github.v1';
 const OBSERVED_PORTFOLIO_SCHEMA = 'aiexe.observed-portfolio.v1';
+const PORTFOLIO_OBSERVATION_SCHEMAS = Object.freeze([
+  OBSERVATION_SCHEMA,
+  'aiexe.project-observation.enriched.v1',
+]);
 const FRESHNESS_STATES = Object.freeze(['current', 'stale', 'unknown']);
 const DEFAULT_FRESHNESS_WINDOW_MINUTES = 120;
 
@@ -188,7 +192,9 @@ function buildObservedPortfolio(input) {
   for (const key of Object.keys(input)) if (!allowed.has(key)) throw new Error(`observed portfolio input contains unsupported field: ${key}`);
   if (!Array.isArray(input.observations) || input.observations.length < 1) throw new TypeError('observations must be a non-empty array');
   for (const observation of input.observations) {
-    if (observation?.schema !== OBSERVATION_SCHEMA || observation?.readOnly !== true || observation?.writeAuthority !== 'none') {
+    if (!PORTFOLIO_OBSERVATION_SCHEMAS.includes(observation?.schema)
+      || observation?.readOnly !== true
+      || observation?.writeAuthority !== 'none') {
       throw new Error('portfolio accepts only canonical read-only project observations');
     }
   }
@@ -223,6 +229,7 @@ module.exports = {
   FRESHNESS_STATES,
   OBSERVATION_SCHEMA,
   OBSERVED_PORTFOLIO_SCHEMA,
+  PORTFOLIO_OBSERVATION_SCHEMAS,
   buildObservedPortfolio,
   classifyFreshness,
   createGithubReadOnlyProjectObservation,
