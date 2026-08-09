@@ -12,6 +12,8 @@ const {
   createDelegationRequest,
 } = require('../src/delegation/policy/index.cjs');
 
+const POLICY_OBSERVED_AT = '2026-08-08T12:02:00.000Z';
+
 function peer(overrides = {}) {
   return createDelegationPeerBinding({
     id: 'peer-a-to-b',
@@ -126,11 +128,11 @@ test('S8 peer scope rejects wrong source, destination and workspace', () => {
 
 test('S8 policy is a bounded canonical capability allow-set and expiry/revocation fail closed', () => {
   const req = request();
-  assert.equal(assertPolicyAllowsRequest(policy(), req, { observedAt: '2026-08-08T12:02:00.000Z' }).allowed, true);
-  assert.equal(assertPolicyAllowsRequest(policy({ allowedActions: ['observe'] }), req).reasonCode, 'action_not_allowed');
-  assert.equal(assertPolicyAllowsRequest(policy({ allowedCapabilityVersionIds: ['other.package@1.0.0'] }), req).reasonCode, 'capability_not_allowed');
-  assert.equal(assertPolicyAllowsRequest(policy({ status: 'revoked' }), req).reasonCode, 'policy_revoked');
-  assert.equal(assertPolicyAllowsRequest(policy({ expiresAt: '2026-08-08T12:00:30.000Z' }), req, { observedAt: '2026-08-08T12:02:00.000Z' }).reasonCode, 'policy_expired');
+  assert.equal(assertPolicyAllowsRequest(policy(), req, { observedAt: POLICY_OBSERVED_AT }).allowed, true);
+  assert.equal(assertPolicyAllowsRequest(policy({ allowedActions: ['observe'] }), req, { observedAt: POLICY_OBSERVED_AT }).reasonCode, 'action_not_allowed');
+  assert.equal(assertPolicyAllowsRequest(policy({ allowedCapabilityVersionIds: ['other.package@1.0.0'] }), req, { observedAt: POLICY_OBSERVED_AT }).reasonCode, 'capability_not_allowed');
+  assert.equal(assertPolicyAllowsRequest(policy({ status: 'revoked' }), req, { observedAt: POLICY_OBSERVED_AT }).reasonCode, 'policy_revoked');
+  assert.equal(assertPolicyAllowsRequest(policy({ expiresAt: '2026-08-08T12:00:30.000Z' }), req, { observedAt: POLICY_OBSERVED_AT }).reasonCode, 'policy_expired');
 });
 
 test('S8 cancellation remains a proposal identity only', () => {
