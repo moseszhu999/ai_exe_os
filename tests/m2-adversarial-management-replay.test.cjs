@@ -16,6 +16,9 @@ const fixture = JSON.parse(readFileSync(join(__dirname, '..', 'fixtures', 'manag
 const NOW = fixture.capturedAt;
 const OLD_SHA = '1111111111111111111111111111111111111111';
 const NEW_SHA = '2222222222222222222222222222222222222222';
+const PROJECT_ID = 'trainingos';
+const PROJECT_NAME = 'TrainingOS';
+const REPOSITORY = 'moseszhu999/training-learning-rails';
 
 function expected(id) {
   const row = fixture.cases.find((candidate) => candidate.id === id);
@@ -25,16 +28,16 @@ function expected(id) {
 
 function project(overrides = {}) {
   return createManagedProjectSnapshot({
-    id: 'adversarial-project',
-    name: 'Adversarial Project',
+    id: PROJECT_ID,
+    name: PROJECT_NAME,
     kind: 'domain-os',
     status: 'active',
-    sourceOfTruth: `github:example/adversarial@${NEW_SHA}`,
+    sourceOfTruth: `github:${REPOSITORY}@${NEW_SHA}`,
     owner: 'controller-a',
     milestone: 'bounded replay',
-    summary: 'simulated adversarial management replay',
+    summary: 'simulated adversarial management replay using a registered portfolio identity',
     attentionSignals: [],
-    evidenceRefs: [`simulation:adversarial:${NEW_SHA}`],
+    evidenceRefs: [`simulation:adversarial:${PROJECT_ID}:${NEW_SHA}`],
     observedAt: NOW,
     ...overrides,
   });
@@ -42,22 +45,22 @@ function project(overrides = {}) {
 
 function githubObservation(headSha = NEW_SHA) {
   return createGithubReadOnlyProjectObservation({
-    projectId: 'adversarial-project',
-    repository: 'example/adversarial',
+    projectId: PROJECT_ID,
+    repository: REPOSITORY,
     defaultBranch: 'main',
     headSha,
     observedAt: NOW,
     now: NOW,
     openPullRequests: [],
-    evidenceRefs: [`simulation:github:example/adversarial@${headSha}`],
+    evidenceRefs: [`simulation:github:${REPOSITORY}@${headSha}`],
   });
 }
 
 function attestation(headSha = OLD_SHA, controllerId = 'controller-a') {
   return createExternalControllerAttestation({
-    projectId: 'adversarial-project',
+    projectId: PROJECT_ID,
     controllerId,
-    repository: 'example/adversarial',
+    repository: REPOSITORY,
     exactHeadSha: headSha,
     domainStatus: 'active',
     owner: controllerId,
@@ -73,7 +76,7 @@ function attestation(headSha = OLD_SHA, controllerId = 'controller-a') {
 
 function workstream(id, status, { critical = true, blockerCodes = [] } = {}) {
   return createManagedWorkstreamSnapshot({
-    projectId: 'adversarial-project',
+    projectId: PROJECT_ID,
     id,
     name: id,
     status,
@@ -81,7 +84,7 @@ function workstream(id, status, { critical = true, blockerCodes = [] } = {}) {
     milestone: 'bounded replay',
     critical,
     blockerCodes,
-    evidenceRefs: [`simulation:workstream:${id}`],
+    evidenceRefs: [`simulation:workstream:${PROJECT_ID}:${id}`],
     observedAt: NOW,
   });
 }
@@ -100,7 +103,7 @@ function a2(actionType, overrides = {}) {
   return evaluateA2ManagementAction({
     actionId: `adversarial-${actionType}`,
     actionType,
-    projectId: 'adversarial-project',
+    projectId: PROJECT_ID,
     policyRef: 'policy:aiexe:a2:v1',
     policyPreapproved: true,
     capabilityRef: actionType === 'prepare_non_binding_plan' ? null : 'adversarial.test@1.0.0',
