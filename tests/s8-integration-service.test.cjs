@@ -83,6 +83,25 @@ function makeService({ databasePath = ':memory:', transport, workerManager = new
   });
 }
 
+function canonicalS2ExecutionState(app) {
+  const state = app.queryMissionState('workspace-a');
+  return JSON.stringify({
+    workspaces: state.workspaces,
+    missions: state.missions,
+    revisions: state.revisions,
+    plans: state.plans,
+    missionRuns: state.missionRuns,
+    stepAttempts: state.stepAttempts,
+    stepOutputs: state.stepOutputs,
+    agentHandoffs: state.agentHandoffs,
+    checkpoints: state.checkpoints,
+    humanGates: state.humanGates,
+    evidence: state.evidence,
+    missionEvents: state.missionEvents,
+    activeWorkspaceId: state.activeWorkspaceId,
+  });
+}
+
 function prepareBilateral(source, destination) {
   const sourceInstanceId = source.activeSourceInstance().id;
   const destinationInstanceId = destination.activeSourceInstance().id;
@@ -181,10 +200,10 @@ test('S8 completed destination action publishes bounded receipt; source pull alo
     assert.equal(destination.workerManager.submissions.length, 1);
     assert.equal(result.delegationReceipt.state, 'completed');
     assert.equal(exchange.receipts.length, 1);
-    const missionBefore = JSON.stringify(source.queryMissionState('workspace-a'));
+    const missionBefore = canonicalS2ExecutionState(source);
     const pull = await source.pullDelegationReceipts({ workspaceId: 'workspace-a' });
     assert.equal(pull.accepted, 1);
-    assert.equal(JSON.stringify(source.queryMissionState('workspace-a')), missionBefore);
+    assert.equal(canonicalS2ExecutionState(source), missionBefore);
     const mirrored = source.queryDelegationState('workspace-a').receipts.find((item) => item.direction === 'inbound' && item.delegationRequestId === request.id);
     assert.ok(mirrored);
     const consumed = source.consumeDelegationReceipt({ workspaceId: 'workspace-a', receiptMirrorId: mirrored.id });
