@@ -11,15 +11,15 @@ Execution owner: not created
 BLOCKED
 ```
 
-M0-M2.4 provide a credible read-only management foundation, a non-binding A2 eligibility policy, real exact-head attestation temporal evidence and workstream-scoped attention. AIEXE is still **not authorized to cross from management proposal into autonomous A2 execution**.
+M0-M2.5 provide a credible read-only management foundation, a non-binding A2 eligibility policy, real exact-head attestation temporal evidence, workstream-scoped attention and an explicitly simulated adversarial replay corpus. AIEXE is still **not authorized to cross from management proposal into autonomous A2 execution**.
 
-The correct next move is to close evidence, live-observation and final S8 runtime-acceptance gates, not to create a second orchestration path or force AIEXE plumbing into every Domain OS.
+S8 controlled delegation is now an accepted runtime baseline. The remaining work is to close replay/evaluation, recurring Controller-attestation, A2 end-to-end proof and live read-only observation gates without creating a second orchestration path or forcing AIEXE plumbing into every Domain OS.
 
-## Gate 1 — S8 integration merged; final runtime acceptance pending
+## Gate 1 — accepted S8 controlled-delegation runtime baseline
 
-The unique controlled-delegation integration path is now in `main` through PR #122 and subsequent bounded S8 repairs. No second S8 owner is required or permitted.
+The unique controlled-delegation integration path is in `main` through PR #122 and bounded S8 repairs. No second S8 owner is required or permitted.
 
-Current accepted product path includes:
+Accepted product path:
 
 ```text
 PR #122  S8-I controlled delegation integration     MERGED
@@ -27,36 +27,51 @@ PR #128  Electron product-root authority repair      MERGED
 PR #130  persistent destination-gate explanation     MERGED
 ```
 
-The current frozen S8-F product head is:
+Final frozen S8-F product head:
 
 ```text
 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
 ```
 
-M3 must reuse this accepted integration path. It must not create parallel delegation, remote Worker control, HumanGate bypass or a second receipt protocol.
+Authoritative acceptance:
 
-However, merge evidence alone is not enough to authorize management execution. Issue #115 remains open while QA carrier PR #129 reruns the full native Apple Silicon two-instance Electron/Chrome/Chromium acceptance matrix against the frozen product head. The earlier native runs already demonstrated that real-runtime acceptance can expose defects after source CI passes, so M3 must fail closed until S8-F produces final authoritative acceptance evidence.
+```text
+S0 source validation run 31320581931                   SUCCESS
+S8 native two-instance acceptance run 31320581924      SUCCESS
+native artifact 9040050861
+native artifact digest sha256:3e8c244baaab227fd200aa831e9c1e54e48c024596d24430db9f1ffb9157034f
+source artifact 9040039600
+source artifact digest sha256:45f1d7e6f70b79b4d76c07e28083ddffc4a306cf56b2c2fca0abc64b853a0c21
+```
+
+The native Apple Silicon matrix validated the exact frozen product, two independent real Electron instances, Google Chrome + Playwright Chromium, bilateral policy, destination-local admission/HumanGate sovereignty, exact-one execution binding/idempotency, receipt/cancellation/restart boundaries, zero automatic network replay, privacy-safe artifacts and zero residual scoped processes. Independent post-run verification rechecked `SHA256SUMS.txt`, found zero forbidden sensitive fields/strings in JSON/JSONL evidence, and visually rechecked both instances before/after restart.
+
+QA carrier PR #129 was closed unmerged after recording the final verdict. Issue #115 was closed `completed` with final verdict:
+
+```text
+S8 = GO
+```
+
+M3 must reuse this accepted path. The S8 GO does not grant payment, production deployment, credential forwarding, remote Worker control or remote HumanGate authority.
 
 Status:
 
 ```text
-PARTIAL / BLOCKED FOR M3
-integration owner merged = PASS
-final S8-F runtime acceptance = PENDING
+PASS
 ```
 
-## Gate 2 — broader replay evidence
+## Gate 2 — broader replay/evaluation evidence
 
 The original evidence-linked historical replay corpus contains six project-level cases and reproduces all six manual labels.
 
-M2.3 added a real workstream evidence set. M2.4 then corrected a truth-boundary defect exposed by that set:
+M2.3 added a real workstream evidence set. M2.4 corrected a truth-boundary defect exposed by that set:
 
 ```text
 complete != active safe capacity
 observed workstreams != complete decision scope
 ```
 
-The corrected current replay is:
+The corrected real-workstream replay is:
 
 ```text
 TrainingOS                     -> ESCALATE incomplete decision scope; no project-wide pause
@@ -64,29 +79,47 @@ TradeOS                        -> REPRIORITIZE around blocked N2; active Busines
 Video Operation / Shared Media -> PAUSE current critical path only because decision scope is explicit and complete
 ```
 
-The fixture still contains eight evidenced workstreams across three projects, but the rollup now distinguishes active, complete, held and unresolved work. Project-wide pause derived from workstream coverage requires explicit `decisionScopeComplete=true` unless authoritative project status already says blocked/paused.
+M2.5 adds an explicitly labelled simulation corpus:
 
-This improves evidence quality because it removes two false inferences:
+```text
+schema = aiexe.management-adversarial-replay.v1
+evidenceClass = SIMULATED
+cases = 11
+```
 
-1. completed work cannot be counted as remaining safe capacity;
-2. absence of active work in an incomplete observed subset cannot justify project-wide pause.
+The adversarial cases cover:
 
-It still does **not** prove general management quality. More replay is required for:
+- explicit owner conflict;
+- exact-head stale attestation and exact-head recovery;
+- duplicate/conflicting Controller attestations;
+- critical blocked work plus independent active safe work;
+- held work with incomplete decision scope;
+- held work with explicitly complete decision scope;
+- unknown workstream truth;
+- forbidden A2 merge;
+- policy-eligible but still non-binding approved test execution;
+- scheduling without an existing approval reference.
 
-- owner conflicts and duplicate owners;
-- exact-head stale/recovery sequences;
-- policy blocks and duplicate shared capabilities;
-- ambiguous/conflicting Controller sources;
-- false-positive escalation and false project-wide pause;
-- missed escalation adversarial cases;
-- recovery after a blocker clears;
+This strengthens deterministic failure-mode coverage and explicitly measures false/missed escalation for the workstream adversaries. It does **not** convert simulated cases into real project history and therefore does not, by itself, prove general management quality.
+
+Remaining evidence gaps include:
+
+- more real owner-conflict / duplicate-owner episodes;
+- real stale/recovery sequences from multiple projects;
+- policy blocks and duplicate shared-capability episodes;
+- ambiguous/conflicting real Controller sources;
+- false-positive escalation and false project-wide pause measured over a larger labelled set;
+- missed escalation adversarial and real cases;
+- recovery after blockers clear in real workstreams;
 - independent parallel work becoming newly unsafe;
-- incorrect or stale decision-scope completeness claims.
+- incorrect or stale decision-scope completeness claims from real Controller output.
 
 Status:
 
 ```text
 PARTIAL / BLOCKED FOR M3
+adversarial simulation coverage = EXPANDED
+real replay breadth = INSUFFICIENT FOR PASS
 ```
 
 ## Gate 3 — real project-owned controller/status attestations
@@ -109,13 +142,7 @@ handoff exact head = 0eb4a4ee1bdf27567edc4e2c6cf2dd6a5daa3a42
 M10 human review = blocked
 ```
 
-At that exact observed head the attestation is accepted. After the repository advances through #106/#107 to:
-
-```text
-current main = e4728a0b1694bb9e89bd17f7f03bc3d3746e61e8
-```
-
-the same old handoff becomes:
+At that exact observed head the attestation is accepted. After the repository advances to a newer head, the same old handoff becomes non-authoritative:
 
 ```text
 accepted = false
@@ -186,7 +213,7 @@ humanGateDecisionCreated = false
 domainWritePerformed = false
 ```
 
-The policy contract is implemented, but end-to-end proof through a final S8-F accepted runtime path does not yet exist.
+An accepted S8 runtime path now exists, but the management A2 policy has not yet been proven end-to-end through that path. S8 acceptance is a prerequisite, not implicit A2 execution authorization.
 
 Status:
 
@@ -236,15 +263,17 @@ PARTIAL / BLOCKED FOR M3
 
 ## Required M3 entry package
 
-M3 may start only after:
+Current gate state:
 
 ```text
 G1 final S8-F controlled-delegation runtime acceptance  PASS
-G2 broader replay/evaluation acceptance                 PASS
-G3 recurring real controller attestations               PASS
-G4 A2 policy proven through accepted execution path      PASS
-G5 live provider-backed read-only observation cycle      PASS
+G2 broader replay/evaluation acceptance                 PARTIAL
+G3 recurring real controller attestations               PARTIAL
+G4 A2 policy proven through accepted execution path      PARTIAL
+G5 live provider-backed read-only observation cycle      PARTIAL
 ```
+
+M3 may start only when all five gates are `PASS`.
 
 If any gate is false:
 
@@ -314,7 +343,7 @@ An `escalate` caused by incomplete decision scope means AIEXE lacks evidence to 
 
 ## Non-overlapping work that may continue before M3
 
-1. broaden project-level and workstream-level replay;
+1. broaden project-level and workstream-level real replay;
 2. standardize recurring Controller/automation output to explicit attestation and decision-scope fields without adding Domain OS runtime frameworks;
 3. connect an authorized read-only provider runner to the observation-cycle contract;
 4. measure false escalation, false project-wide pause and missed escalation;
@@ -323,7 +352,7 @@ An `escalate` caused by incomplete decision scope means AIEXE lacks evidence to 
 
 ## Exit condition
 
-This note should be superseded only when final S8-F acceptance and all remaining M3 gates have exact evidence.
+This note should be superseded only when all five M3 gates have exact evidence.
 
 ## Boundary
 
