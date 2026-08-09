@@ -1,0 +1,56 @@
+{
+  "schema": "aiexe.controller-adoption-readiness-source.v1",
+  "evidenceClass": "REAL_EXTERNAL_REPOSITORY_READ_ONLY_AUDIT",
+  "observedAt": "2026-08-09T23:16:39Z",
+  "marker": "aiexe.external-controller-attestation.v1",
+  "markerSearchScope": [
+    "moseszhu999/training-learning-rails",
+    "moseszhu999/chaintrace-app",
+    "moseszhu999/global-tool-radar"
+  ],
+  "markerSearchMatchedRepositories": [],
+  "projects": [
+    {
+      "projectId": "trainingos",
+      "repository": "moseszhu999/training-learning-rails",
+      "exactHeadSha": "d75d7cb9c0c3ab6c0af3e2df147ac3f8aeecd5fc",
+      "groupAdapterEvidenceRefs": [
+        "github:moseszhu999/training-learning-rails:commit:d75d7cb9c0c3ab6c0af3e2df147ac3f8aeecd5fc"
+      ],
+      "verifiedCurrentEnvelopeEvidenceRefs": [],
+      "markerSearchObserved": true,
+      "markerSearchMatched": false,
+      "expectedState": "GROUP_ADAPTER_READY_ENVELOPE_MISSING"
+    },
+    {
+      "projectId": "tradeos",
+      "repository": "moseszhu999/chaintrace-app",
+      "exactHeadSha": "355a7169bfe8e48c7f78fa874cc422a394553d56",
+      "groupAdapterEvidenceRefs": [],
+      "verifiedCurrentEnvelopeEvidenceRefs": [],
+      "markerSearchObserved": true,
+      "markerSearchMatched": false,
+      "expectedState": "NO_STRUCTURED_ADOPTION_EVIDENCE"
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "repository": "moseszhu999/global-tool-radar",
+      "exactHeadSha": "9e3391d8d0eea52004026c5643370c72ba0506cb",
+      "groupAdapterEvidenceRefs": [
+        "github:moseszhu999/global-tool-radar:commit:9e3391d8d0eea52004026c5643370c72ba0506cb"
+      ],
+      "verifiedCurrentEnvelopeEvidenceRefs": [],
+      "markerSearchObserved": true,
+      "markerSearchMatched": false,
+      "expectedState": "GROUP_ADAPTER_READY_ENVELOPE_MISSING"
+    }
+  ],
+  "expected": {
+    "externalProjectCount": 3,
+    "structuredAdoptedCount": 0,
+    "groupAdapterReadyCount": 2,
+    "unverifiedMarkerCount": 0,
+    "structuredAdoptionComplete": false,
+    "g3State": "PARTIAL"
+  }
+}
