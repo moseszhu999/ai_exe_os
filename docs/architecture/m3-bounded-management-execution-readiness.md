@@ -267,7 +267,7 @@ tests                                 469 / 469 PASS
 Provider boundary scan                PASS
 ```
 
-A fresh exact-head validation is required after this readiness/documentation closure commit.
+Final exact-head validation after documentation closure is intentionally recorded **out of band on PR #125**. Committing a final validation receipt into the branch would advance the exact head and recreate the self-reference problem this milestone removes.
 
 ## Required M3 entry package
 
