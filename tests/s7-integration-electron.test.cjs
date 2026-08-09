@@ -21,12 +21,15 @@ const S7_CHANNELS = [
   's7:sync:membership:record',
 ];
 
-test('root composition instantiates S7 over accepted S6→S5→S4 chain and main process owns exact endpoint configuration', () => {
+test('root composition preserves accepted S7→S6→S5→S4 chain under S8 and main process owns exact endpoint configuration', () => {
   assert.match(main, /S5ApplicationService: S1ApplicationServiceS5/);
   assert.match(main, /S6ApplicationService: S1ApplicationServiceS6/);
-  assert.match(main, /S7ApplicationService: S1ApplicationService/);
+  assert.match(main, /S7ApplicationService: S1ApplicationServiceS7/);
+  assert.match(main, /S8ApplicationService: S1ApplicationService/);
+  assert.match(main, /S1ApplicationServiceS7\.prototype instanceof S1ApplicationServiceS6/);
+  assert.match(main, /S1ApplicationService\.prototype instanceof S1ApplicationServiceS7/);
   assert.match(main, /S1ApplicationService\.prototype instanceof S1ApplicationServiceS6/);
-  assert.match(main, /S1ApplicationService\.prototype instanceof S1ApplicationServiceS5/);
+  assert.match(main, /S1ApplicationService\.prototype instanceof S4ApplicationService/);
   assert.match(main, /registerS7Ipc\(\{ ipcMain, assertSender, service: s1Service \}\)/);
   assert.match(main, /AI_EXE_OS_SYNC_ENDPOINT/);
   assert.match(main, /AI_EXE_OS_SYNC_ALLOW_LOOPBACK/);

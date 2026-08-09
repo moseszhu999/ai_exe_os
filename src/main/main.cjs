@@ -12,7 +12,8 @@ const { S3ApplicationService } = require('../application/s3-index.cjs');
 const { S4ApplicationService } = require('../application/s4-index.cjs');
 const { S5ApplicationService: S1ApplicationServiceS5 } = require('../application/s5-index.cjs');
 const { S6ApplicationService: S1ApplicationServiceS6 } = require('../application/s6-scheduler-service.cjs');
-const { S7ApplicationService: S1ApplicationService } = require('../application/s7-index.cjs');
+const { S7ApplicationService: S1ApplicationServiceS7 } = require('../application/s7-index.cjs');
+const { S8ApplicationService: S1ApplicationService } = require('../application/s8-source-handoff-service.cjs');
 const { registerS1Ipc } = require('../application/s1-ipc.cjs');
 const { registerS2Ipc } = require('../application/s2-ipc.cjs');
 const { registerS3Ipc } = require('../application/s3-ipc.cjs');
@@ -20,7 +21,9 @@ const { registerS4Ipc } = require('../application/s4-ipc.cjs');
 const { registerS5Ipc } = require('../application/s5-ipc.cjs');
 const { registerS6Ipc } = require('../application/s6-ipc.cjs');
 const { registerS7Ipc } = require('../application/s7-ipc.cjs');
+const { registerS8Ipc } = require('../application/s8-ipc.cjs');
 const { ProjectOwnedSyncTransport, createSyncEndpoint } = require('../sync/transport/index.cjs');
+const { ProjectOwnedDelegationTransport, createDelegationEndpoint } = require('../delegation/transport/index.cjs');
 
 if (!(S3ApplicationService.prototype instanceof S2ApplicationService)) {
   throw new Error('S3 application service must preserve the accepted S2 public service chain');
@@ -34,14 +37,17 @@ if (!(S1ApplicationServiceS5.prototype instanceof S4ApplicationService)) {
 if (!(S1ApplicationServiceS6.prototype instanceof S1ApplicationServiceS5)) {
   throw new Error('S6 application service must preserve the accepted S5 public service chain');
 }
-if (!(S1ApplicationService.prototype instanceof S1ApplicationServiceS6)) {
+if (!(S1ApplicationServiceS7.prototype instanceof S1ApplicationServiceS6)) {
   throw new Error('S7 application service must preserve the accepted S6 public service chain');
 }
-if (!(S1ApplicationService.prototype instanceof S1ApplicationServiceS5)) {
-  throw new Error('S7 application service must preserve the accepted transitive S5 public service chain');
+if (!(S1ApplicationService.prototype instanceof S1ApplicationServiceS7)) {
+  throw new Error('S8 application service must preserve the accepted S7 public service chain');
+}
+if (!(S1ApplicationService.prototype instanceof S1ApplicationServiceS6)) {
+  throw new Error('S8 application service must preserve the accepted transitive S6 public service chain');
 }
 if (!(S1ApplicationService.prototype instanceof S4ApplicationService)) {
-  throw new Error('S7 application service must preserve the accepted transitive S4 public service chain');
+  throw new Error('S8 application service must preserve the accepted transitive S4 public service chain');
 }
 
 app.enableSandbox();
@@ -66,6 +72,19 @@ function configuredSync() {
     allowLoopback,
   });
   return Object.freeze({ endpoint, transport: new ProjectOwnedSyncTransport({ endpoint }) });
+}
+
+function configuredDelegation() {
+  const raw = String(process.env.AI_EXE_OS_DELEGATION_ENDPOINT || '').trim();
+  if (!raw) return Object.freeze({ endpoint: null, transport: null });
+  const allowLoopback = process.env.AI_EXE_OS_DELEGATION_ALLOW_LOOPBACK === '1';
+  const endpoint = createDelegationEndpoint({
+    id: 'configured-delegation-endpoint',
+    url: raw,
+    status: 'active',
+    allowLoopback,
+  });
+  return Object.freeze({ endpoint, transport: new ProjectOwnedDelegationTransport({ endpoint }) });
 }
 
 if (process.env.AI_EXE_OS_USER_DATA_DIR) {
@@ -165,6 +184,7 @@ function registerIpc() {
   registerS5Ipc({ ipcMain, assertSender, service: s1Service });
   registerS6Ipc({ ipcMain, assertSender, service: s1Service });
   registerS7Ipc({ ipcMain, assertSender, service: s1Service });
+  registerS8Ipc({ ipcMain, assertSender, service: s1Service });
 }
 
 async function createMainWindow() {
@@ -211,6 +231,7 @@ app.whenReady().then(async () => {
   const s1RuntimeRoot = join(userDataRoot, 's1-runtime');
   mkdirSync(s1RuntimeRoot, { recursive: true });
   const sync = configuredSync();
+  const delegation = configuredDelegation();
   s1Service = new S1ApplicationService({
     databasePath: join(s1RuntimeRoot, 'state.sqlite'),
     workerManager,
@@ -218,6 +239,8 @@ app.whenReady().then(async () => {
     githubToken: process.env.AI_EXE_OS_GITHUB_TOKEN || null,
     syncEndpoint: sync.endpoint,
     syncTransport: sync.transport,
+    delegationEndpoint: delegation.endpoint,
+    delegationTransport: delegation.transport,
   });
 
   registerIpc();
