@@ -124,8 +124,10 @@ function evaluateWorkstreamAttention(input) {
 
 function rollupProjectWorkstreamAttention(input) {
   plainObject(input, 'project workstream rollup input');
-  const allowed = new Set(['portfolioId', 'project', 'workstreams', 'evaluatedAt']);
+  const allowed = new Set(['portfolioId', 'project', 'workstreams', 'evaluatedAt', 'decisionScopeComplete']);
   for (const key of Object.keys(input)) if (!allowed.has(key)) throw new Error(`project workstream rollup input contains unsupported field: ${key}`);
+  if (input.decisionScopeComplete != null && typeof input.decisionScopeComplete !== 'boolean') throw new TypeError('decisionScopeComplete must be boolean when provided');
+  const decisionScopeComplete = input.decisionScopeComplete === true;
   const project = input.project;
   if (!project || typeof project !== 'object' || typeof project.id !== 'string') throw new TypeError('managed project snapshot required');
   if (!Array.isArray(input.workstreams) || input.workstreams.length < 1) throw new TypeError('at least one managed workstream is required');
@@ -135,7 +137,9 @@ function rollupProjectWorkstreamAttention(input) {
     return evaluateWorkstreamAttention({ portfolioId: input.portfolioId, workstream, evaluatedAt: input.evaluatedAt });
   });
 
-  const active = packets.filter((packet) => packet.bucket === 'automatic');
+  const automatic = packets.filter((packet) => packet.bucket === 'automatic');
+  const active = automatic.filter((packet) => packet.status === 'active');
+  const complete = automatic.filter((packet) => packet.status === 'complete');
   const unknown = packets.filter((packet) => packet.bucket === 'needs_attention');
   const held = packets.filter((packet) => packet.bucket === 'blocked');
   const heldCritical = held.filter((packet) => packet.critical);
@@ -152,12 +156,16 @@ function rollupProjectWorkstreamAttention(input) {
     bucket = 'needs_attention'; type = 'escalate'; priority = 'normal'; reason = 'workstream_truth_unknown';
   } else if (heldCritical.length > 0 && active.length > 0) {
     bucket = 'needs_attention'; type = 'reprioritize'; priority = 'high'; reason = 'partial_workstream_block';
-  } else if (heldCritical.length > 0 && active.length === 0) {
-    bucket = 'blocked'; type = 'pause'; priority = 'high'; reason = 'all_critical_workstreams_held'; projectWidePause = true;
+  } else if (heldCritical.length > 0 && active.length === 0 && decisionScopeComplete) {
+    bucket = 'blocked'; type = 'pause'; priority = 'high'; reason = 'all_decision_scope_critical_workstreams_held'; projectWidePause = true;
   } else if (held.length > 0 && active.length > 0) {
     bucket = 'needs_attention'; type = 'reprioritize'; priority = 'normal'; reason = 'noncritical_workstream_block';
+  } else if (held.length > 0 && active.length === 0 && decisionScopeComplete) {
+    bucket = 'blocked'; type = 'pause'; priority = 'normal'; reason = 'all_remaining_decision_scope_workstreams_held'; projectWidePause = true;
+  } else if (held.length > 0) {
+    bucket = 'needs_attention'; type = 'escalate'; priority = heldCritical.length > 0 ? 'high' : 'normal'; reason = 'decision_scope_incomplete';
   } else {
-    bucket = 'automatic'; type = 'continue'; priority = 'low'; reason = 'all_observed_workstreams_clear';
+    bucket = 'automatic'; type = 'continue'; priority = 'low'; reason = active.length > 0 ? 'all_observed_active_workstreams_clear' : 'observed_workstreams_complete';
   }
 
   const evidenceRefs = [...new Set([...(project.evidenceRefs || []), ...input.workstreams.flatMap((workstream) => workstream.evidenceRefs)])].sort();
@@ -167,10 +175,12 @@ function rollupProjectWorkstreamAttention(input) {
     projectId: project.id,
     type,
     rationale: type === 'reprioritize'
-      ? `${project.name} has held workstreams but also safe work that can continue; contain the blockers instead of pausing the whole project.`
+      ? `${project.name} has held workstreams but also active safe work that can continue; contain the blockers instead of pausing the whole project.`
       : type === 'continue'
         ? `${project.name} has no observed workstream blocker requiring management intervention.`
-        : `${project.name} requires ${type} because ${reason}.`,
+        : type === 'escalate' && reason === 'decision_scope_incomplete'
+          ? `${project.name} has held workstreams and no observed active safe work, but the workstream decision scope is incomplete; project-wide pause is not justified.`
+          : `${project.name} requires ${type} because ${reason}.`,
     evidenceRefs,
     requestedAt: input.evaluatedAt,
     priority,
@@ -182,14 +192,18 @@ function rollupProjectWorkstreamAttention(input) {
     bucket,
     primaryReason: reason,
     projectWidePause,
+    decisionScopeComplete,
     deterministic: true,
     llmFactGenerationAllowed: false,
     counts: {
-      automatic: active.length,
+      automatic: automatic.length,
+      active: active.length,
+      complete: complete.length,
       needsAttention: unknown.length,
       blocked: held.length,
     },
     continueEligibleWorkstreamIds: active.map((packet) => packet.workstreamId).sort(),
+    completedWorkstreamIds: complete.map((packet) => packet.workstreamId).sort(),
     heldWorkstreamIds: held.map((packet) => packet.workstreamId).sort(),
     unresolvedWorkstreamIds: unknown.map((packet) => packet.workstreamId).sort(),
     workstreams: packets,
