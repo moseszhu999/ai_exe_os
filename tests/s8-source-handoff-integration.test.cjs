@@ -36,17 +36,19 @@ function service() {
 function canonicalMissionExecutionState(app) {
   const state = app.queryMissionState('workspace-a');
   return JSON.stringify({
-    workspaceId: state.workspaceId,
+    workspaces: state.workspaces,
     missions: state.missions,
     revisions: state.revisions,
     plans: state.plans,
     missionRuns: state.missionRuns,
     stepAttempts: state.stepAttempts,
+    stepOutputs: state.stepOutputs,
+    agentHandoffs: state.agentHandoffs,
     checkpoints: state.checkpoints,
     humanGates: state.humanGates,
-    outputs: state.outputs,
-    handoffs: state.handoffs,
     evidence: state.evidence,
+    missionEvents: state.missionEvents,
+    activeWorkspaceId: state.activeWorkspaceId,
   });
 }
 
@@ -149,7 +151,7 @@ test('S8 receipt mirror alone does not mutate source canonical S2 execution trut
     const eventsBefore = app.queryMissionState('workspace-a').missionEvents.length;
     mirrorCompletedReceipt(app, request);
     assert.equal(canonicalMissionExecutionState(app), before);
-    assert.equal(app.queryMissionState('workspace-a').missionEvents.length, eventsBefore + 1, 'S8 mirror may append audit evidence without mutating canonical S2 projections');
+    assert.equal(app.queryMissionState('workspace-a').missionEvents.length, eventsBefore, 'S8 receipt mirror audit storage must stay outside canonical S2 mission events');
     assert.equal(app.agentHandoff.list().length, 0);
   } finally { app.close(); }
 });
