@@ -11,7 +11,7 @@ Execution owner: not created
 BLOCKED
 ```
 
-M0-M2.3 provide a credible read-only management foundation, a non-binding A2 eligibility policy, real exact-head attestation temporal evidence and workstream-scoped attention. AIEXE is still **not authorized to cross from management proposal into autonomous A2 execution**.
+M0-M2.4 provide a credible read-only management foundation, a non-binding A2 eligibility policy, real exact-head attestation temporal evidence and workstream-scoped attention. AIEXE is still **not authorized to cross from management proposal into autonomous A2 execution**.
 
 The correct next move is to close evidence, live-observation and S8-baseline gates, not to create a second orchestration path or force AIEXE plumbing into every Domain OS.
 
@@ -38,21 +38,27 @@ BLOCKED
 
 The original evidence-linked historical replay corpus contains six project-level cases and reproduces all six manual labels.
 
-M2.3 now adds a second real evidence set captured from the current portfolio:
+M2.3 added a real workstream evidence set. M2.4 then corrected a truth-boundary defect exposed by that set:
 
 ```text
-TrainingOS                     -> REPRIORITIZE, not project-wide pause
-TradeOS                        -> REPRIORITIZE, not project-wide pause
-Video Operation / Shared Media -> PAUSE current critical path
+complete != active safe capacity
+observed workstreams != complete decision scope
 ```
 
-The fixture contains eight explicitly evidenced workstreams across the three projects and tests the distinction:
+The corrected current replay is:
 
 ```text
-WorkstreamPause != ProjectPause
+TrainingOS                     -> ESCALATE incomplete decision scope; no project-wide pause
+TradeOS                        -> REPRIORITIZE around blocked N2; active BusinessChannel can continue
+Video Operation / Shared Media -> PAUSE current critical path only because decision scope is explicit and complete
 ```
 
-This materially improves the replay base because it exercises the false-project-pause failure mode that the original project-only engine could not represent.
+The fixture still contains eight evidenced workstreams across three projects, but the rollup now distinguishes active, complete, held and unresolved work. Project-wide pause derived from workstream coverage requires explicit `decisionScopeComplete=true` unless authoritative project status already says blocked/paused.
+
+This improves evidence quality because it removes two false inferences:
+
+1. completed work cannot be counted as remaining safe capacity;
+2. absence of active work in an incomplete observed subset cannot justify project-wide pause.
 
 It still does **not** prove general management quality. More replay is required for:
 
@@ -63,7 +69,8 @@ It still does **not** prove general management quality. More replay is required 
 - false-positive escalation and false project-wide pause;
 - missed escalation adversarial cases;
 - recovery after a blocker clears;
-- independent parallel work becoming newly unsafe.
+- independent parallel work becoming newly unsafe;
+- incorrect or stale decision-scope completeness claims.
 
 Status:
 
@@ -84,7 +91,7 @@ aiexe.external-controller-attestation.v1
 
 Each managed project only needs a real project-owned controller or canonical status source capable of emitting explicit structured attestation fields for the exact observed head. The attestation must be explicit; AIEXE may not infer domain status from GitHub activity or unstructured prose.
 
-M2.3 adds an executable real temporal sample using the Video Operation current handoff:
+The current executable temporal sample uses the Video Operation handoff:
 
 ```text
 handoff exact head = 0eb4a4ee1bdf27567edc4e2c6cf2dd6a5daa3a42
@@ -189,11 +196,12 @@ GitHub read-only observations
 -> Cockpit
 ```
 
-M2.3 extends the decision model beneath a project:
+M2.4 extends the decision model beneath a project:
 
 ```text
 project truth
 + explicit workstream facts
++ explicit decision-scope completeness
 -> workstream attention
 -> project workstream rollup
 -> continue / reprioritize / escalate / pause proposal
@@ -207,7 +215,7 @@ scheduledRuntimeStarted = false
 writeAuthority = none
 ```
 
-There is still no accepted live scheduled/provider-backed runner periodically supplying observations, Controller attestations and workstream facts.
+There is still no accepted live scheduled/provider-backed runner periodically supplying observations, Controller attestations, workstream facts and scope-completeness evidence.
 
 Status:
 
@@ -240,6 +248,7 @@ A2 execution = blocked
 External project facts
 + exact-head project-owned Controller attestation
 + explicit workstream facts
++ explicit decision-scope completeness
         |
         v
 AIEXE canonical Domain Controller Receipt
@@ -279,6 +288,8 @@ next management observation
 
 ```text
 WorkstreamPause != ProjectPause
+Complete != Active
+Observed != CompleteScope
 ManagementProposal != A2 eligibility
 A2 eligibility != DelegationPolicy
 A2 eligibility != HumanGate approval
@@ -286,12 +297,14 @@ A2 eligibility != Capability grant
 A2 eligibility != Domain write authority
 ```
 
-A `reprioritize` proposal means only: contain explicitly blocked workstreams and prefer already-authorized safe work. It does not schedule, delegate, create or approve work.
+A `reprioritize` proposal means only: contain explicitly blocked workstreams and prefer already-authorized **active** safe work. It does not schedule, delegate, create or approve work.
+
+An `escalate` caused by incomplete decision scope means AIEXE lacks evidence to choose between project-wide pause and continued work. It must not guess either direction.
 
 ## Non-overlapping work that may continue before M3
 
 1. broaden project-level and workstream-level replay;
-2. standardize recurring Controller/automation output to explicit attestation fields without adding Domain OS runtime frameworks;
+2. standardize recurring Controller/automation output to explicit attestation and decision-scope fields without adding Domain OS runtime frameworks;
 3. connect an authorized read-only provider runner to the observation-cycle contract;
 4. measure false escalation, false project-wide pause and missed escalation;
 5. test A2 policy against broader replay without executing actions;
@@ -310,7 +323,6 @@ A2 execution enabled = NO
 Domain OS receipt framework added = NO
 Domain OS changes = NO
 Domain writes = NO
-Merge = NO
 Deploy = NO
 Production mutation = NO
 ```
