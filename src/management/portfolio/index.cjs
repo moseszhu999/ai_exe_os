@@ -25,6 +25,9 @@ const FORBIDDEN_MANAGEMENT_ACTIONS = Object.freeze([
   'production_write',
 ]);
 
+const MANAGEMENT_AUTHORITY = 'observe-and-propose';
+const DOMAIN_TRUTH_AUTHORITY = 'external-source-of-truth';
+
 function freezeDeep(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
   for (const nested of Object.values(value)) freezeDeep(nested);
@@ -79,12 +82,23 @@ function uniqueTextList(value, label, maxLength = 240) {
   return Object.freeze([...rows].sort());
 }
 
+function assertCanonicalAuthority(input) {
+  if (input.managementAuthority != null && input.managementAuthority !== MANAGEMENT_AUTHORITY) {
+    throw new Error(`managed project snapshot cannot widen management authority beyond ${MANAGEMENT_AUTHORITY}`);
+  }
+  if (input.domainTruthAuthority != null && input.domainTruthAuthority !== DOMAIN_TRUTH_AUTHORITY) {
+    throw new Error(`managed project snapshot cannot claim domain truth authority`);
+  }
+}
+
 function createManagedProjectSnapshot(input) {
   plainObject(input, 'managed project snapshot');
   assertAllowedKeys(input, new Set([
     'id', 'name', 'kind', 'status', 'sourceOfTruth', 'owner', 'milestone',
     'summary', 'attentionSignals', 'evidenceRefs', 'observedAt',
+    'managementAuthority', 'domainTruthAuthority',
   ]), 'managed project snapshot');
+  assertCanonicalAuthority(input);
 
   return freezeDeep({
     id: exactIdentifier(input.id, 'project id'),
@@ -98,8 +112,8 @@ function createManagedProjectSnapshot(input) {
     attentionSignals: uniqueTextList(input.attentionSignals, 'attention signal', 320),
     evidenceRefs: uniqueTextList(input.evidenceRefs, 'evidence ref', 320),
     observedAt: requiredText(input.observedAt, 'observed at', 80),
-    managementAuthority: 'observe-and-propose',
-    domainTruthAuthority: 'external-source-of-truth',
+    managementAuthority: MANAGEMENT_AUTHORITY,
+    domainTruthAuthority: DOMAIN_TRUTH_AUTHORITY,
   });
 }
 
@@ -134,7 +148,7 @@ function buildPortfolioSnapshot(input) {
     statusCounts,
     projects: [...projects].sort((left, right) => left.id.localeCompare(right.id)),
     attention,
-    managementAuthority: 'observe-and-propose',
+    managementAuthority: MANAGEMENT_AUTHORITY,
   });
 }
 
@@ -176,7 +190,9 @@ function createManagementProposal(input) {
 }
 
 module.exports = {
+  DOMAIN_TRUTH_AUTHORITY,
   FORBIDDEN_MANAGEMENT_ACTIONS,
+  MANAGEMENT_AUTHORITY,
   MANAGEMENT_PROPOSAL_TYPES,
   PROJECT_KINDS,
   PROJECT_STATUSES,
