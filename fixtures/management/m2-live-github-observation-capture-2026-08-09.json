@@ -49,6 +49,16 @@
       ]
     }
   ],
+  "knownControllerEvidence": [
+    {
+      "projectId": "video-operation-shared-media",
+      "sourceRef": "github:moseszhu999/global-tool-radar:docs/video/evidence/m10-explainer-v2-controller-reverification-2026-08-09.md",
+      "controllerDocumentObservedMain": "7f86239d6e56522d2cec2138defae32116380dc9",
+      "currentProviderHead": "24996407449df28b2d83fce1a145b3200fff168a",
+      "reusableAsCurrentDomainAttestation": false,
+      "reason": "exact_head_mismatch"
+    }
+  ],
   "controllerAttestations": [],
   "expected": {
     "projectCount": 4,
