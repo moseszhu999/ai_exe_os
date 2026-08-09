@@ -8,7 +8,7 @@ const PROJECT_KINDS = Object.freeze([
   'research',
 ]);
 
-const PROJECT_STATUSES = Object.freeze(['active', 'paused', 'blocked', 'archived']);
+const PROJECT_STATUSES = Object.freeze(['active', 'paused', 'blocked', 'archived', 'unknown']);
 const MANAGEMENT_PROPOSAL_TYPES = Object.freeze([
   'continue',
   'pause',
@@ -132,7 +132,7 @@ function buildPortfolioSnapshot(input) {
     projects.filter((project) => project.status === status).length,
   ]));
   const attention = projects
-    .filter((project) => project.attentionSignals.length > 0 || project.status === 'blocked')
+    .filter((project) => project.attentionSignals.length > 0 || project.status === 'blocked' || project.status === 'unknown')
     .map((project) => freezeDeep({
       projectId: project.id,
       status: project.status,
