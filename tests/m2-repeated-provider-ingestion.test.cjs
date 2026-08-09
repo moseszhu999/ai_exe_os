@@ -28,17 +28,27 @@ function firstRun() {
 
 function secondRun() {
   return {
-    runId: 'provider-run-2026-08-09T22:54:07Z',
+    runId: 'provider-run-2026-08-09T22:58:48Z',
     captureSource: {
       body: secondBody,
       sourceRef: 'github:moseszhu999/ai_exe_os:fixture:m2-live-github-observation-capture-2026-08-10.json',
       sourceDigest: digestBody(secondBody),
     },
     attestationSources: [],
-    evaluatedAt: '2026-08-09T22:55:00Z',
-    ingestedAt: '2026-08-09T22:56:00Z',
+    evaluatedAt: '2026-08-09T22:59:10Z',
+    ingestedAt: '2026-08-09T23:00:00Z',
   };
 }
+
+test('M2.8 corrected second capture includes the newly-created TrainingOS work visible on completeness recheck', () => {
+  const capture = JSON.parse(secondBody);
+  const training = capture.observations.find((row) => row.projectId === 'trainingos');
+  assert.equal(capture.capturedAt, '2026-08-09T22:58:48Z');
+  assert.equal(capture.expected.openPullRequestCounts.trainingos, 5);
+  assert.equal(training.openPullRequests.length, 5);
+  assert.equal(training.openPullRequests.some((pr) => pr.number === 674 && pr.headSha === 'acc1c03369e6b885bdf2b574e3923589c0ad5f28'), true);
+  assert.match(capture.captureMethod, /completeness was rechecked/);
+});
 
 test('M2.8 two independent real provider captures prove multi-run ingestion without claiming a schedule', () => {
   const result = buildRepeatedReadOnlyProviderEvidence({
