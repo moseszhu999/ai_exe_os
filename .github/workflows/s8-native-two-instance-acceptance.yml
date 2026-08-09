@@ -1,0 +1,189 @@
+name: S8 native two-instance controlled delegation acceptance
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-product-source:
+    name: Exact frozen S8 product source validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      S8_PRODUCT_SHA: ad69c480106f517970e9c851ee32255cf48e94e1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify QA-only carrier scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$S8_PRODUCT_SHA" HEAD
+          changed="$(git diff --name-only "$S8_PRODUCT_SHA" HEAD)"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -vE '^(scripts/s8-acceptance-|\.github/workflows/s8-|docs/results/S8-results\.md$)' | grep -q .; then
+            echo 'S8 acceptance carrier modified product-owned paths' >&2
+            exit 1
+          fi
+      - name: Validate exact frozen product head
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add ../s8-product "$S8_PRODUCT_SHA"
+          cd ../s8-product
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run validate | tee ../ai_exe_os/s8-exact-source-validation.txt
+      - name: Build source checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$S8_PRODUCT_SHA" > exact-product-head.txt
+          sha256sum exact-product-head.txt s8-exact-source-validation.txt > s8-source-SHA256SUMS.txt
+          sha256sum -c s8-source-SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: s8-exact-source-${{ github.sha }}
+          path: |
+            exact-product-head.txt
+            s8-exact-source-validation.txt
+            s8-source-SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  native-arm64-two-instance:
+    name: Native arm64 two-instance delegation + Electron acceptance
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      S8_PRODUCT_SHA: ad69c480106f517970e9c851ee32255cf48e94e1
+      S8_ACCEPTANCE_OUTPUT: runtime/s8-acceptance
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify frozen source ancestry and QA-only scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$S8_PRODUCT_SHA" HEAD
+          changed="$(git diff --name-only "$S8_PRODUCT_SHA" HEAD)"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -vE '^(scripts/s8-acceptance-|\.github/workflows/s8-|docs/results/S8-results\.md$)' | grep -q .; then
+            echo 'S8 acceptance carrier modified product-owned paths' >&2
+            exit 1
+          fi
+      - name: Verify native Apple Silicon runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "arm64"
+          test "$(node -p 'process.arch')" = "arm64"
+          test "$(sysctl -in sysctl.proc_translated 2>/dev/null || echo 0)" != "1"
+      - name: Install pinned runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npx playwright install chromium
+          node -e "const fs=require('node:fs'); const electron=require('electron'); if(!fs.existsSync(electron)) throw new Error('Electron executable missing')"
+          if [[ ! -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ]]; then
+            brew install --cask google-chrome
+          fi
+      - name: Run full source validation on native arm64
+        run: npm run validate
+      - name: Prepare frozen-head evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$S8_ACCEPTANCE_OUTPUT"
+          printf '%s\n' "$S8_PRODUCT_SHA" > "$S8_ACCEPTANCE_OUTPUT/exact-product-head.txt"
+      - name: Run real Electron bilateral controlled delegation matrix
+        run: node scripts/s8-acceptance-electron-two-instance.cjs
+      - name: Verify S8 evidence and permanent authority boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$S8_ACCEPTANCE_OUTPUT"
+          for file in exact-product-head.txt electron-trace.jsonl electron-before-restart.json electron-after-restart.json s8-electron-two-instance-audit.json s8-cleanup-audit.json s8-instance-a-before-restart.png s8-instance-b-before-restart.png s8-instance-a-after-restart.png s8-instance-b-after-restart.png; do
+            test -s "$root/$file"
+          done
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = process.env.S8_ACCEPTANCE_OUTPUT;
+          const productSha = process.env.S8_PRODUCT_SHA;
+          const read = (name) => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8'));
+          const audit = read('s8-electron-two-instance-audit.json');
+          const before = read('electron-before-restart.json');
+          const after = read('electron-after-restart.json');
+          const cleanup = read('s8-cleanup-audit.json');
+          for (const doc of [audit, before, after, cleanup]) {
+            if (doc.status !== 'PASS') throw new Error('S8 evidence document is not PASS');
+            if (doc.productSha !== productSha) throw new Error('S8 product SHA mismatch');
+          }
+          if (fs.readFileSync(path.join(root, 'exact-product-head.txt'), 'utf8').trim() !== productSha) throw new Error('exact product head mismatch');
+          if (audit.sourceA === audit.sourceB) throw new Error('source identities are not independent');
+          if (audit.localRejectionCreatesExecution !== false) throw new Error('local rejection created destination execution');
+          if (audit.duplicateAcceptanceSameBinding !== true) throw new Error('duplicate acceptance created a second binding');
+          if (audit.receiptPullMutatedCanonicalSourceTruth !== false) throw new Error('receipt pull mutated source canonical truth');
+          if (audit.explicitReceiptConsumptionIdempotent !== true) throw new Error('receipt consumption is not idempotent');
+          if (audit.preStartCancellationState !== 'accepted_locally') throw new Error('pre-start cancellation boundary mismatch');
+          if (audit.postStartCancellationState !== 'non_authoritative_after_start') throw new Error('post-start cancellation became authoritative');
+          if (audit.restartNetworkReplay !== false || after.networkAutomaticallyReplayed !== false) throw new Error('restart replayed delegation networking');
+          if (before.sourceA !== after.sourceA || before.sourceB !== after.sourceB) throw new Error('source identity drift after restart');
+          if (after.receiptConsumptions !== 1) throw new Error('receipt consumption replayed after restart');
+          if (audit.pageErrors.length || audit.consoleErrors.length) throw new Error('Electron page/console errors present');
+          if (cleanup.residualScopedProcesses.length) throw new Error('residual scoped process present');
+          if (!audit.requestAudit.every((item) => ['GET','POST'].includes(item.method) && !item.hasAuthorization && !item.hasCookie)) throw new Error('delegation request boundary violated');
+          if (!String(audit.missingPolicyFailedClosed || '').match(/policy/i)) throw new Error('missing bilateral policy did not fail closed');
+
+          const forbiddenKey = /^(authorization|proxy-authorization|cookie|cookies|set-cookie|password|passwd|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|private[_ -]?key|profilePath|profileDir|profileDirectory|browserProfile|userData|userDataDir|storageState|processId|pid|ppid|body|responseBody|environment|env|debugEndpoint|controlHandle)$/i;
+          const forbiddenString = /(-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\bBearer\s+[A-Za-z0-9._~+/=-]{12,}|\b(?:sessionid|access_token|refresh_token|id_token)=|\/private\/)/i;
+          function scan(value, trail = '$') {
+            if (value == null) return;
+            if (typeof value === 'string') { if (forbiddenString.test(value)) throw new Error(`sensitive string at ${trail}`); return; }
+            if (Array.isArray(value)) return value.forEach((item, index) => scan(item, `${trail}[${index}]`));
+            if (typeof value === 'object') for (const [key, nested] of Object.entries(value)) {
+              if (forbiddenKey.test(key)) throw new Error(`forbidden evidence key ${trail}.${key}`);
+              scan(nested, `${trail}.${key}`);
+            }
+          }
+          for (const file of fs.readdirSync(root).filter((name) => name.endsWith('.json'))) scan(read(file), file);
+          NODE
+          if grep -RInE 's8:delegation:(worker|start|stop|focus|pause|resume|approve-human|reject-human|lock|provider|deploy|promote|rollback|mutate)' src/preload/index.cjs src/application/s8-ipc.cjs src/renderer/s8-integrated.js; then
+            echo 'Unexpected S8 remote execution-authority IPC/control path' >&2; exit 1
+          fi
+          if grep -RInE 'innerHTML\s*=|outerHTML\s*=|insertAdjacentHTML|document\.write' src/renderer/s8-integrated.js; then
+            echo 'Unsafe S8 HTML rendering path' >&2; exit 1
+          fi
+      - name: Build portable manifest and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$S8_ACCEPTANCE_OUTPUT"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const files = fs.readdirSync('.').filter((name) => name !== 'manifest.json' && name !== 'SHA256SUMS.txt').sort();
+          fs.writeFileSync('manifest.json', JSON.stringify({ status: 'PASS', productSha: process.env.S8_PRODUCT_SHA, evidenceClass: 'github-hosted-native-apple-silicon-two-instance-controlled-delegation', files }, null, 2) + '\n');
+          NODE
+          rm -f SHA256SUMS.txt
+          for file in $(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print | sed 's#^./##' | LC_ALL=C sort); do shasum -a 256 "$file"; done > SHA256SUMS.txt
+          shasum -a 256 -c SHA256SUMS.txt
+      - name: Upload privacy-safe immutable S8 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: s8-native-two-instance-${{ github.sha }}
+          path: runtime/s8-acceptance
+          if-no-files-found: error
+          retention-days: 30
