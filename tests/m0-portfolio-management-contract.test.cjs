@@ -33,23 +33,24 @@ test('M0 managed project snapshots are read-only management projections', () => 
   assert.equal(Object.isFrozen(snapshot), true);
   assert.throws(() => createManagedProjectSnapshot(project({ kind: 'unknown' })), /project kind/);
   assert.throws(() => createManagedProjectSnapshot({ ...project(), domainMutation: true }), /unsupported field/);
+  assert.throws(() => createManagedProjectSnapshot({ ...snapshot, managementAuthority: 'domain-write' }), /cannot widen management authority/);
+  assert.throws(() => createManagedProjectSnapshot({ ...snapshot, domainTruthAuthority: 'aiexe-owned' }), /cannot claim domain truth authority/);
 });
 
-test('M0 portfolio snapshot surfaces only explicit attention evidence', () => {
+test('M0 portfolio snapshot composes canonical project snapshots and explicit attention evidence', () => {
+  const training = createManagedProjectSnapshot(project());
+  const trade = createManagedProjectSnapshot(project({
+    id: 'tradeos',
+    name: 'TradeOS',
+    status: 'blocked',
+    sourceOfTruth: 'github:moseszhu999/chaintrace-app',
+    attentionSignals: ['owner conflict'],
+    evidenceRefs: ['issue:645'],
+  }));
   const snapshot = buildPortfolioSnapshot({
     portfolioId: 'group-portfolio',
     observedAt: '2026-08-09T08:01:00.000Z',
-    projects: [
-      project(),
-      project({
-        id: 'tradeos',
-        name: 'TradeOS',
-        status: 'blocked',
-        sourceOfTruth: 'github:moseszhu999/chaintrace-app',
-        attentionSignals: ['owner conflict'],
-        evidenceRefs: ['issue:645'],
-      }),
-    ],
+    projects: [training, trade],
   });
   assert.equal(snapshot.projectCount, 2);
   assert.equal(snapshot.statusCounts.active, 1);
