@@ -59,6 +59,9 @@ function buildProviderSchedulerReadiness(input) {
   if (immutableReceiptPersistenceObserved && !providerIngestionBindingObserved) {
     throw new Error('provider ingestion receipts require provider ingestion binding');
   }
+  if (successfulScheduledRunObserved && !immutableReceiptPersistenceObserved) {
+    throw new Error('successful scheduled provider run requires immutable receipt persistence evidence');
+  }
 
   let state = 'NO_SCHEDULER_OBSERVED';
   if (schedulerObserved && !schedulerEnabled) state = providerIngestionBindingObserved
@@ -67,9 +70,9 @@ function buildProviderSchedulerReadiness(input) {
   else if (schedulerObserved && schedulerEnabled && !providerIngestionBindingObserved) state = 'SCHEDULER_ENABLED_INGESTION_UNBOUND';
   else if (schedulerObserved && schedulerEnabled && providerIngestionBindingObserved && !immutableReceiptPersistenceObserved) state = 'SCHEDULER_BOUND_RECEIPT_PERSISTENCE_UNPROVEN';
   else if (schedulerObserved && schedulerEnabled && providerIngestionBindingObserved && immutableReceiptPersistenceObserved && !successfulScheduledRunObserved) state = 'SCHEDULER_BOUND_AWAITING_SUCCESSFUL_RUN';
-  else if (schedulerObserved && schedulerEnabled && providerIngestionBindingObserved && immutableReceiptPersistenceObserved && successfulScheduledRunObserved) state = 'SCHEDULED_PROVIDER_INGESTION_PROVEN';
+  else if (schedulerObserved && schedulerEnabled && providerIngestionBindingObserved && immutableReceiptPersistenceObserved && successfulScheduledRunObserved) state = 'SUCCESSFUL_SCHEDULED_PROVIDER_RUN_OBSERVED';
 
-  const scheduledRuntimeProven = state === 'SCHEDULED_PROVIDER_INGESTION_PROVEN';
+  const scheduledRuntimeProven = state === 'SUCCESSFUL_SCHEDULED_PROVIDER_RUN_OBSERVED';
 
   return freezeDeep({
     schema: PROVIDER_SCHEDULER_READINESS_SCHEMA,
@@ -84,7 +87,8 @@ function buildProviderSchedulerReadiness(input) {
     lastRunObservedAt,
     schedulerSubstratePresent: schedulerObserved,
     scheduledRuntimeProven,
-    recurringIngestionProven: scheduledRuntimeProven,
+    recurringIngestionProven: false,
+    recurringProofAuthority: 'aiexe.recurring-scheduled-provider-evidence.v1',
     readOnly: true,
     writeAuthority: 'none',
     schedulerMutationPerformed: false,
