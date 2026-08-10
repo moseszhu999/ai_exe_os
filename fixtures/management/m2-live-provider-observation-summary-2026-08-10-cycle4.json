@@ -1,0 +1,62 @@
+{
+  "schema": "aiexe.live-provider-observation-summary.v1",
+  "evidenceClass": "REAL_PROVIDER_OBSERVATION_SUMMARY",
+  "capturedAt": "2026-08-10T00:15:00Z",
+  "captureMethod": "Read-only GitHub connector; default-branch commits were re-read after concurrent project merges and open PR sets were taken from explicit provider search results. This summary intentionally records PR number sets rather than stitching per-PR metadata fetched across a moving high-concurrency window.",
+  "domainFactPolicy": "unknown-without-current-explicit-controller-attestation",
+  "openWorkPolicy": "provider-returned open PR number set is explicit; no Domain status, owner or authority is inferred",
+  "observations": [
+    {
+      "projectId": "aiexe",
+      "repository": "moseszhu999/ai_exe_os",
+      "defaultBranch": "main",
+      "headSha": "7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48",
+      "openPullRequestCount": 1,
+      "openPullRequestNumbers": [125],
+      "evidenceRefs": ["github:moseszhu999/ai_exe_os:commit:7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48"]
+    },
+    {
+      "projectId": "trainingos",
+      "repository": "moseszhu999/training-learning-rails",
+      "defaultBranch": "main",
+      "headSha": "39932eb934961bfddee61fe92dc6582afc6b1e26",
+      "openPullRequestCount": 8,
+      "openPullRequestNumbers": [536,645,665,671,678,682,687,688],
+      "evidenceRefs": ["github:moseszhu999/training-learning-rails:commit:39932eb934961bfddee61fe92dc6582afc6b1e26"]
+    },
+    {
+      "projectId": "tradeos",
+      "repository": "moseszhu999/chaintrace-app",
+      "defaultBranch": "main",
+      "headSha": "c51b766aefecb5fcc49c27c3c51bd982c13a30e0",
+      "openPullRequestCount": 14,
+      "openPullRequestNumbers": [71,83,108,124,269,282,284,467,619,620,642,646,649,662],
+      "evidenceRefs": [
+        "github:moseszhu999/chaintrace-app:commit:07daa3b68be5ab1884ea159aa27cd44be12e19a5",
+        "github:moseszhu999/chaintrace-app:commit:c51b766aefecb5fcc49c27c3c51bd982c13a30e0"
+      ]
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "repository": "moseszhu999/global-tool-radar",
+      "defaultBranch": "main",
+      "headSha": "9e3391d8d0eea52004026c5643370c72ba0506cb",
+      "openPullRequestCount": 1,
+      "openPullRequestNumbers": [112],
+      "evidenceRefs": ["github:moseszhu999/global-tool-radar:commit:9e3391d8d0eea52004026c5643370c72ba0506cb"]
+    }
+  ],
+  "expected": {
+    "projectCount": 4,
+    "openPullRequestCounts": {
+      "aiexe": 1,
+      "trainingos": 8,
+      "tradeos": 14,
+      "video-operation-shared-media": 1
+    },
+    "headTransitionObservedSinceCycle3": true,
+    "headTransitionProjectIds": ["trainingos", "tradeos"],
+    "fullCanonicalCaptureProduced": false,
+    "reasonFullCanonicalCaptureNotProduced": "provider open-work set changed during per-PR metadata expansion; summary preserves one read-window number set instead of fabricating a single-instant detailed capture"
+  }
+}
