@@ -43,6 +43,7 @@ test('M2.13 real producer topology separates active missing-contract and disable
   assert.equal(readiness.persistenceMissingCount, fixture.expected.persistenceMissingCount);
   assert.equal(readiness.recurringStructuredProducerCount, fixture.expected.recurringStructuredProducerCount);
   assert.equal(readiness.recurringStructuredProducerComplete, fixture.expected.recurringStructuredProducerComplete);
+  assert.equal(readiness.arbitraryEvidenceRefsCannotProveRecurrence, true);
   assert.equal(readiness.readOnly, true);
   assert.equal(readiness.writeAuthority, 'none');
   assert.equal(readiness.llmFactGenerationAllowed, false);
@@ -83,7 +84,7 @@ test('M2.13 producer readiness rejects scheduler spoofing and recurring evidence
   }), /requires structured Controller adoption/);
 });
 
-test('M2.13 recurring producer proof requires structured adoption and at least two explicit structured evidence refs', () => {
+test('M2.15 arbitrary recurring evidence refs remain audit hints and cannot prove recurrence', () => {
   const adoptedProjects = fixture.adoptionProjects.map((project) => project.projectId === 'trainingos'
     ? {
         ...project,
@@ -107,8 +108,33 @@ test('M2.13 recurring producer proof requires structured adoption and at least t
   });
 
   const training = readiness.producers.find((producer) => producer.projectId === 'trainingos');
-  assert.equal(training.state, 'RECURRING_STRUCTURED_PRODUCER_PROVEN');
-  assert.equal(training.recurringStructuredProven, true);
-  assert.equal(readiness.recurringStructuredProducerCount, 1);
+  assert.equal(training.state, 'STRUCTURED_SOURCE_PRESENT_RECURRENCE_UNPROVEN');
+  assert.equal(training.recurringStructuredProven, false);
+  assert.equal(training.recurringStructuredProof, null);
+  assert.deepEqual(training.recurringStructuredEvidenceRefs, [
+    'github:example:structured-run-1',
+    'github:example:structured-run-2',
+  ]);
+  assert.equal(readiness.recurringStructuredProducerCount, 0);
   assert.equal(readiness.recurringStructuredProducerComplete, false);
+});
+
+test('M2.15 disabled scheduler remains an explicit producer blocker after first structured adoption', () => {
+  const adoptedProjects = fixture.adoptionProjects.map((project) => project.projectId === 'tradeos'
+    ? {
+        ...project,
+        markerSearchMatched: true,
+        verifiedCurrentEnvelopeEvidenceRefs: ['github:example:tradeos-structured-current-envelope'],
+      }
+    : project);
+  const adoptionReadiness = adoptionFor(adoptedProjects);
+  const readiness = buildControllerProducerReadiness({
+    observedAt: fixture.observedAt,
+    adoptionReadiness,
+    producers: fixture.producers.map(producerInput),
+  });
+
+  const tradeos = readiness.producers.find((producer) => producer.projectId === 'tradeos');
+  assert.equal(tradeos.state, 'PRODUCER_DISABLED');
+  assert.equal(tradeos.recurringStructuredProven, false);
 });
