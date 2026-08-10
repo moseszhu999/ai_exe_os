@@ -19,7 +19,7 @@ M3 = BLOCKED on G3 + G4
 A2 execution = UNAUTHORIZED
 ```
 
-M3 starts only after every required gate independently reaches `PASS`. Controller adoption, recurrence evidence, policy eligibility, authorization-core `allow`, S8 request construction, source transport acknowledgement, destination admission, delegation HumanGate approval, a destination execution-binding identity, or an action HumanGate request never grants effect authority by implication.
+M3 starts only after every required gate independently reaches `PASS`. Policy eligibility, authorization-core `allow`, S8 request construction, source transport acknowledgement, destination admission, delegation HumanGate approval, a destination execution binding, an exact destination-owned source-to-runtime action binding, or a downstream action HumanGate request never grants effect authority by implication.
 
 ---
 
@@ -62,7 +62,7 @@ G2 = PASS
 
 External Domain truth is accepted only through a structured Domain-owned source revalidated against an independently observed current provider head.
 
-Latest read-only evidence remains fail-closed:
+Latest bounded evidence remains fail-closed:
 
 ```text
 required Domains                       3
@@ -77,13 +77,21 @@ current recurring structured producer  0 / 3
 G3 = PARTIAL
 ```
 
-Last confirmed provider heads in the bounded audit:
+Last fully captured three-Domain audit:
 
 ```text
 TrainingOS          ca0491ed5166e8f00b8e96f3f4665963a004c860  adoption STALE
 TradeOS             934b4c76cdf523a9337892860bb1c0e0b8b4467d  adoption STALE / producer disabled
 Video/Shared Media  23d92ffc4674f1581c4191e595d279a20008be53  adoption CURRENT
 ```
+
+A later read-only observation on 2026-08-11 saw TradeOS advance again to:
+
+```text
+09fd5fc19dc2d7a8fbf57eee9662c91cff0d0466
+```
+
+That observation can only reinforce stale-currentness for the retained TradeOS attestation; it does not by itself update the fixed three-Domain adoption denominator or prove a producer contract.
 
 Canonical evidence:
 
@@ -99,7 +107,7 @@ AIEXE does not fabricate missing Domain sources, reduce the fixed three-Domain d
 
 ## G4 — A2 policy through accepted execution path
 
-### Accepted/proved chain through M2.25
+### Accepted/proved chain through M2.27
 
 ```text
 A2 management policy eligibility
@@ -111,9 +119,11 @@ A2 management policy eligibility
 -> M2.23 destination receive + fresh destination-local admission + pending delegation HumanGate
 -> M2.24 destination-owned delegation decision + fresh acceptance + exact local execution-binding observation
 -> M2.25 exact local MissionRun / StepAttempt / ExecutionRun / action-HumanGate readiness observation
+-> M2.26 destination-owned immutable management-action -> runtime-action binding contract + read-only effect-entry preflight
+-> M2.27 existing S8 destination owner consumes the exact binding into canonical S2 StepBinding and revalidates runtime AgentGrant/provider/payload semantics
 ```
 
-The management plane does not own the destination decision surfaces used between these observation slices. In particular, the destination S8 owner may independently approve or reject the delegation proposal, and the local S1/S2 execution owner may later independently decide the downstream action HumanGate. AIEXE observes those canonical states; it does not decide them.
+The management plane does not own the destination decision surfaces between these slices. The destination S8 owner may independently approve or reject a delegation proposal. The local S1/S2 execution owner may later independently decide the downstream action HumanGate. AIEXE observes or composes with canonical states; it does not decide either gate.
 
 ### Authority separation
 
@@ -124,7 +134,8 @@ S8 request constructed != source transport submission
 source transport acknowledged != destination admission
 destination admission admissible != delegation HumanGate approval
 delegation HumanGate approved != local execution binding
-local ExecutionRun identity != action readiness
+local execution binding != runtime semantic compatibility
+runtime semantic compatibility != action HumanGate approval
 action HumanGate requested != action HumanGate approved
 action HumanGate approved != bounded effect completion
 completed destination effect != destination receipt publication
@@ -152,14 +163,7 @@ tests/m2-a2-s8-destination-admission.test.cjs
 schema: aiexe.a2-s8-destination-admission.v1
 ```
 
-Uses existing destination-owner receive/admission APIs. Destination-local peer, policy, capability installation/grant, provider, resource, scheduling and admission facts remain destination-owned. If admissible, M2.23 stops at:
-
-```text
-proposal.state   = waiting_human
-humanGate.state  = requested
-```
-
-Management performs no approval, binding creation, Mission creation, Worker submission, or effect.
+Uses existing destination-owner receive/admission APIs. Destination-local peer, policy, capability installation/grant, provider, resource, scheduling and admission facts remain destination-owned. If admissible, M2.23 stops at a requested destination delegation HumanGate. Management performs no approval, binding creation, Mission creation, Worker submission, or effect.
 
 ### M2.24 — destination-owned delegation decision + binding observation
 
@@ -169,32 +173,17 @@ tests/m2-a2-s8-destination-binding.test.cjs
 schema: aiexe.a2-s8-destination-binding.v1
 ```
 
-M2.24 only reads the existing S8 destination state through `queryDelegationState`. It contains no call to destination approval/rejection, HumanGate decision, Worker submission, or effect method.
+M2.24 only reads the existing S8 destination state. The isolated proof intentionally makes the delegation decision through the destination owner itself, then verifies the fresh admission, exact acceptance, exact execution binding and destination-local identities.
 
-The isolated proof intentionally makes the delegation decision through the destination owner itself. AIEXE then verifies:
-
-```text
-fresh destination admission snapshot
-exact delegation HumanGate decision
-exact acceptance
-exact destination execution binding
-exact local Mission / PlanStep / StepAttempt / ExecutionRun identities
-```
-
-A real important boundary emerged from the accepted S8 implementation:
+Important public boundary preserved by M2.27:
 
 ```text
-local ExecutionRun identity MAY exist after destination binding
-local ExecutionRun identity DOES NOT prove action readiness
-local ExecutionRun identity DOES NOT prove action HumanGate approval
-local ExecutionRun identity DOES NOT prove effect execution
+approveDelegationProposal(...).actionGate = null
 ```
 
-M2.24 management output remains non-binding and execution-unauthorized.
+The delegation-decision return value does not silently become a downstream action-decision API. A downstream action HumanGate must be observed through canonical execution state.
 
-### M2.25 — downstream action-readiness / action-HumanGate observation
-
-PR #125 adds:
+### M2.25 — downstream action-readiness observation
 
 ```text
 src/management/policy/a2-s8-destination-action-readiness.cjs
@@ -202,130 +191,138 @@ tests/m2-a2-s8-destination-action-readiness.test.cjs
 schema: aiexe.a2-s8-destination-action-readiness.v1
 ```
 
-M2.25 accepts only:
+M2.25 rebinds the M2.24 delegation evidence to the exact local Mission / MissionRun / PlanStep / StepAttempt / ExecutionRun / Task / action HumanGate and separates `blocked`, `waiting_human`, `rejected`, and advanced/effect territory fail-closed. It never makes the action HumanGate decision or invokes an effect.
+
+### M2.26 — destination-owned action-binding contract + preflight
 
 ```text
-destinationBinding
-destinationWorkspaceId
-canonical s8Service
+src/domain/capability-model.cjs
+src/management/policy/a2-s8-destination-effect-entry-preflight.cjs
+tests/m2-a2-s8-destination-effect-entry-preflight.test.cjs
 ```
 
-and reads only:
+M2.26 makes action translation explicit instead of relying on name similarity. `CapabilityVersion` owns an immutable/default-empty set of:
 
 ```text
-queryDelegationState(destinationWorkspaceId)
-queryMissionState(destinationWorkspaceId)
+delegatedActionBindings[]:
+  sourceAction
+  sourceTarget
+  runtimeAction
+  runtimeTarget
+  payloadBinding
 ```
-
-It verifies the M2.24 binding against the exact canonical destination identities before interpreting local action readiness:
-
-```text
-delegation request
-proposal
-delegation HumanGate
-acceptance
-execution binding
-local Mission
-local MissionRun
-local PlanStep
-local StepAttempt
-local ExecutionRun
-local Task
-action-level HumanGate, when present
-```
-
-M2.25 mechanically separates these states:
-
-```text
-not_created
-  local action ExecutionRun does not yet exist
-
-blocked
-  local action is blocked before action HumanGate
-  destination blockers are preserved and cross-checked
-
-waiting_human
-  exact downstream action HumanGate exists with state=requested
-  management does not decide it
-
-rejected
-  destination-owned action HumanGate rejection is observed as terminal no-effect evidence
-
-advanced
-  action HumanGate approved, execution active/result/completed, or recovery/effect territory
-  M2.25 FAILS CLOSED because that state belongs to a later effect/receipt slice
-
-review_needed
-  identity ambiguity, drift, inconsistent cardinality, or unrecognized state
-```
-
-M2.25 fixes all management authority outputs to:
-
-```text
-destinationDelegationHumanGateDecisionCreatedByManagementLayer = false
-destinationActionHumanGateDecisionCreatedByManagementLayer = false
-destinationExecutionPerformedByManagementLayer = false
-managementEffectInvocationPerformed = false
-destinationReceiptObserved = false
-automaticReplayAllowed = false
-executionAuthorized = false
-domainWritePerformedByManagementLayer = false
-binding = false
-authority = s8-destination-action-readiness-observation-only
-```
-
-It accepts no caller-supplied HumanGate decision, effect approval, execution result, or receipt answer.
-
-### M2.25 code-head validation
-
-```text
-PR code head   3e308f84d60f7435218e26011cfdee63d9fc8c50
-main           eb22e91d8bca1378fa87bfcf360c8b4a97574f82
-PR merge ref   fcbfe8500661389633b3bdde60cc44d806fe9370
-workflow run   31424188464  SUCCESS
-job            93571873819  SUCCESS
-source syntax  PASS
-tests          613 / 613 PASS
-M2.25 focused  8 / 8 PASS
-provider scan  PASS
-```
-
-Workflow checkout identity:
-
-```text
-fcbfe8500661389633b3bdde60cc44d806fe9370
-= merge(3e308f84d60f7435218e26011cfdee63d9fc8c50
-        into eb22e91d8bca1378fa87bfcf360c8b4a97574f82)
-```
-
-This is head-bound PR merge-ref validation. The proof uses isolated in-memory SQLite and a project-owned test exchange. It performs zero production/external Domain effect.
-
-### Newly explicit action-translation boundary
-
-Inspection of the accepted local runtime path shows that a management-level A2 action name and a low-level runtime capability action are not interchangeable by naming convention.
-
-For example, the current project-owned S0 browser runtime adapter accepts a bounded runtime action such as:
-
-```text
-submit_payload
-```
-
-whereas an A2 management action may be:
-
-```text
-run_approved_test_profile
-```
-
-Therefore the remaining G4 path MUST NOT silently alias one to the other.
 
 Required invariant:
 
 ```text
 ManagementActionSemantic != RuntimeCapabilityAction
-unless an explicit canonical destination-owned/accepted action-binding contract proves the mapping.
+unless an exact destination-owned CapabilityVersion binding proves the mapping.
 ```
 
-The caller may not provide an arbitrary runtime action or payload override to bridge this gap. Until an exact destination-owned compatibility/binding contract exists, effect-entry readiness must fail closed.
+The management preflight is read-only. It cannot supply or override runtime action, runtime target, payload transformation, HumanGate answer, AuthorityGrant, provider answer, or effect result. The current canonical `local.form-submit@1.0.0` publishes an explicit empty binding set, so a non-native management semantic fails closed instead of silently becoming `submit_payload`.
+
+M2.26 validated code head:
+
+```text
+head           7451e8d356dc6249f13dd1d402d58bca0f88e217
+main           eb22e91d8bca1378fa87bfcf360c8b4a97574f82
+PR merge ref   03fdbf04123aa60f5009bbff7ab2cb22632967f1
+workflow run   31426966707  SUCCESS
+job            93580847308  SUCCESS
+source syntax  PASS
+tests          621 / 621 PASS
+M2.26 focused  8 / 8 PASS
+provider scan  PASS
+```
+
+The original M2.26 code head failed one focused assertion because the test incorrectly expected JavaScript `Object.freeze` runtime metadata to survive SQLite serialization. The fix retained the immutable model contract and corrected the persistence-projection assertion; no authority or validation rule was weakened.
+
+### M2.27 — destination owner consumes exact runtime binding
+
+Production owner changes:
+
+```text
+src/delegation/admission/index.cjs
+src/application/s8-destination-authority-service.cjs
+src/application/s8-product-service.cjs
+```
+
+Focused proof:
+
+```text
+tests/m2-a2-s8-destination-runtime-binding.test.cjs
+```
+
+M2.27 separates two different contracts that were previously conflated:
+
+```text
+DelegationPolicy validates SOURCE semantics:
+  run_approved_test_profile
+  project:trainingos
+
+Destination CapabilityVersion resolves RUNTIME semantics:
+  submit_payload
+  http://127.0.0.1:43119/task-form.html
+
+Destination AgentGrant/provider validate RUNTIME semantics.
+```
+
+Only the existing S8 destination owner resolves and consumes the binding. Management never supplies `runtimeAction`, `runtimeTarget`, `payloadBinding`, provider approval, AgentGrant, HumanGate decision, or effect answer.
+
+The exact runtime semantic is persisted into canonical S2 `StepBinding`, not merely returned from a management preflight. The downstream action gate is then created by the existing local S1/S2 path and is observable through:
+
+```text
+DelegatedExecutionBinding
+-> localStepAttemptId
+-> StepAttempt.humanGateId
+-> canonical HumanGate(state=requested)
+```
+
+The delegation approval API still returns `actionGate=null`, preserving M2.24's separation of delegation approval from downstream action approval.
+
+M2.27 focused tests prove:
+
+1. exact destination-owned binding lands in canonical S2 StepBinding and stops at requested action HumanGate;
+2. destination AgentGrant grants the runtime semantic, not the source management semantic;
+3. missing binding fails closed for a non-native source action;
+4. provider-denied runtime action is blocked before delegation HumanGate consumption or Mission creation;
+5. unsupported payload binding is blocked before delegation HumanGate consumption;
+6. repeated destination approval is exact-once for Mission/binding and never auto-approves the action gate;
+7. the destination binding owner exposes no management-supplied runtime choice or effect shortcut.
+
+Red-team/debug evidence also preserved a pre-existing contract: an intermediate implementation exposed the action gate in `approveDelegationProposal()` and caused the old M2.24 regression test to fail. That implementation was rejected. The final implementation restores `actionGate=null` and proves the downstream gate through canonical StepAttempt state instead.
+
+M2.27 focused diagnostic validation:
+
+```text
+head           6712f84b4f82b07812b506556f9505ac6cca6fd6
+PR merge ref   28160692bd1045e31ed7424cf6c13629b8afcc95
+workflow run   31430071091  SUCCESS
+job            93591070579  SUCCESS
+M2.27 focused  7 / 7 PASS
+provider scan  PASS
+```
+
+S8/M2-S8 regression validation after preserving the M2.24 boundary:
+
+```text
+head           f1d5fae14a16512317f4a266e2f23ccfa16b7091
+workflow run   31430828702  SUCCESS
+```
+
+Full code-head validation after restoring the normal full test command:
+
+```text
+head           8a4fe1cda3947a4a4f4ae98e6ac523ff84ab0cdf
+workflow run   31430911750  SUCCESS
+job            93593826538  SUCCESS
+source/unit validation  SUCCESS
+provider boundary       SUCCESS
+```
+
+The exact full-suite test count and checkout merge-ref are not promoted here from inference; the final documentation head below must receive its own PR merge-ref validation before this slice is considered documentation-complete.
+
+All M2.27 effects are isolated to project-owned in-memory SQLite / test exchange / fake Worker surfaces. No production or external Domain runtime effect was performed.
 
 ### What still blocks G4
 
@@ -340,14 +337,18 @@ A2 -> A7
 -> destination delegation HumanGate requested
 -> destination-owned delegation decision observed
 -> fresh acceptance + exact local execution binding observed
--> exact downstream action readiness / action HumanGate state observed
+-> exact downstream action readiness observed
+-> destination-owned source-semantic -> runtime-semantic binding contract
+-> exact binding consumed by existing destination S8 owner
+-> runtime AgentGrant/provider/payload semantics revalidated
+-> exact runtime semantic persisted in canonical S2 StepBinding
+-> downstream action HumanGate requested
 ```
 
 Still required:
 
 ```text
--> explicit canonical management-action -> runtime-capability-action compatibility/binding
--> destination-owned action HumanGate decision when required
+-> destination-owned downstream action HumanGate decision when required
 -> exactly one explicitly bounded approved effect
 -> destination execution receipt bound to exact request/effect
 -> source receipt pull
@@ -364,13 +365,14 @@ management cannot decide delegation HumanGate
 management cannot decide downstream action HumanGate
 management cannot invent runtime action translation
 source authorization cannot bypass destination-local admission
+destination AgentGrant/provider validate runtime semantics, not source naming
 request identity binds policy + authorization + capability + target + evidence
 execution binding identity does not imply effect
 receipt identity binds back to the exact accepted request/effect
 uncertain transport/effect never auto-replays
 ```
 
-Until the explicit action-binding plus effect-and-receipt path is proven:
+Until the destination-owned action decision plus exact effect-and-receipt path is proven:
 
 ```text
 G4 = PARTIAL / BLOCKED FOR M3
@@ -417,8 +419,8 @@ S8RequestConstruction != SourceTransportAck
 SourceTransportAck != DestinationAdmission
 DestinationAdmission != DelegationHumanGateApproval
 DelegationHumanGateApproval != ExecutionBinding
-ExecutionBinding != ActionReadiness
-ExecutionRunIdentity != EffectExecution
+ExecutionBinding != RuntimeSemanticCompatibility
+RuntimeSemanticCompatibility != ActionHumanGateApproval
 ActionHumanGateRequested != ActionHumanGateApproved
 ManagementActionSemantic != RuntimeCapabilityActionWithoutCanonicalBinding
 DestinationEffect != SourceReceiptConsumption
@@ -435,7 +437,7 @@ G3 PASS != G4 PASS
 4. revalidate currentness on every head movement;
 5. continue authorized recurring read-only provider ingestion;
 6. keep A7 as the single authorization owner and S8 as the single delegation/transport/destination-authority owner;
-7. advance G4 with an explicit destination-owned action compatibility/binding contract before any effect-entry proof;
+7. advance G4 only through destination-owned capability binding + runtime authority + HumanGate/effect/receipt paths;
 8. keep both delegation and downstream action HumanGate decisions destination/local-owner controlled;
 9. keep ambiguous transport/effect outcomes fail-closed with no automatic replay;
 10. keep the owner cockpit fail-closed on unknown or stale Domain truth.
@@ -447,10 +449,12 @@ second authorization owner = NO
 second S8 owner = NO
 second scheduler = NO
 A2 execution enabled = NO
-production/external S8 effect in M2.22-M2.25 work = NO
+production/external S8 effect in M2.22-M2.27 work = NO
 HumanGate decision by management layer = NO
-destination execution effect by management layer = NO
+downstream action HumanGate decision in M2.27 = NO
+destination runtime effect in M2.27 = NO
 implicit management-action -> runtime-action alias = NO
+management-supplied runtime action/target/payload binding = NO
 external Domain repository mutation = NO
 external Domain scheduler mutation = NO
 LLM prose-to-truth extraction = NO
