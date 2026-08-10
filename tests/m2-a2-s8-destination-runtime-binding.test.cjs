@@ -153,7 +153,10 @@ function pendingProposal(destination) {
 
 function planStep(destination, binding) {
   const mission = destination.mission.get(binding.localMissionId);
-  const revision = destination.missionRevision.get(mission.currentRevisionId);
+  const revision = destination.missionRevision.list()
+    .filter((item) => item.missionId === mission.id)
+    .sort((a, b) => Number(b.revision || 0) - Number(a.revision || 0))[0];
+  assert.ok(revision);
   const plan = destination.executionPlan.get(revision.planId);
   return plan.steps.find((item) => item.id === binding.localPlanStepId);
 }
@@ -195,10 +198,11 @@ test('M2.27 missing destination binding fails closed for a source semantic actio
     assert.equal(pull.accepted, 1);
     const proposal = pendingProposal(destination);
     assert.equal(proposal.state, 'inadmissible');
-    const admission = destination.queryDelegationState('workspace-a').admissionSnapshots.find((item) => item.proposalId === proposal.id);
+    const state = destination.queryDelegationState('workspace-a');
+    const admission = state.admissionSnapshots.find((item) => item.proposalId === proposal.id);
     assert.equal(admission.admissible, false);
     assert.ok(admission.reasonCodes.includes('local_grant_missing'));
-    assert.equal(destination.queryDelegationState('workspace-a').humanGates.length, 0);
+    assert.equal(state.delegationHumanGates.length, 0);
     assert.equal(destination.mission.list().filter((item) => item.title?.startsWith('Delegated request')).length, 0);
     assert.equal(destination.workerManager.submissions.length, 0);
   } finally { source.close(); destination.close(); }
@@ -209,16 +213,16 @@ test('M2.27 provider denial of bound runtime action is checked before delegation
   const { source, destination } = await setup({ runtimeAction });
   try {
     const proposal = pendingProposal(destination);
-    const gateBefore = destination.queryDelegationState('workspace-a').humanGates.find((item) => item.id === proposal.humanGateId);
+    const gateBefore = destination.queryDelegationState('workspace-a').delegationHumanGates.find((item) => item.id === proposal.humanGateId);
     assert.equal(gateBefore.state, 'requested');
     assert.throws(
       () => destination.approveDelegationProposal({ workspaceId: 'workspace-a', proposalId: proposal.id }),
       /destination_runtime_provider_action_not_allowed/,
     );
     const state = destination.queryDelegationState('workspace-a');
-    assert.equal(state.humanGates.find((item) => item.id === proposal.humanGateId).state, 'requested');
-    assert.equal(state.acceptances.length, 0);
-    assert.equal(state.executionBindings.length, 0);
+    assert.equal(state.delegationHumanGates.find((item) => item.id === proposal.humanGateId).state, 'requested');
+    assert.equal(state.delegationAcceptances.length, 0);
+    assert.equal(state.delegatedExecutionBindings.length, 0);
     assert.equal(destination.mission.list().filter((item) => item.title?.startsWith('Delegated request')).length, 0);
     assert.equal(destination.workerManager.submissions.length, 0);
   } finally { source.close(); destination.close(); }
@@ -233,9 +237,9 @@ test('M2.27 unsupported payload binding fails before destination HumanGate decis
       /destination_payload_binding_unsupported/,
     );
     const state = destination.queryDelegationState('workspace-a');
-    assert.equal(state.humanGates.find((item) => item.id === proposal.humanGateId).state, 'requested');
-    assert.equal(state.acceptances.length, 0);
-    assert.equal(state.executionBindings.length, 0);
+    assert.equal(state.delegationHumanGates.find((item) => item.id === proposal.humanGateId).state, 'requested');
+    assert.equal(state.delegationAcceptances.length, 0);
+    assert.equal(state.delegatedExecutionBindings.length, 0);
     assert.equal(destination.workerManager.submissions.length, 0);
   } finally { source.close(); destination.close(); }
 });
