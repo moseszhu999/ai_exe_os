@@ -82,11 +82,11 @@ ACTIVE_OUT_OF_BAND_PERSISTENCE_MISSING
 ACTIVE_STRUCTURED_SOURCE_NOT_YET_OBSERVED
 ```
 
-Recurring proof requires at least two explicit structured evidence references and is rejected unless the existing adoption classifier already reports structured Controller adoption.
+M2.13 originally used two explicit structured evidence references as the minimum recurrence signal. **M2.15 supersedes that rule.** Arbitrary references are now audit hints only and cannot prove recurrence.
 
-## Real M2.13 audit
+## Historical M2.13 audit
 
-Current provider heads observed:
+At the original M2.13 observation point, provider heads were:
 
 ```text
 TrainingOS   8f0d38dca4dcd28883359c427e133d0c1a9eebb8
@@ -94,9 +94,9 @@ TradeOS      6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b
 Video/Media  23d92ffc4674f1581c4191e595d279a20008be53
 ```
 
-Exact marker searches remained empty across all three repositories. TrainingOS Issue #477 and TradeOS Issue #567 also contain no canonical marker. No current Video/Media Controller issue was found by the bounded issue search.
+At that time exact marker searches remained empty across all three repositories. TrainingOS Issue #477 and TradeOS Issue #567 contained no canonical marker, and no current Video/Media Controller persistence source had been accepted.
 
-Observed producer topology:
+Observed producer topology at that point:
 
 ```text
 TrainingOS
@@ -135,39 +135,87 @@ exactHeadSha = dce842e6874e6842b461cd4b5958df577608da94
 sourceDigest = sha256:e4120c3bac66cf45f9c8d4ef20923f318f004278dcd3447e9c716adacb337715
 ```
 
-The exact comment body was read back and the digest recomputed. Publishing the comment does not mutate `main`, so the attested head remains current at the observation point.
+The exact comment body was read back and the digest recomputed. Publishing the comment does not mutate `main`, so the attested head remained current at the observation point.
 
-This repairs the AIEXE-side sample only. It does not count toward the three external Domain adoptions.
+This repaired the AIEXE-side sample only and did not count toward the three external Domain adoptions.
 
-## Current G3 blocker decomposition
+## M2.14 first real external adoption update
 
-```text
-external Domain projects                 3
-group integration ready                  3 / 3
-structured Controller adopted            0 / 3
-enabled producer schedulers              2 / 3
-disabled producer schedulers             1 / 3
-structured producer contract missing     3 / 3
-out-of-band persistence missing           1 / 3
-recurring structured producers proven    0 / 3
-G3                                        PARTIAL
-```
-
-Therefore the shortest real path is not another AIEXE parser. It is producer adoption in the Domain-owned Controller output path:
+M2.14 subsequently observed one canonical marked out-of-band structured source for each external Domain and accepted all three at exact current heads through the existing parser/enrichment path.
 
 ```text
-TrainingOS  -> add canonical marked envelope to existing recurring Controller output
-TradeOS     -> separately resolve whether its disabled Controller should run; then adopt envelope
-Video/Media -> establish out-of-band Controller persistence + canonical marked envelope
+external structured source existence = 3 / 3
+first-cycle exact-head acceptance     = 3 / 3
+recurring structured producer proof   = 0 / 3
+G3                                     = PARTIAL
 ```
 
-AIEXE must not infer or manufacture those Domain facts on their behalf.
+This first cycle is real evidence, but it is not recurrence evidence.
+
+## M2.15 recurrence-proof hardening
+
+M2.15 adds:
+
+```text
+aiexe.controller-recurring-structured-proof.v1
+```
+
+Canonical recurrence now requires this deterministic chain:
+
+```text
+marked Controller source body
+-> full-body SHA-256 verified envelope
+-> canonical external Controller attestation
+-> exact-head + freshness accepted enriched observation
+-> second or later independently accepted cycle
+-> distinct sourceRef
+-> distinct sourceDigest (changed body)
+-> strictly increasing observedAt
+-> aiexe.controller-recurring-structured-proof.v1
+-> aiexe.controller-producer-readiness.v1
+```
+
+A recurrence proof fails closed when any cycle:
+
+```text
+is not accepted_exact_head_current
+has a project/repository binding mismatch
+reuses a sourceRef
+reuses a sourceDigest
+moves observedAt backward or keeps it equal
+lacks the canonical read-only envelope/enriched-observation schemas
+```
+
+`recurringStructuredEvidenceRefs` remains in the producer observation only as auditable source hints. Two strings such as `receipt:a` and `receipt:b` no longer have any ability to set `recurringStructuredProven=true`.
+
+Producer readiness also now preserves scheduler topology before adoption convenience states:
+
+```text
+scheduler unobserved -> PRODUCER_TOPOLOGY_UNOBSERVED
+scheduler disabled   -> PRODUCER_DISABLED
+```
+
+Therefore a Domain cannot hide a disabled producer merely because one structured source was observed previously. A historical canonical recurrence proof also does not count as **current recurring readiness** while its producer is disabled.
+
+## Current G3 interpretation after M2.15 hardening
+
+```text
+external Domain projects                    3
+first-cycle structured adoption             3 / 3
+arbitrary refs allowed to prove recurrence  NO
+verified recurring structured producers     0 / 3 until real cycle 2+
+G3                                           PARTIAL
+G4 / A2 execution                            UNAUTHORIZED
+```
+
+The shortest real path is now explicit: each existing Domain-owned Controller must emit a later fresh canonical source through its existing channel. AIEXE may consume that source only after the same digest, exact-head and freshness checks succeed. AIEXE must not manufacture the second cycle itself.
 
 ## Boundary
 
 ```text
-external Domain repository write/comment   NO
+external Domain repository write/comment   NO by this hardening slice
 external scheduler mutation                NO
+second scheduler                            NO
 LLM prose-to-truth extraction               NO
 cross-repository credentials                NO
 A2 execution                                NO
