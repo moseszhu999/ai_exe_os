@@ -1,0 +1,125 @@
+{
+  "schema": "aiexe.controller-currentness-revalidation-source.v1",
+  "evidenceClass": "REAL_EXTERNAL_CONTROLLER_CURRENTNESS_REVALIDATION_POST_M2_18",
+  "observedAt": "2026-08-10T10:28:05Z",
+  "readOnly": true,
+  "writeAuthority": "none",
+  "priorAdoptionObservedAt": "2026-08-10T09:57:00Z",
+  "adoptionProjects": [
+    {
+      "projectId": "trainingos",
+      "repository": "moseszhu999/training-learning-rails",
+      "exactHeadSha": "8f0d38dca4dcd28883359c427e133d0c1a9eebb8",
+      "groupAdapterEvidenceRefs": [
+        "github:moseszhu999/training-learning-rails:commit:d75d7cb9c0c3ab6c0af3e2df147ac3f8aeecd5fc"
+      ],
+      "verifiedCurrentEnvelopeEvidenceRefs": [
+        "https://github.com/moseszhu999/training-learning-rails/issues/477#issuecomment-5238479461"
+      ],
+      "markerSearchObserved": true,
+      "markerSearchMatched": true
+    },
+    {
+      "projectId": "tradeos",
+      "repository": "moseszhu999/chaintrace-app",
+      "exactHeadSha": "6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b",
+      "groupAdapterEvidenceRefs": [
+        "github:moseszhu999/chaintrace-app:commit:07daa3b68be5ab1884ea159aa27cd44be12e19a5",
+        "github:moseszhu999/chaintrace-app:commit:c51b766aefecb5fcc49c27c3c51bd982c13a30e0"
+      ],
+      "verifiedCurrentEnvelopeEvidenceRefs": [
+        "https://github.com/moseszhu999/chaintrace-app/issues/567#issuecomment-5238481582"
+      ],
+      "markerSearchObserved": true,
+      "markerSearchMatched": true
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "repository": "moseszhu999/global-tool-radar",
+      "exactHeadSha": "23d92ffc4674f1581c4191e595d279a20008be53",
+      "groupAdapterEvidenceRefs": [
+        "github:moseszhu999/global-tool-radar:commit:9e3391d8d0eea52004026c5643370c72ba0506cb"
+      ],
+      "verifiedCurrentEnvelopeEvidenceRefs": [
+        "https://github.com/moseszhu999/global-tool-radar/issues/115#issuecomment-5238483228"
+      ],
+      "markerSearchObserved": true,
+      "markerSearchMatched": true
+    }
+  ],
+  "providerHeads": [
+    {
+      "projectId": "trainingos",
+      "repository": "moseszhu999/training-learning-rails",
+      "providerHeadSha": "ca0491ed5166e8f00b8e96f3f4665963a004c860",
+      "comparisonFromAttestedHead": "ahead_by_1",
+      "evidenceRefs": [
+        "github:moseszhu999/training-learning-rails:commit:ca0491ed5166e8f00b8e96f3f4665963a004c860"
+      ]
+    },
+    {
+      "projectId": "tradeos",
+      "repository": "moseszhu999/chaintrace-app",
+      "providerHeadSha": "cab553a75a07d67639f065124e76cf52a7b86428",
+      "comparisonFromAttestedHead": "ahead_by_1",
+      "evidenceRefs": [
+        "github:moseszhu999/chaintrace-app:commit:cab553a75a07d67639f065124e76cf52a7b86428"
+      ]
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "repository": "moseszhu999/global-tool-radar",
+      "providerHeadSha": "23d92ffc4674f1581c4191e595d279a20008be53",
+      "comparisonFromAttestedHead": "identical",
+      "evidenceRefs": [
+        "github:moseszhu999/global-tool-radar:commit:23d92ffc4674f1581c4191e595d279a20008be53"
+      ]
+    }
+  ],
+  "schedulerTopology": {
+    "trainingos": {
+      "enabled": true,
+      "lastRunAt": "2026-08-10T10:15:38.217574Z",
+      "structuredProducerContractObserved": false
+    },
+    "tradeos": {
+      "enabled": false,
+      "lastRunAt": "2026-08-09T11:04:45.361363Z",
+      "structuredProducerContractObserved": false
+    },
+    "video-operation-shared-media": {
+      "enabled": true,
+      "lastRunAt": "2026-08-10T09:36:37.851218Z",
+      "structuredProducerContractObserved": false
+    }
+  },
+  "videoRecurrenceEvidence": {
+    "cycle1Ref": "https://github.com/moseszhu999/global-tool-radar/issues/115#issuecomment-5236897897",
+    "cycle2Ref": "https://github.com/moseszhu999/global-tool-radar/issues/115#issuecomment-5238483228",
+    "secondCycleCurrentAtObservation": true,
+    "nativeProducerContractStillUnproven": true
+  },
+  "g4Dependency": {
+    "entryProofMainSha": "9955c6fc8bb2555aa65ca1b37254b961c475c03b",
+    "authorizationOwnerPr": 139,
+    "authorizationOwnerHeadSha": "147702cf5f3d5edb4f36b2debb217e26e9c317a8",
+    "authorizationOwnerCiRun": 31379123250,
+    "authorizationOwnerCiConclusion": "success",
+    "managementPlaneMustNotDuplicateAuthorizationCore": true
+  },
+  "expected": {
+    "externalProjectCount": 3,
+    "currentStructuredAdoptedCount": 1,
+    "staleAttestationCount": 2,
+    "currentStructuredAdoptionComplete": false,
+    "currentProjectIds": [
+      "video-operation-shared-media"
+    ],
+    "staleProjectIds": [
+      "tradeos",
+      "trainingos"
+    ],
+    "g3State": "PARTIAL",
+    "g4State": "PARTIAL_ACTIVE_OWNER_139"
+  }
+}
