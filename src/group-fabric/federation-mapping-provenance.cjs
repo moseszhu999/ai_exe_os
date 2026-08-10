@@ -9,6 +9,8 @@ const {
 } = require('node:crypto');
 const {
   GROUP_FEDERATION_MAPPING_VERIFICATION_RECEIPT_SCHEMA,
+  MAX_STATUS_AGE_SECONDS,
+  VERIFICATION_POLICY_REF,
 } = require('./federation-mapping-verifier.cjs');
 
 const GROUP_FEDERATION_MAPPING_PROVENANCE_ATTESTATION_SCHEMA =
@@ -20,6 +22,50 @@ const PROVENANCE_POLICY_REF =
 const SIGNATURE_ALGORITHM = 'Ed25519';
 const TRUST_RECORD_MAX_AGE_SECONDS = 300;
 const PROVENANCE_DECISIONS = Object.freeze(['verified', 'denied', 'unknown']);
+
+const RECEIPT_FIELDS = new Set([
+  'schema',
+  'verificationReceiptRef',
+  'requestRef',
+  'requestDigest',
+  'decision',
+  'reasonCodes',
+  'mappingVerified',
+  'subjectLinkRef',
+  'subjectLinkDigest',
+  'subjectStatus',
+  'subjectStatusDigest',
+  'subjectLifecycleDigest',
+  'organizationLinkRef',
+  'organizationLinkDigest',
+  'organizationStatus',
+  'organizationStatusDigest',
+  'organizationLifecycleDigest',
+  'roleContextLinkRef',
+  'roleContextLinkDigest',
+  'domainBindings',
+  'verificationPolicyRef',
+  'evidenceRefs',
+  'observedAt',
+  'maxStatusAgeSeconds',
+  'mappingVerificationReceipt',
+  'correlationOnly',
+  'loginCredential',
+  'sessionCreated',
+  'membershipCreated',
+  'organizationMembershipInferred',
+  'roleEquivalenceAsserted',
+  'capabilityCredentialCreated',
+  'authorityGrantCreated',
+  'authorizationDecisionCreated',
+  'humanGateDecisionCreated',
+  'delegationCreated',
+  'executionAuthorized',
+  'crossDomainAccessGranted',
+  'domainWritePerformed',
+  'externalActionPerformed',
+  'receiptDigest',
+]);
 
 const RECEIPT_FALSE_FLAGS = Object.freeze([
   'loginCredential',
@@ -76,6 +122,15 @@ function assertAllowedKeys(input, allowed, label) {
   }
 }
 
+function assertExactKeys(input, fields, label) {
+  assertAllowedKeys(input, fields, label);
+  for (const field of fields) {
+    if (!Object.prototype.hasOwnProperty.call(input, field)) {
+      throw new TypeError(`${label} is missing required field: ${field}`);
+    }
+  }
+}
+
 function text(value, label, max = 240) {
   if (typeof value !== 'string') throw new TypeError(`${label} must be a string`);
   const normalized = value.trim();
@@ -96,6 +151,28 @@ function safeRef(value, label, prefix) {
   }
   if (!/^[A-Za-z0-9][A-Za-z0-9:._@/-]*$/.test(normalized)) {
     throw new TypeError(`${label} contains invalid characters`);
+  }
+  return normalized;
+}
+
+function safeOpaqueRef(value, label) {
+  const normalized = text(value, label);
+  if (/@[^/\s]+\.[A-Za-z]{2,}/.test(normalized)) {
+    throw new TypeError(`${label} must not contain email-like PII`);
+  }
+  if (/bearer|password|secret|token=|api[_-]?key|cookie|session=|jwt/i.test(normalized)) {
+    throw new TypeError(`${label} must not contain secret/session-like material`);
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9:._@/-]*$/.test(normalized)) {
+    throw new TypeError(`${label} contains invalid characters`);
+  }
+  return normalized;
+}
+
+function safeCode(value, label) {
+  const normalized = text(value, label, 80);
+  if (!/^[a-z][a-z0-9._-]{0,79}$/.test(normalized)) {
+    throw new TypeError(`${label} must be a bounded code`);
   }
   return normalized;
 }
@@ -131,16 +208,125 @@ function assertBoolean(value, expected, label) {
   if (value !== expected) throw new TypeError(`${label} must be ${expected}`);
 }
 
-function assertVerifiedReceipt(receipt) {
-  plainObject(receipt, 'mapping verification receipt');
-  if (receipt.schema !== GROUP_FEDERATION_MAPPING_VERIFICATION_RECEIPT_SCHEMA) {
-    throw new TypeError('mapping verification receipt schema mismatch');
+function normalizeReceiptBinding(binding, index) {
+  plainObject(binding, `mapping verification receipt domainBindings[${index}]`);
+  assertAllowedKeys(
+    binding,
+    new Set(['domain', 'subjectRef', 'organizationRef', 'roleRef']),
+    `mapping verification receipt domainBindings[${index}]`,
+  );
+  for (const field of ['domain', 'subjectRef', 'organizationRef']) {
+    if (!Object.prototype.hasOwnProperty.call(binding, field)) {
+      throw new TypeError(`mapping verification receipt domainBindings[${index}] is missing required field: ${field}`);
+    }
   }
+  const normalized = {
+    domain: safeCode(binding.domain, `mapping verification receipt domainBindings[${index}].domain`),
+    subjectRef: safeOpaqueRef(
+      binding.subjectRef,
+      `mapping verification receipt domainBindings[${index}].subjectRef`,
+    ),
+    organizationRef: safeOpaqueRef(
+      binding.organizationRef,
+      `mapping verification receipt domainBindings[${index}].organizationRef`,
+    ),
+  };
+  if (binding.roleRef !== undefined) {
+    normalized.roleRef = safeOpaqueRef(
+      binding.roleRef,
+      `mapping verification receipt domainBindings[${index}].roleRef`,
+    );
+  }
+  return freezeDeep(normalized);
+}
+
+function validateReceiptStructure(receipt) {
+  assertExactKeys(receipt, RECEIPT_FIELDS, 'mapping verification receipt');
   safeRef(
     receipt.verificationReceiptRef,
     'mapping verification receipt verificationReceiptRef',
     'group:federation-verification-receipt:',
   );
+  safeRef(
+    receipt.requestRef,
+    'mapping verification receipt requestRef',
+    'group:federation-verification-request:',
+  );
+  sha256(receipt.requestDigest, 'mapping verification receipt requestDigest');
+  if (!Array.isArray(receipt.reasonCodes)
+      || receipt.reasonCodes.length !== 1
+      || receipt.reasonCodes[0] !== 'exact_domain_pair_verified') {
+    throw new TypeError('verified mapping verification receipt must contain exact verified reasonCodes');
+  }
+  safeRef(receipt.subjectLinkRef, 'mapping verification receipt subjectLinkRef', 'group:subject-link:');
+  sha256(receipt.subjectLinkDigest, 'mapping verification receipt subjectLinkDigest');
+  if (receipt.subjectStatus !== 'valid') {
+    throw new TypeError('verified mapping verification receipt subjectStatus must be valid');
+  }
+  sha256(receipt.subjectStatusDigest, 'mapping verification receipt subjectStatusDigest');
+  sha256(receipt.subjectLifecycleDigest, 'mapping verification receipt subjectLifecycleDigest');
+  safeRef(
+    receipt.organizationLinkRef,
+    'mapping verification receipt organizationLinkRef',
+    'group:organization-link:',
+  );
+  sha256(receipt.organizationLinkDigest, 'mapping verification receipt organizationLinkDigest');
+  if (receipt.organizationStatus !== 'valid') {
+    throw new TypeError('verified mapping verification receipt organizationStatus must be valid');
+  }
+  sha256(receipt.organizationStatusDigest, 'mapping verification receipt organizationStatusDigest');
+  sha256(
+    receipt.organizationLifecycleDigest,
+    'mapping verification receipt organizationLifecycleDigest',
+  );
+  const hasRoleRef = receipt.roleContextLinkRef !== null;
+  const hasRoleDigest = receipt.roleContextLinkDigest !== null;
+  if (hasRoleRef !== hasRoleDigest) {
+    throw new TypeError('mapping verification receipt role context ref/digest must be both null or both present');
+  }
+  if (hasRoleRef) {
+    safeRef(
+      receipt.roleContextLinkRef,
+      'mapping verification receipt roleContextLinkRef',
+      'group:role-context-link:',
+    );
+    sha256(receipt.roleContextLinkDigest, 'mapping verification receipt roleContextLinkDigest');
+  }
+  if (!Array.isArray(receipt.domainBindings) || receipt.domainBindings.length !== 2) {
+    throw new TypeError('mapping verification receipt domainBindings must contain exactly two entries');
+  }
+  const bindings = receipt.domainBindings.map(normalizeReceiptBinding);
+  if (bindings[0].domain === bindings[1].domain) {
+    throw new TypeError('mapping verification receipt domainBindings must cover distinct domains');
+  }
+  if (!Array.isArray(receipt.evidenceRefs)
+      || receipt.evidenceRefs.length < 1
+      || receipt.evidenceRefs.length > 32) {
+    throw new TypeError('mapping verification receipt evidenceRefs must be a non-empty bounded array');
+  }
+  const evidence = receipt.evidenceRefs.map((ref, index) => safeRef(
+    ref,
+    `mapping verification receipt evidenceRefs[${index}]`,
+    'evidence:',
+  ));
+  if (new Set(evidence).size !== evidence.length) {
+    throw new TypeError('mapping verification receipt evidenceRefs must be unique');
+  }
+  timestamp(receipt.observedAt, 'mapping verification receipt observedAt');
+  if (receipt.maxStatusAgeSeconds !== MAX_STATUS_AGE_SECONDS) {
+    throw new TypeError('mapping verification receipt maxStatusAgeSeconds mismatch');
+  }
+  if (receipt.verificationPolicyRef !== VERIFICATION_POLICY_REF) {
+    throw new TypeError('mapping verification receipt verificationPolicyRef mismatch');
+  }
+}
+
+function assertVerifiedReceipt(receipt) {
+  plainObject(receipt, 'mapping verification receipt');
+  validateReceiptStructure(receipt);
+  if (receipt.schema !== GROUP_FEDERATION_MAPPING_VERIFICATION_RECEIPT_SCHEMA) {
+    throw new TypeError('mapping verification receipt schema mismatch');
+  }
   const suppliedDigest = sha256(
     receipt.receiptDigest,
     'mapping verification receipt receiptDigest',
@@ -190,6 +376,11 @@ function normalizeTrustedVerifierRecord(record) {
     ]),
     'trusted verifier record',
   );
+  for (const field of ['verifierRef', 'keyRef', 'publicKeyPem', 'status', 'observedAt', 'validUntil']) {
+    if (!Object.prototype.hasOwnProperty.call(record, field)) {
+      throw new TypeError(`trusted verifier record is missing required field: ${field}`);
+    }
+  }
   const verifierRef = safeRef(record.verifierRef, 'trusted verifier verifierRef', 'group:verifier:');
   const keyRef = safeRef(record.keyRef, 'trusted verifier keyRef', 'group:verifier-key:');
   const publicKeyPem = text(record.publicKeyPem, 'trusted verifier publicKeyPem', 8192);
@@ -349,8 +540,11 @@ function normalizeAttestation(attestation) {
   if (attestation.provenancePolicyRef !== PROVENANCE_POLICY_REF) {
     throw new TypeError('provenance attestation policy mismatch');
   }
-  timestamp(attestation.issuedAt, 'provenance attestation issuedAt');
-  timestamp(attestation.validUntil, 'provenance attestation validUntil');
+  const issuedAt = timestamp(attestation.issuedAt, 'provenance attestation issuedAt');
+  const validUntil = timestamp(attestation.validUntil, 'provenance attestation validUntil');
+  if (validUntil.time <= issuedAt.time) {
+    throw new TypeError('provenance attestation validUntil must be after issuedAt');
+  }
   assertBoolean(attestation.provenanceAttestation, true, 'provenanceAttestation');
   assertBoolean(attestation.correlationOnly, true, 'correlationOnly');
   for (const field of [
