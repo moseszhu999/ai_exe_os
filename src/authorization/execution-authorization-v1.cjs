@@ -219,13 +219,11 @@ function evaluateExecutionAuthorizationV1(rawInput) {
     const delegationState = authorityState(input.resolved.delegation, input, 'delegation', verified, missing);
     if (delegationState === 'deny') denyReasons.add('delegation_denied');
     if (delegationState === 'unknown') unknownReasons.add('delegation_unknown');
-  } else if (input.resolved.delegation) {
-    verified.add(input.resolved.delegation.ref);
   }
 
   const revokedSubjects = input.resolved.revocations.filter((entry) => entry.status === 'revoked');
   for (const entry of input.resolved.revocations) verified.add(entry.ref);
-  if (revokedSubjects.some((entry) => [input.actorRef, input.resolved.authorityGrant?.ref, input.resolved.delegation?.ref].includes(entry.subjectRef))) {
+  if (revokedSubjects.some((entry) => [input.actorRef, input.resolved.authorityGrant?.ref, input.actorKind === 'agent' ? input.resolved.delegation?.ref : null].includes(entry.subjectRef))) {
     denyReasons.add('revocation_active');
   }
 
