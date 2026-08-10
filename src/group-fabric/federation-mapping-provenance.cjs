@@ -440,6 +440,7 @@ function createFederationMappingProvenanceAttestation(input) {
     keyRef,
     publicKeyFingerprintSha256: publicKeyFingerprint,
     issuedAt: issuedAt.text,
+    validUntil: validUntil.text,
   };
   const attestationRef =
     `group:federation-provenance-attestation:${digest(refSeed).slice(0, 32)}`;
