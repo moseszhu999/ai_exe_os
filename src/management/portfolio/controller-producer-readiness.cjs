@@ -1,6 +1,7 @@
 'use strict';
 
 const { CONTROLLER_ADOPTION_READINESS_SCHEMA } = require('./controller-adoption-readiness.cjs');
+const { CONTROLLER_RECURRING_STRUCTURED_PROOF_SCHEMA } = require('./controller-recurrence-proof.cjs');
 
 const CONTROLLER_PRODUCER_READINESS_SCHEMA = 'aiexe.controller-producer-readiness.v1';
 
@@ -43,12 +44,54 @@ function uniqueRefs(value, label) {
   return Object.freeze([...refs].sort());
 }
 
+function canonicalRecurrenceProof(value, adoptionProject) {
+  if (value == null) return null;
+  plainObject(value, 'recurring structured proof');
+  if (
+    value.schema !== CONTROLLER_RECURRING_STRUCTURED_PROOF_SCHEMA
+    || value.evidenceClass !== 'VERIFIED_RECURRING_STRUCTURED_CONTROLLER_SOURCE'
+    || value.readOnly !== true
+    || value.writeAuthority !== 'none'
+    || value.proven !== true
+  ) {
+    throw new Error('canonical recurring structured proof required');
+  }
+  if (value.projectId !== adoptionProject.projectId || value.repository !== adoptionProject.repository) {
+    throw new Error('recurring structured proof project binding mismatch');
+  }
+  if (!adoptionProject.structuredControllerAdopted) {
+    throw new Error('recurring structured proof requires structured Controller adoption');
+  }
+  if (!Number.isInteger(value.cycleCount) || value.cycleCount < 2) {
+    throw new Error('recurring structured proof requires at least two verified cycles');
+  }
+  if (
+    value.allCyclesAcceptedExactHeadCurrent !== true
+    || value.distinctSourceRefs !== true
+    || value.distinctSourceDigests !== true
+    || value.strictlyIncreasingObservedAt !== true
+  ) {
+    throw new Error('recurring structured proof invariants are incomplete');
+  }
+  const sourceRefs = uniqueRefs(value.sourceRefs, 'recurring proof source ref');
+  const sourceDigests = uniqueRefs(value.sourceDigests, 'recurring proof source digest');
+  if (sourceRefs.length !== value.cycleCount || sourceDigests.length !== value.cycleCount) {
+    throw new Error('recurring structured proof cycle evidence is incomplete');
+  }
+  const first = optionalInstant(value.firstObservedAt, 'recurring proof first observed at');
+  const last = optionalInstant(value.lastObservedAt, 'recurring proof last observed at');
+  if (!first || !last || Date.parse(last) <= Date.parse(first)) {
+    throw new Error('recurring structured proof time range must advance');
+  }
+  return value;
+}
+
 function classifyProducer(raw, adoptionProject) {
   plainObject(raw, 'controller producer observation');
   const allowed = new Set([
     'projectId', 'schedulerRef', 'schedulerObserved', 'schedulerEnabled', 'lastRunAt',
     'structuredProducerContractObserved', 'outOfBandPersistenceChannelObserved',
-    'recurringStructuredEvidenceRefs', 'evidenceRefs',
+    'recurringStructuredEvidenceRefs', 'recurringStructuredProof', 'evidenceRefs',
   ]);
   for (const key of Object.keys(raw)) {
     if (!allowed.has(key)) throw new Error(`controller producer observation contains unsupported field: ${key}`);
@@ -73,12 +116,24 @@ function classifyProducer(raw, adoptionProject) {
     throw new Error('recurring structured evidence requires structured Controller adoption');
   }
 
-  const recurringStructuredProven = recurringStructuredEvidenceRefs.length >= 2;
+  const recurringStructuredProof = canonicalRecurrenceProof(raw.recurringStructuredProof, adoptionProject);
+  if (recurringStructuredProof && !structuredProducerContractObserved) {
+    throw new Error('recurring structured proof requires the structured producer contract to be observed');
+  }
+
+  const recurringStructuredProven = Boolean(
+    recurringStructuredProof
+    && schedulerObserved
+    && schedulerEnabled
+    && structuredProducerContractObserved
+    && adoptionProject.structuredControllerAdopted
+  );
+
   let state;
-  if (recurringStructuredProven) state = 'RECURRING_STRUCTURED_PRODUCER_PROVEN';
-  else if (adoptionProject.structuredControllerAdopted) state = 'STRUCTURED_SOURCE_PRESENT_RECURRENCE_UNPROVEN';
-  else if (!schedulerObserved) state = 'PRODUCER_TOPOLOGY_UNOBSERVED';
+  if (!schedulerObserved) state = 'PRODUCER_TOPOLOGY_UNOBSERVED';
   else if (!schedulerEnabled) state = 'PRODUCER_DISABLED';
+  else if (recurringStructuredProven) state = 'RECURRING_STRUCTURED_PRODUCER_PROVEN';
+  else if (adoptionProject.structuredControllerAdopted) state = 'STRUCTURED_SOURCE_PRESENT_RECURRENCE_UNPROVEN';
   else if (!structuredProducerContractObserved && !outOfBandPersistenceChannelObserved) state = 'ACTIVE_CONTRACT_AND_PERSISTENCE_MISSING';
   else if (!structuredProducerContractObserved) state = 'ACTIVE_STRUCTURED_CONTRACT_MISSING';
   else if (!outOfBandPersistenceChannelObserved) state = 'ACTIVE_OUT_OF_BAND_PERSISTENCE_MISSING';
@@ -98,6 +153,7 @@ function classifyProducer(raw, adoptionProject) {
     outOfBandPersistenceChannelObserved,
     recurringStructuredProven,
     recurringStructuredEvidenceRefs,
+    recurringStructuredProof,
     evidenceRefs,
     domainTruthInferred: false,
     authorityGranted: false,
@@ -145,6 +201,7 @@ function buildControllerProducerReadiness(input) {
     recurringStructuredProducerComplete: recurringStructuredProducerCount === producers.length,
     schedulerStateIsNotDomainTruth: true,
     promptPresenceIsNotDomainTruth: true,
+    arbitraryEvidenceRefsCannotProveRecurrence: true,
     readOnly: true,
     writeAuthority: 'none',
     llmFactGenerationAllowed: false,
