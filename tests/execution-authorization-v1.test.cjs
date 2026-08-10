@@ -76,6 +76,17 @@ test('valid human capability credential never substitutes for AuthorityGrant', (
   assert.ok(result.reasonCodes.includes('authority_grant_unknown'));
 });
 
+test('human authorization ignores irrelevant delegation facts instead of verifying them', () => {
+  const input = base();
+  input.resolved.delegation = {
+    ref: 'aiexe:delegation:irrelevant', status: 'revoked', organizationRef: 'group:org:other', actorRef: 'aiexe:agent:other',
+    allowedActions: ['other_action'], allowedTargets: ['other_target'], expiresAt: '2026-08-09T10:00:00.000Z',
+  };
+  const result = evaluateExecutionAuthorizationV1(input);
+  assert.equal(result.decision, 'allow');
+  assert.equal(result.verifiedPrerequisiteRefs.includes('aiexe:delegation:irrelevant'), false);
+});
+
 test('rejects caller-supplied authorization answer fields anywhere in input', () => {
   const input = base();
   input.requirements.decision = 'allow';
