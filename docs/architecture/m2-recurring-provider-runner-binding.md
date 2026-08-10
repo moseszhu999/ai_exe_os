@@ -1,0 +1,177 @@
+# M2.10 Recurring Provider Runner Binding
+
+Status: bounded G3/G5 evidence increment on AIEXE PR #125. Management authority remains `observe-and-propose`.
+
+## Outcome
+
+M2.10 separates four facts that must not be collapsed:
+
+```text
+scheduler substrate exists
+!= scheduler enabled
+!= provider ingestion bound
+!= successful scheduled provider run
+!= recurring scheduled provider ingestion
+```
+
+The existing AIEXE hourly controlled-progress task is the preferred scheduler substrate. M2.10 does not create a second scheduler implementation.
+
+## G3 update: group substrate is now 3 / 3
+
+A fresh read-only external audit found real group-facing integration substrate in all three external Domain repositories:
+
+```text
+TrainingOS
+  group Work Entry adapter exists on accepted history
+  current observed main: 39932eb934961bfddee61fe92dc6582afc6b1e26
+
+TradeOS
+  group.work-inbox.v1 + provider-neutral Work Entry read transport on main
+  current observed main: c51b766aefecb5fcc49c27c3c51bd982c13a30e0
+
+Video / Shared Media
+  bounded group service adapter exists on main
+  current observed main: 9e3391d8d0eea52004026c5643370c72ba0506cb
+```
+
+The canonical marker search still found no `aiexe.external-controller-attestation.v1` and no verified current adoption envelope in any of the three repositories or their searched issue/comment surfaces.
+
+Therefore:
+
+```text
+group integration substrate ready = 3 / 3
+structured Controller adoption     = 0 / 3
+G3                                 = PARTIAL
+```
+
+Group integration readiness remains a transport/composition fact, not Domain truth and not Controller adoption.
+
+## Provider observation under high concurrency
+
+The fourth provider read window occurred while TrainingOS open-work changed during evidence expansion. M2.10 intentionally did not fabricate a full canonical `aiexe.live-github-observation-capture.v1` by stitching per-PR metadata fetched across that moving window.
+
+Instead it records `aiexe.live-provider-observation-summary.v1`:
+
+```text
+AIEXE       main 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
+TrainingOS  main 39932eb934961bfddee61fe92dc6582afc6b1e26
+TradeOS     main c51b766aefecb5fcc49c27c3c51bd982c13a30e0
+Video/Media main 9e3391d8d0eea52004026c5643370c72ba0506cb
+```
+
+Provider-returned open PR number sets in that read window:
+
+```text
+AIEXE       1
+TrainingOS  8
+TradeOS     14
+Video/Media 1
+```
+
+Cycle 3 -> summary cycle 4 exact default-head movement:
+
+```text
+TrainingOS
+  d75d7cb9c0c3ab6c0af3e2df147ac3f8aeecd5fc
+  -> 39932eb934961bfddee61fe92dc6582afc6b1e26
+
+TradeOS
+  355a7169bfe8e48c7f78fa874cc422a394553d56
+  -> c51b766aefecb5fcc49c27c3c51bd982c13a30e0
+```
+
+AIEXE and Video / Shared Media remained stable in the same comparison.
+
+The three earlier full canonical captures remain the accepted full-capture corpus. The fourth summary is real provider evidence, but it is not promoted into that corpus as a full capture.
+
+## Scheduled run receipt
+
+M2.10 adds `aiexe.provider-scheduled-run-receipt.v1`.
+
+A successful proof receipt requires all of:
+
+```text
+trigger = scheduled
+schedulerEnabled = true
+providerIngestionBindingObserved = true
+immutableReceiptPersistenceObserved = true
+runOutcome = success
+captureSchema = aiexe.live-github-observation-capture.v1
+captureRef = explicit
+captureDigest = sha256:<64 hex>
+readOnly = true
+writeAuthority = none
+```
+
+The receipt derives:
+
+```text
+successfulScheduledRunObserved
+scheduledRuntimeProven
+```
+
+A caller cannot supply either proof boolean.
+
+Manual trigger, malformed digest, non-canonical capture schema, missing binding, missing immutable persistence, failed run with a claimed completed capture, or write authority fails closed.
+
+## Recurring proof
+
+M2.10 also adds `aiexe.recurring-scheduled-provider-evidence.v1`.
+
+Default recurring proof requires at least two canonical successful scheduled receipts with:
+
+```text
+unique capture digests
+strictly increasing scheduled times
+minimum spacing >= 60 seconds
+```
+
+Only then may:
+
+```text
+recurringIngestionProven = true
+state = RECURRING_SCHEDULED_PROVIDER_INGESTION_PROVEN
+```
+
+One scheduled success proves one scheduled run, not recurrence.
+
+## Existing scheduler substrate
+
+The existing AIEXE hourly controlled-progress automation remains the preferred scheduler. Before binding it, preserve the complete existing persistent controller contract and append only a bounded provider-ingestion clause. Do not replace the task with a second scheduler.
+
+Binding is allowed to do only this additional evidence work:
+
+```text
+read the four canonical repository default heads
+read explicit open PR sets
+produce canonical live-provider capture when one coherent read window can be proven
+never infer Domain status/owner/authority from GitHub activity
+persist bounded scheduled-run evidence out of band
+```
+
+The binding does not authorize:
+
+```text
+Domain repository writes
+Domain Controller decisions
+merge
+deploy
+Production mutation
+credential writes
+payment / settlement / wallet / token action
+remote Worker control
+HumanGate approval
+```
+
+## M3 effect
+
+```text
+G1 PASS
+G2 PARTIAL
+G3 PARTIAL  # 3/3 group substrate, 0/3 structured adoption
+G4 PARTIAL
+G5 PARTIAL  # receipt contract ready; real scheduled success still required
+M3 BLOCKED
+```
+
+Source readiness is not runtime evidence. PR #125 remains Draft until evidence gates are actually closed.
