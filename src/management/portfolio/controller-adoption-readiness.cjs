@@ -84,6 +84,30 @@ function classifyProject(raw) {
   });
 }
 
+function readinessResult({ observedAt, projects, evidenceClass, extra = {} }) {
+  const structuredAdoptedCount = projects.filter((project) => project.structuredControllerAdopted).length;
+  const groupAdapterReadyCount = projects.filter((project) => project.groupIntegrationReady).length;
+  const unverifiedMarkerCount = projects.filter((project) => project.state === 'UNVERIFIED_CONTROLLER_MARKER_PRESENT').length;
+
+  return freezeDeep({
+    schema: CONTROLLER_ADOPTION_READINESS_SCHEMA,
+    evidenceClass,
+    observedAt: requiredText(observedAt, 'observed at', 80),
+    externalProjectCount: projects.length,
+    structuredAdoptedCount,
+    groupAdapterReadyCount,
+    unverifiedMarkerCount,
+    structuredAdoptionComplete: structuredAdoptedCount === projects.length,
+    groupAdapterIsNotControllerAdoption: true,
+    readOnly: true,
+    writeAuthority: 'none',
+    crossRepositoryCredentialRequiredByThisModule: false,
+    llmFactGenerationAllowed: false,
+    ...extra,
+    projects,
+  });
+}
+
 function buildControllerAdoptionReadiness(input) {
   plainObject(input, 'controller adoption readiness input');
   const allowed = new Set(['observedAt', 'projects']);
@@ -95,29 +119,96 @@ function buildControllerAdoptionReadiness(input) {
   const ids = projects.map((project) => project.projectId);
   if (new Set(ids).size !== ids.length) throw new Error('controller adoption readiness project ids must be unique');
 
-  const structuredAdoptedCount = projects.filter((project) => project.structuredControllerAdopted).length;
-  const groupAdapterReadyCount = projects.filter((project) => project.groupIntegrationReady).length;
-  const unverifiedMarkerCount = projects.filter((project) => project.state === 'UNVERIFIED_CONTROLLER_MARKER_PRESENT').length;
-
-  return freezeDeep({
-    schema: CONTROLLER_ADOPTION_READINESS_SCHEMA,
-    evidenceClass: 'READ_ONLY_EXTERNAL_ADOPTION_READINESS',
-    observedAt: requiredText(input.observedAt, 'observed at', 80),
-    externalProjectCount: projects.length,
-    structuredAdoptedCount,
-    groupAdapterReadyCount,
-    unverifiedMarkerCount,
-    structuredAdoptionComplete: structuredAdoptedCount === projects.length,
-    groupAdapterIsNotControllerAdoption: true,
-    readOnly: true,
-    writeAuthority: 'none',
-    crossRepositoryCredentialRequiredByThisModule: false,
-    llmFactGenerationAllowed: false,
+  return readinessResult({
+    observedAt: input.observedAt,
     projects,
+    evidenceClass: 'READ_ONLY_EXTERNAL_ADOPTION_READINESS',
+  });
+}
+
+function revalidateControllerAdoptionReadiness(input) {
+  plainObject(input, 'controller adoption revalidation input');
+  const allowed = new Set(['observedAt', 'adoptionReadiness', 'providerHeads']);
+  for (const key of Object.keys(input)) {
+    if (!allowed.has(key)) throw new Error(`controller adoption revalidation input contains unsupported field: ${key}`);
+  }
+
+  const adoptionReadiness = input.adoptionReadiness;
+  if (adoptionReadiness?.schema !== CONTROLLER_ADOPTION_READINESS_SCHEMA || adoptionReadiness?.readOnly !== true) {
+    throw new Error('canonical controller adoption readiness required');
+  }
+  if (!Array.isArray(adoptionReadiness.projects) || adoptionReadiness.projects.length < 1) {
+    throw new TypeError('controller adoption readiness requires projects');
+  }
+  if (!Array.isArray(input.providerHeads) || input.providerHeads.length !== adoptionReadiness.projects.length) {
+    throw new Error('independent provider heads must cover the same project set as adoption readiness');
+  }
+
+  const providerByProject = new Map();
+  for (const raw of input.providerHeads) {
+    plainObject(raw, 'independent provider head');
+    const rowAllowed = new Set(['projectId', 'repository', 'providerHeadSha', 'evidenceRefs']);
+    for (const key of Object.keys(raw)) {
+      if (!rowAllowed.has(key)) throw new Error(`independent provider head contains unsupported field: ${key}`);
+    }
+    const projectId = requiredText(raw.projectId, 'provider project id', 120);
+    if (providerByProject.has(projectId)) throw new Error('independent provider head project ids must be unique');
+    providerByProject.set(projectId, freezeDeep({
+      projectId,
+      repository: requiredText(raw.repository, 'provider repository', 240),
+      providerHeadSha: exactSha(raw.providerHeadSha, 'provider head sha'),
+      evidenceRefs: uniqueRefs(raw.evidenceRefs, 'provider head evidence ref'),
+    }));
+  }
+
+  const projects = adoptionReadiness.projects.map((project) => {
+    const provider = providerByProject.get(project.projectId);
+    if (!provider) throw new Error(`independent provider head missing for project: ${project.projectId}`);
+    if (provider.repository !== project.repository) throw new Error(`independent provider repository mismatch for project: ${project.projectId}`);
+
+    const attestationCurrent = project.exactHeadSha === provider.providerHeadSha;
+    const staleStructuredAttestation = project.structuredControllerAdopted && !attestationCurrent;
+    const state = staleStructuredAttestation ? 'STRUCTURED_CONTROLLER_ATTESTATION_STALE' : project.state;
+
+    return freezeDeep({
+      projectId: project.projectId,
+      repository: project.repository,
+      exactHeadSha: provider.providerHeadSha,
+      attestedHeadSha: project.exactHeadSha,
+      providerHeadSha: provider.providerHeadSha,
+      providerHeadEvidenceRefs: provider.evidenceRefs,
+      independentProviderHeadVerified: true,
+      attestationCurrent,
+      state,
+      groupIntegrationReady: project.groupIntegrationReady,
+      structuredControllerAdopted: project.structuredControllerAdopted && attestationCurrent,
+      markerSearchObserved: project.markerSearchObserved,
+      markerSearchMatched: project.markerSearchMatched,
+      groupAdapterEvidenceRefs: project.groupAdapterEvidenceRefs,
+      verifiedCurrentEnvelopeEvidenceRefs: attestationCurrent ? project.verifiedCurrentEnvelopeEvidenceRefs : Object.freeze([]),
+      authorityGranted: false,
+      domainTruthInferred: false,
+    });
+  }).sort((a, b) => a.projectId.localeCompare(b.projectId));
+
+  if (providerByProject.size !== projects.length) throw new Error('independent provider head project set mismatch');
+
+  const staleAttestationCount = projects.filter((project) => project.state === 'STRUCTURED_CONTROLLER_ATTESTATION_STALE').length;
+  return readinessResult({
+    observedAt: input.observedAt,
+    projects,
+    evidenceClass: 'READ_ONLY_EXTERNAL_ADOPTION_REVALIDATION',
+    extra: {
+      sourceAdoptionObservedAt: adoptionReadiness.observedAt,
+      revalidatedAgainstIndependentProviderHeads: true,
+      providerFetchPerformedByThisModule: false,
+      staleAttestationCount,
+    },
   });
 }
 
 module.exports = {
   CONTROLLER_ADOPTION_READINESS_SCHEMA,
   buildControllerAdoptionReadiness,
+  revalidateControllerAdoptionReadiness,
 };
