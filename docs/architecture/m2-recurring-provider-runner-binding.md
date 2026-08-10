@@ -4,7 +4,7 @@ Status: bounded G3/G5 evidence increment on AIEXE PR #125. Management authority 
 
 ## Outcome
 
-M2.10 separates four facts that must not be collapsed:
+M2.10 separates facts that must not be collapsed:
 
 ```text
 scheduler substrate exists
@@ -48,18 +48,18 @@ Group integration readiness remains a transport/composition fact, not Domain tru
 
 ## Provider observation under high concurrency
 
-The fourth provider read window occurred while TrainingOS open-work changed during evidence expansion. M2.10 intentionally did not fabricate a full canonical `aiexe.live-github-observation-capture.v1` by stitching per-PR metadata fetched across that moving window.
+The fourth provider read window occurred while source repositories and TrainingOS open-work were moving. M2.10 intentionally did not fabricate a full canonical `aiexe.live-github-observation-capture.v1` by stitching per-PR metadata fetched across that moving window.
 
-Instead it records `aiexe.live-provider-observation-summary.v1`:
+Instead it records `aiexe.live-provider-observation-summary.v1`. The summary explicitly does **not** claim one single-instant snapshot. Its final re-read heads are:
 
 ```text
-AIEXE       main 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
+AIEXE       main dce842e6874e6842b461cd4b5958df577608da94
 TrainingOS  main 39932eb934961bfddee61fe92dc6582afc6b1e26
 TradeOS     main c51b766aefecb5fcc49c27c3c51bd982c13a30e0
 Video/Media main 9e3391d8d0eea52004026c5643370c72ba0506cb
 ```
 
-Provider-returned open PR number sets in that read window:
+Provider-returned open PR number sets from the read window:
 
 ```text
 AIEXE       1
@@ -68,9 +68,13 @@ TradeOS     14
 Video/Media 1
 ```
 
-Cycle 3 -> summary cycle 4 exact default-head movement:
+Cycle 3 -> summary cycle 4 final re-read default-head movement:
 
 ```text
+AIEXE
+  7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
+  -> dce842e6874e6842b461cd4b5958df577608da94
+
 TrainingOS
   d75d7cb9c0c3ab6c0af3e2df147ac3f8aeecd5fc
   -> 39932eb934961bfddee61fe92dc6582afc6b1e26
@@ -80,7 +84,9 @@ TradeOS
   -> c51b766aefecb5fcc49c27c3c51bd982c13a30e0
 ```
 
-AIEXE and Video / Shared Media remained stable in the same comparison.
+Video / Shared Media remained stable in the same comparison.
+
+The initial M2.10 summary draft had retained AIEXE's prior S8 main while later exact-head CI proved current main had advanced to `dce842e...`. Because the exact merge instant could not be independently proven from a PR record, M2.10 repaired the summary conservatively to the final re-read head and widened the recorded transition set. The repair is explicit rather than hidden.
 
 The three earlier full canonical captures remain the accepted full-capture corpus. The fourth summary is real provider evidence, but it is not promoted into that corpus as a full capture.
 
