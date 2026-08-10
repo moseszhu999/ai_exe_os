@@ -120,12 +120,15 @@ function serviceFor({ capabilityVersion = version(), taskOverrides = {}, install
 }
 
 test('M2.26 current canonical local capability version exposes an explicit empty delegated-action binding set', () => {
+  const modelVersion = version();
+  assert.deepEqual(modelVersion.delegatedActionBindings, []);
+  assert.equal(Object.isFrozen(modelVersion.delegatedActionBindings), true);
+
   const service = new S1ApplicationService({ workerManager: new FakeWorkerManager() });
   try {
     const local = service.queryState('workspace-a').marketplace.find((item) => `${item.packageId}@${item.version}` === 'local.form-submit@1.0.0');
     assert.ok(local);
-    assert.deepEqual(local.delegatedActionBindings, []);
-    assert.equal(Object.isFrozen(local.delegatedActionBindings), true);
+    assert.deepEqual(local.delegatedActionBindings, modelVersion.delegatedActionBindings);
   } finally {
     if (typeof service.close === 'function') service.close();
   }
