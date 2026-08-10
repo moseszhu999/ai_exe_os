@@ -17,24 +17,11 @@ A receipt digest proves that the supplied receipt is internally unchanged. It do
 This slice adds a provider-verifiable provenance layer:
 
 ```text
-accepted #140 verified receipt
+accepted canonical #140 verified receipt
 + AIEXE-controlled Ed25519 verifier key
-→ signed provenance attestation
+→ portable signed provenance attestation
 + provider-internal trusted verifier record
-→ verified | denied | unknown provenance result
-```
-
-The signed attestation binds the exact:
-
-```text
-verificationReceiptRef
-receiptDigest
-verifierRef
-keyRef
-publicKeyFingerprintSha256
-issuedAt
-validUntil
-policy
+→ local verified | denied | unknown provenance result
 ```
 
 No caller-controlled boolean can establish trust.
@@ -62,23 +49,37 @@ The implementation uses Node's built-in `crypto` module only.
 
 ## Trust model
 
-There are two different objects and they must not collapse into one another.
+There are three different objects and they must not collapse into one another.
 
-### Attestation
+### Portable signed attestation
 
-The attestation may cross a Domain boundary. It contains:
+`group.federation-mapping-provenance-attestation.v1` may cross a Domain boundary. It contains:
 
-- the exact #140 receipt reference and digest;
+- exact #140 `verificationReceiptRef` and `receiptDigest`;
 - verifier/key opaque references;
-- the SHA-256 fingerprint of the public verification key;
-- issue/expiry timestamps;
+- SHA-256 fingerprint of the public verification key;
+- `issuedAt` and `validUntil`;
+- fixed provenance policy;
 - Ed25519 signature;
 - deterministic attestation digest;
 - correlation-only / no-authority flags.
 
 It contains **no public-key PEM, private key, JWT, cookie, bearer token, session, email or phone**.
 
-### Trusted verifier record
+The signed payload binds the exact:
+
+```text
+verificationReceiptRef
+receiptDigest
+verifierRef
+keyRef
+publicKeyFingerprintSha256
+issuedAt
+validUntil
+provenancePolicyRef
+```
+
+### Provider-internal trusted verifier record
 
 `trustedVerifierRecord` is provider-internal configuration/evidence. It is not an HTTP request field and must not be populated from caller JSON.
 
@@ -97,6 +98,21 @@ The verifier re-derives the public-key fingerprint from this record and compares
 
 A provider must source this record from its own trusted configuration/registry boundary. This pure first slice does not create that registry, persist keys, distribute keys, rotate keys, or expose a network endpoint.
 
+### Local derived provenance result
+
+`group.federation-mapping-provenance-result.v1` is produced **after** a provider verifies the portable signed attestation against its own trusted verifier record.
+
+Its deterministic `resultDigest` is a local consistency/integrity mechanism. It is **not** a second authenticity signature.
+
+Therefore:
+
+```text
+caller-supplied provenance result + self-consistent resultDigest
+!= trusted provenance
+```
+
+A downstream Domain must derive the result inside its own trusted verifier boundary instead of accepting a precomputed result from an untrusted caller.
+
 ## Why asymmetric signing
 
 A shared HMAC secret would require each provider to possess the signing secret and would blur signer/verifier roles.
@@ -104,7 +120,7 @@ A shared HMAC secret would require each provider to possess the signing secret a
 Ed25519 keeps the boundary explicit:
 
 ```text
-AIEXE verifier process: private key
+AIEXE signer process: private key
 Domain provider: trusted public key
 caller: neither establishes trust
 ```
@@ -116,12 +132,43 @@ Compromise, rotation, HSM/KMS custody and production key distribution remain sep
 Before signing or verifying provenance, the implementation:
 
 1. requires the merged #140 receipt schema;
-2. recomputes SHA-256 over the receipt without `receiptDigest`;
-3. requires the recomputed digest to equal `receiptDigest`;
-4. requires `decision=verified` and `mappingVerified=true`;
-5. requires the existing #140 correlation-only / anti-authority flags.
+2. requires the exact complete canonical #140 receipt field set;
+3. rejects missing or hidden top-level fields;
+4. requires exactly two distinct bounded domain bindings;
+5. recomputes SHA-256 over the receipt without `receiptDigest`;
+6. requires the recomputed digest to equal `receiptDigest`;
+7. requires `decision=verified` and `mappingVerified=true`;
+8. requires the existing #140 correlation-only / anti-authority flags.
 
-Therefore a syntactically plausible but tampered receipt cannot gain provenance.
+Therefore a syntactically plausible but tampered or structurally incomplete receipt cannot gain provenance merely by recomputing its digest.
+
+## Attestation semantic identity
+
+`attestationRef` is a deterministic semantic identity, not an arbitrary label.
+
+Its seed binds:
+
+```text
+verificationReceiptRef
+receiptDigest
+verifierRef
+keyRef
+publicKeyFingerprintSha256
+issuedAt
+validUntil
+```
+
+The full signed validity window is part of identity. In particular:
+
+```text
+same receipt/verifier/key/issuedAt
++ different validUntil
+→ different attestationRef
+```
+
+This prevents two semantically different validity windows from sharing one attestation reference in downstream idempotency, audit, or evidence stores.
+
+The complete attestation payload, including `attestationRef`, policy and anti-authority fields, is then Ed25519-signed and receives an `attestationDigest`.
 
 ## Provenance decisions
 
@@ -135,6 +182,7 @@ unknown
 
 Requires all of:
 
+- exact canonical #140 receipt;
 - exact receipt ref/digest binding;
 - exact trusted verifier ref;
 - exact trusted key ref;
@@ -157,6 +205,7 @@ It does not mean provider access is allowed.
 
 Examples:
 
+- malformed or tampered canonical receipt;
 - wrong verifier ref;
 - wrong key ref;
 - wrong public key fingerprint;
@@ -179,11 +228,11 @@ Unknown never upgrades to verified.
 
 ## Replay / substitution boundary
 
-The attestation signature covers the exact `verificationReceiptRef` and `receiptDigest`.
+The attestation signature covers the exact `verificationReceiptRef` and `receiptDigest` plus verifier/key identity and validity window.
 
-An attestation for receipt A cannot be replayed against receipt B, even under the same verifier key.
+An attestation for receipt A cannot be replayed against receipt B, even under the same trusted verifier key.
 
-The provider result also binds:
+The local provider result also binds:
 
 ```text
 attestationRef
@@ -195,7 +244,9 @@ observation time
 verifier status
 ```
 
-and receives a deterministic `resultDigest`.
+and receives a deterministic `resultDigest` for local result integrity.
+
+Again, `resultDigest` does not make an externally supplied result authentic.
 
 ## Caller-controlled trust rejection
 
@@ -208,7 +259,7 @@ trustedVerifierRecord
 observedAt
 ```
 
-The attestation and trusted verifier record use exact allowlists.
+The attestation and trusted verifier record use bounded allowlists and required-field validation.
 
 Fields such as:
 
@@ -220,11 +271,16 @@ accessAllowed
 
 are not accepted as trust inputs.
 
-In a future HTTP/provider adapter, `trustedVerifierRecord` must be dependency-injected by the server and must never be deserialized from the caller request body.
+In a future HTTP/provider adapter:
+
+- the signed attestation is the portable provenance evidence;
+- `trustedVerifierRecord` must be dependency-injected by the server;
+- a precomputed `provenanceResult` must not be accepted as caller authenticity;
+- no private signing key belongs in a consumer Domain.
 
 ## Authority boundary
 
-Every provenance result keeps:
+Every local provenance result keeps:
 
 ```text
 correlationOnly=true
@@ -260,28 +316,43 @@ A Domain provider must still run its own current authentication, membership, cre
 
 ## TrainingOS adoption
 
-TrainingOS #713 already merged a fail-closed internal provenance resolver seam.
+TrainingOS #713 already merged a fail-closed internal provenance resolver seam. TrainingOS #715 owns the bounded consumer adoption after this AIEXE contract is accepted.
 
-The intended later adoption is:
+The intended adoption is:
 
 ```text
-caller-supplied #140 receipt
-→ exact receipt validation
-+ server-internal trusted verifier record / AIEXE provenance verification
-→ provenance verified
+validated canonical #140 receipt
++ portable signed provenance attestation
++ TrainingOS server-internal trusted verifier public-key record
++ current provider-local observation time
+→ actual signature/trust verification inside resolver
+→ locally derived canonical provenance result
 + current TrainingOS human session
 + current TrainingOS OrganizationMembership
 + complete current-self CapabilityCredential source
 → TrainingOS provider-local decision
 ```
 
+TrainingOS must not deserialize from caller body:
+
+```text
+provenanceResult
+provenanceVerified
+trusted
+trustedVerifierRecord
+publicKeyPem
+privateKeyPem
+verifierKey
+accessAllowed
+```
+
 Until a real provider-internal trusted verifier record is configured and exercised, TrainingOS must not claim LIVE positive cross-domain provider availability.
 
 This PR does not modify TrainingOS.
 
-## Threat model covered in focused tests
+## Threat model covered in tests
 
-Focused tests lock:
+The provenance test matrix locks:
 
 1. deterministic positive Ed25519 attestation and provider verification;
 2. caller-self-generated receipt + attacker key is denied;
@@ -294,9 +365,11 @@ Focused tests lock:
 9. receipt/attestation tampering fails closed;
 10. caller-controlled `trusted=true` is rejected;
 11. expired attestation is denied;
-12. all provider-access / authority / execution flags remain false.
+12. all provider-access / authority / execution flags remain false;
+13. hidden/missing/malformed #140 receipt structure is rejected even after digest recomputation;
+14. changing the signed `validUntil` changes `attestationRef` semantic identity.
 
-The current focused test file contains 9 top-level test cases covering the matrix above.
+Dedicated exact-head CI runs the cryptographic focused suite, malformed-receipt structure contract, and attestation semantic-identity contract explicitly before the full AIEXE suite.
 
 ## First-slice boundaries
 
@@ -321,16 +394,21 @@ payment/settlement/wallet/token = NO
 
 This is a pure cryptographic provenance contract and verifier core only.
 
-## Validation
+## Validation requirements
 
-Before repository publication, the exact authored source was exercised in an isolated local harness with a stub exposing the merged #140 receipt schema:
+Merge claims must be bound to an immutable pull-request head. The dedicated workflow:
 
 ```text
-node --check federation-mapping-provenance.cjs: PASS
-focused Node tests: 9 / 9 PASS
-failures: 0
+checks out github.event.pull_request.head.sha
+asserts git rev-parse HEAD == TARGET_SHA
+runs Node syntax
+runs 9-case cryptographic provenance matrix
+runs 1-case malformed receipt structure contract
+runs 1-case attestation semantic identity contract
+runs the full AIEXE unit suite
+locks correlation-only / no-authority true-flag absence
 ```
 
-Repository-native source validation and the full AIEXE test suite remain required on the published exact head before any merge claim.
+The repository-generic S0 workflow is compatibility evidence but is not used as immutable-head authority because its generic PR checkout may resolve GitHub's merge ref.
 
 No Production action is authorized by a green source test.
