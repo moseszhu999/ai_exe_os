@@ -36,12 +36,95 @@ function optionalInstant(value, label) {
   return text;
 }
 
+function exactSha(value, label) {
+  const text = requiredText(value, label, 64).toLowerCase();
+  if (!/^[0-9a-f]{40}$/.test(text)) throw new TypeError(`${label} must be a 40-character git SHA`);
+  return text;
+}
+
+function exactDigest(value, label) {
+  const text = requiredText(value, label, 80).toLowerCase();
+  if (!/^sha256:[0-9a-f]{64}$/.test(text)) throw new TypeError(`${label} must be sha256:<64 hex chars>`);
+  return text;
+}
+
 function uniqueRefs(value, label) {
   if (value == null) return Object.freeze([]);
   if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
   const refs = value.map((item) => requiredText(item, label));
   if (new Set(refs).size !== refs.length) throw new Error(`${label} must not contain duplicates`);
   return Object.freeze([...refs].sort());
+}
+
+function exactOrderedTextList(value, label, expected) {
+  if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
+  const rows = value.map((item) => requiredText(item, label));
+  if (rows.length !== expected.length || rows.some((item, index) => item !== expected[index])) {
+    throw new Error(`${label} must match canonical cycle order`);
+  }
+  return Object.freeze(rows);
+}
+
+function exactOrderedShaList(value, label, expected) {
+  if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
+  const rows = value.map((item) => exactSha(item, label));
+  if (rows.length !== expected.length || rows.some((item, index) => item !== expected[index])) {
+    throw new Error(`${label} must match canonical cycle order`);
+  }
+  return Object.freeze(rows);
+}
+
+function exactOrderedDigestList(value, label, expected) {
+  if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
+  const rows = value.map((item) => exactDigest(item, label));
+  if (rows.length !== expected.length || rows.some((item, index) => item !== expected[index])) {
+    throw new Error(`${label} must match canonical cycle order`);
+  }
+  return Object.freeze(rows);
+}
+
+function canonicalCycleSummary(raw, adoptionProject) {
+  plainObject(raw, 'recurring structured proof cycle');
+  const allowed = new Set([
+    'projectId', 'repository', 'sourceKind', 'sourceRef', 'sourceDigest', 'exactHeadSha',
+    'observedAt', 'observedAtMs', 'acceptanceReason', 'readOnly', 'writeAuthority',
+  ]);
+  for (const key of Object.keys(raw)) {
+    if (!allowed.has(key)) throw new Error(`recurring structured proof cycle contains unsupported field: ${key}`);
+  }
+
+  const projectId = requiredText(raw.projectId, 'recurrence cycle project id', 120);
+  const repository = requiredText(raw.repository, 'recurrence cycle repository', 200);
+  if (projectId !== adoptionProject.projectId || repository !== adoptionProject.repository) {
+    throw new Error('recurrence cycle project binding mismatch');
+  }
+
+  const observedAt = optionalInstant(raw.observedAt, 'recurrence cycle observed at');
+  if (!observedAt) throw new Error('recurrence cycle observed at is required');
+  const observedAtMs = Date.parse(observedAt);
+  if (!Number.isFinite(raw.observedAtMs) || raw.observedAtMs !== observedAtMs) {
+    throw new Error('recurrence cycle observedAtMs must match observedAt');
+  }
+  if (raw.acceptanceReason !== 'accepted_exact_head_current') {
+    throw new Error('recurrence cycle must be accepted_exact_head_current');
+  }
+  if (raw.readOnly !== true || raw.writeAuthority !== 'none') {
+    throw new Error('recurrence cycle must remain read-only with no write authority');
+  }
+
+  return freezeDeep({
+    projectId,
+    repository,
+    sourceKind: requiredText(raw.sourceKind, 'recurrence cycle source kind', 80),
+    sourceRef: requiredText(raw.sourceRef, 'recurrence cycle source ref', 320),
+    sourceDigest: exactDigest(raw.sourceDigest, 'recurrence cycle source digest'),
+    exactHeadSha: exactSha(raw.exactHeadSha, 'recurrence cycle exact head sha'),
+    observedAt,
+    observedAtMs,
+    acceptanceReason: raw.acceptanceReason,
+    readOnly: true,
+    writeAuthority: 'none',
+  });
 }
 
 function canonicalRecurrenceProof(value, adoptionProject) {
@@ -62,9 +145,27 @@ function canonicalRecurrenceProof(value, adoptionProject) {
   if (!adoptionProject.structuredControllerAdopted) {
     throw new Error('recurring structured proof requires structured Controller adoption');
   }
-  if (!Number.isInteger(value.cycleCount) || value.cycleCount < 2) {
-    throw new Error('recurring structured proof requires at least two verified cycles');
+  if (!Array.isArray(value.cycles) || value.cycles.length < 2) {
+    throw new Error('recurring structured proof requires embedded canonical cycle summaries');
   }
+
+  const cycles = value.cycles.map((cycle) => canonicalCycleSummary(cycle, adoptionProject));
+  if (!Number.isInteger(value.cycleCount) || value.cycleCount !== cycles.length || value.cycleCount < 2) {
+    throw new Error('recurring structured proof cycleCount must match embedded cycles');
+  }
+
+  for (let index = 1; index < cycles.length; index += 1) {
+    if (cycles[index].observedAtMs <= cycles[index - 1].observedAtMs) {
+      throw new Error('recurring structured proof cycle times must be strictly increasing');
+    }
+  }
+
+  const sourceRefs = cycles.map((cycle) => cycle.sourceRef);
+  const sourceDigests = cycles.map((cycle) => cycle.sourceDigest);
+  const exactHeadShas = cycles.map((cycle) => cycle.exactHeadSha);
+  if (new Set(sourceRefs).size !== sourceRefs.length) throw new Error('recurring structured proof requires distinct source refs');
+  if (new Set(sourceDigests).size !== sourceDigests.length) throw new Error('recurring structured proof requires distinct source digests');
+
   if (
     value.allCyclesAcceptedExactHeadCurrent !== true
     || value.distinctSourceRefs !== true
@@ -73,16 +174,17 @@ function canonicalRecurrenceProof(value, adoptionProject) {
   ) {
     throw new Error('recurring structured proof invariants are incomplete');
   }
-  const sourceRefs = uniqueRefs(value.sourceRefs, 'recurring proof source ref');
-  const sourceDigests = uniqueRefs(value.sourceDigests, 'recurring proof source digest');
-  if (sourceRefs.length !== value.cycleCount || sourceDigests.length !== value.cycleCount) {
-    throw new Error('recurring structured proof cycle evidence is incomplete');
-  }
+
+  exactOrderedTextList(value.sourceRefs, 'recurring proof source ref', sourceRefs);
+  exactOrderedDigestList(value.sourceDigests, 'recurring proof source digest', sourceDigests);
+  exactOrderedShaList(value.exactHeadShas, 'recurring proof exact head sha', exactHeadShas);
+
   const first = optionalInstant(value.firstObservedAt, 'recurring proof first observed at');
   const last = optionalInstant(value.lastObservedAt, 'recurring proof last observed at');
-  if (!first || !last || Date.parse(last) <= Date.parse(first)) {
-    throw new Error('recurring structured proof time range must advance');
+  if (first !== cycles[0].observedAt || last !== cycles[cycles.length - 1].observedAt) {
+    throw new Error('recurring structured proof time range must match embedded cycles');
   }
+
   return value;
 }
 
@@ -202,6 +304,7 @@ function buildControllerProducerReadiness(input) {
     schedulerStateIsNotDomainTruth: true,
     promptPresenceIsNotDomainTruth: true,
     arbitraryEvidenceRefsCannotProveRecurrence: true,
+    recurrenceProofRecomputedFromEmbeddedCycles: true,
     readOnly: true,
     writeAuthority: 'none',
     llmFactGenerationAllowed: false,
