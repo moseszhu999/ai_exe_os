@@ -151,28 +151,34 @@ function pendingProposal(destination) {
   return destination.queryDelegationState('workspace-a').incomingProposals.find((item) => item.delegationRequestId === 'management-delegation-request-27') || null;
 }
 
-function planStep(destination, binding) {
+function runtimeStep(destination, binding) {
   const mission = destination.mission.get(binding.localMissionId);
   const revision = destination.missionRevision.list()
     .filter((item) => item.missionId === mission.id)
     .sort((a, b) => Number(b.revision || 0) - Number(a.revision || 0))[0];
   assert.ok(revision);
   const plan = destination.executionPlan.get(revision.planId);
-  return plan.steps.find((item) => item.id === binding.localPlanStepId);
+  const step = plan.steps.find((item) => item.id === binding.localPlanStepId);
+  assert.ok(step);
+  const stepBinding = destination.stepBinding.get(step.bindingId);
+  assert.ok(stepBinding);
+  return { step, stepBinding };
 }
 
-test('M2.27 destination owner consumes exact CapabilityVersion binding into runtime PlanStep and stops at action HumanGate', async () => {
+test('M2.27 destination owner consumes exact CapabilityVersion binding into runtime StepBinding and stops at action HumanGate', async () => {
   const { source, destination, request, pull } = await setup();
   try {
     assert.equal(pull.accepted, 1);
     const proposal = pendingProposal(destination);
     assert.equal(proposal.state, 'waiting_human');
     const decision = destination.approveDelegationProposal({ workspaceId: 'workspace-a', proposalId: proposal.id });
-    const step = planStep(destination, decision.binding);
+    const { step, stepBinding } = runtimeStep(destination, decision.binding);
     assert.equal(request.action, SOURCE_ACTION);
     assert.equal(request.target, SOURCE_TARGET);
-    assert.equal(step.action, RUNTIME_ACTION);
-    assert.equal(step.target, RUNTIME_TARGET);
+    assert.equal(step.executionMode, 's1');
+    assert.equal(stepBinding.action, RUNTIME_ACTION);
+    assert.equal(stepBinding.target, RUNTIME_TARGET);
+    assert.equal(stepBinding.capabilityVersionId, VERSION_ID);
     assert.equal(decision.actionGate.state, 'requested');
     assert.equal(decision.actionGate.capabilityAction, RUNTIME_ACTION);
     assert.equal(decision.actionGate.target, RUNTIME_TARGET);
