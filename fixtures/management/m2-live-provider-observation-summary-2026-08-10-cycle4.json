@@ -1,19 +1,19 @@
 {
   "schema": "aiexe.live-provider-observation-summary.v1",
   "evidenceClass": "REAL_PROVIDER_OBSERVATION_SUMMARY",
-  "capturedAt": "2026-08-10T00:15:00Z",
-  "captureMethod": "Read-only GitHub connector; default-branch commits were re-read after concurrent project merges and open PR sets were taken from explicit provider search results. This summary intentionally records PR number sets rather than stitching per-PR metadata fetched across a moving high-concurrency window.",
+  "capturedAt": "2026-08-10T00:20:00Z",
+  "captureMethod": "Read-only GitHub connector across a moving high-concurrency read window. Default-branch commits were re-read after concurrent project merges. Open PR sets were taken from explicit provider search results. This summary intentionally does not claim one single-instant snapshot and records PR number sets rather than stitching per-PR metadata fetched across the moving window.",
   "domainFactPolicy": "unknown-without-current-explicit-controller-attestation",
-  "openWorkPolicy": "provider-returned open PR number set is explicit; no Domain status, owner or authority is inferred",
+  "openWorkPolicy": "provider-returned open PR number set is explicit for its read window; no Domain status, owner or authority is inferred",
   "observations": [
     {
       "projectId": "aiexe",
       "repository": "moseszhu999/ai_exe_os",
       "defaultBranch": "main",
-      "headSha": "7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48",
+      "headSha": "dce842e6874e6842b461cd4b5958df577608da94",
       "openPullRequestCount": 1,
       "openPullRequestNumbers": [125],
-      "evidenceRefs": ["github:moseszhu999/ai_exe_os:commit:7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48"]
+      "evidenceRefs": ["github:moseszhu999/ai_exe_os:commit:dce842e6874e6842b461cd4b5958df577608da94"]
     },
     {
       "projectId": "trainingos",
@@ -55,8 +55,8 @@
       "video-operation-shared-media": 1
     },
     "headTransitionObservedSinceCycle3": true,
-    "headTransitionProjectIds": ["trainingos", "tradeos"],
+    "headTransitionProjectIds": ["aiexe", "trainingos", "tradeos"],
     "fullCanonicalCaptureProduced": false,
-    "reasonFullCanonicalCaptureNotProduced": "provider open-work set changed during per-PR metadata expansion; summary preserves one read-window number set instead of fabricating a single-instant detailed capture"
+    "reasonFullCanonicalCaptureNotProduced": "provider sources moved during the read window and open-work changed during per-PR metadata expansion; summary preserves explicit re-read heads and provider-returned PR number sets instead of fabricating a single-instant detailed capture"
   }
 }
