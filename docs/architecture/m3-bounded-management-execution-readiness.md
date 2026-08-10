@@ -8,12 +8,6 @@ Authority: observe-and-propose
 ## Current verdict
 
 ```text
-BLOCKED
-```
-
-M3 starts only after every required gate independently reaches `PASS`. No read-only ingestion, Controller adoption, replay result, policy eligibility or delegation capability grants A2 execution by implication.
-
-```text
 G1 final S8-F controlled-delegation runtime acceptance   PASS
 G2 broader real replay / evaluation                      PASS
 G3 recurring real structured Controller attestations     PARTIAL
@@ -23,6 +17,8 @@ G5 recurring provider-backed read-only ingestion          PASS
 M3 = BLOCKED on G3 + G4
 A2 execution = UNAUTHORIZED
 ```
+
+M3 starts only after every required gate independently reaches `PASS`. Controller adoption, recurrence evidence, policy eligibility, provider ingestion, or delegation capability never grants execution authority by implication.
 
 ---
 
@@ -34,7 +30,7 @@ Frozen accepted S8 product head:
 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
 ```
 
-Accepted evidence includes the final S0 source validation, native two-instance controlled-delegation validation and the closed GO tracker. S8 proves the bounded delegation mechanism only. Destination-local admission and HumanGate remain authoritative.
+S8 proves the bounded delegation mechanism only. Destination-local admission and HumanGate remain authoritative.
 
 ```text
 G1 = PASS
@@ -75,7 +71,7 @@ G2 = PASS
 
 ### Canonical truth chain
 
-AIEXE accepts external Domain truth only through:
+AIEXE accepts external Domain truth only through the bounded structured chain:
 
 ```text
 aiexe.controller-adoption-source.v1
@@ -84,66 +80,66 @@ aiexe.controller-adoption-source.v1
 -> aiexe.domain-controller-receipt.v1
 ```
 
-A source requires deterministic full-body digest verification, supported marked JSON only, exact repository binding, independently observed provider head, receipt freshness and read-only/no-write-authority boundaries.
+Promotion requires deterministic full-body digest verification, supported marked JSON only, exact repository binding, independently observed provider head, freshness, `readOnly=true`, and `writeAuthority=none`.
 
 Surrounding prose is non-authoritative. LLM fact extraction is forbidden.
 
-### M2.16 supersedes the M2.14 3/3 acceptance claim
+### Historical correction: M2.16 supersedes the original M2.14 acceptance claim
 
-Three real marked structured sources exist, one in each Domain-owned Controller channel:
+Three Domain-owned Controller channels contain real canonical marked sources:
 
 ```text
 TrainingOS   Issue #477
 TradeOS      Issue #567
 Video/Media  Issue #115
-
-structured source existence = 3 / 3
 ```
 
-M2.14's original focused test made a truth-boundary error: it used the attestation source's own `headSha` as the provider observation head. M2.16 requires an independently observed provider head and records the result in:
+M2.14 originally reused an attestation's own `headSha` as provider truth. M2.16 corrected that self-validation error by requiring an independently observed provider head. Its first-cycle revalidation was:
 
 ```text
-fixtures/management/m2-external-controller-adoption-revalidation-2026-08-10.json
+TrainingOS   accepted_exact_head_current
+TradeOS      accepted_exact_head_current
+Video/Media  exact_head_mismatch -> unknown
+
+first-cycle independent current acceptance = 2 / 3
 ```
 
-Correct independent revalidation:
+The old `3 / 3 exact-head acceptance` statement remains withdrawn.
+
+### M2.17 — second real Domain cycle
+
+M2.17 ingested a later Domain-owned canonical cycle for all three external Domains and independently revalidated each attested head against provider `main`:
 
 ```text
 TrainingOS
-  attested head  8f0d38dca4dcd28883359c427e133d0c1a9eebb8
-  provider main  8f0d38dca4dcd28883359c427e133d0c1a9eebb8
-  result         accepted_exact_head_current
+  current accepted head  8f0d38dca4dcd28883359c427e133d0c1a9eebb8
+  accepted cycles        2
+  canonical recurrence   YES
 
 TradeOS
-  attested head  6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b
-  provider main  6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b
-  result         accepted_exact_head_current
+  current accepted head  6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b
+  accepted cycles        2
+  canonical recurrence   YES (historical proof)
 
 Video / Shared Media
-  attested head  24996407449df28b2d83fce1a145b3200fff168a
-  provider main  23d92ffc4674f1581c4191e595d279a20008be53
-  result         exact_head_mismatch -> unknown
+  current accepted head  23d92ffc4674f1581c4191e595d279a20008be53
+  accepted cycles        1
+  canonical recurrence   NO
 ```
 
-Therefore:
+Video's later cycle repairs current-head structured adoption but does not retroactively turn its stale first source into an accepted cycle.
+
+Therefore current structured Controller adoption is now:
 
 ```text
-real source existence                      3 / 3
-independent first-cycle current acceptance 2 / 3
-first-cycle acceptance complete             NO
+structured adoption = 3 / 3
 ```
 
-The old `3 / 3 exact-head acceptance` statement is superseded and must not be used for G3.
+This is necessary but not sufficient for G3.
 
 ### Canonical recurrence proof
 
-M2.15 introduced:
-
-```text
-aiexe.controller-recurring-structured-proof.v1
-```
-
-A real recurring proof requires 2+ independently accepted cycles with:
+`aiexe.controller-recurring-structured-proof.v1` requires 2+ independently accepted cycles with:
 
 ```text
 accepted_exact_head_current on every cycle
@@ -155,66 +151,81 @@ readOnly = true
 writeAuthority = none
 ```
 
-### M2.16 proof reconstruction
+`aiexe.controller-producer-readiness.v1` recomputes these invariants from embedded canonical cycle summaries. Arbitrary evidence refs or proof-shaped booleans cannot prove recurrence.
 
-M2.16 removes caller-trusted proof booleans. `aiexe.controller-producer-readiness.v1` now recomputes recurrence invariants from embedded cycle summaries and records:
+### Fixed three-Domain producer gate
 
-```text
-arbitraryEvidenceRefsCannotProveRecurrence = true
-recurrenceProofRecomputedFromEmbeddedCycles = true
-```
-
-A proof-shaped object with the expected schema and top-level `true` fields but no canonical embedded cycles fails closed.
-
-### M2.16 fixed-scope G3 gate
-
-M2.16 adds:
+`aiexe.controller-g3-readiness.v1` fixes the required Domain set in code:
 
 ```text
-aiexe.controller-g3-readiness.v1
+trainingos                    moseszhu999/training-learning-rails
+tradeos                       moseszhu999/chaintrace-app
+video-operation-shared-media  moseszhu999/global-tool-radar
 ```
 
-The required project/repository set is fixed in code:
+The caller cannot shrink the denominator or substitute repositories. G3 requires all three Domains to have:
 
 ```text
-trainingos
-  moseszhu999/training-learning-rails
-
-tradeos
-  moseszhu999/chaintrace-app
-
-video-operation-shared-media
-  moseszhu999/global-tool-radar
+current structured adoption
+observed + enabled producer topology
+structured producer contract
+out-of-band persistence
+canonical recurring proof
 ```
 
-The caller cannot shrink the denominator or substitute repositories. G3 requires all three projects to satisfy current structured adoption, observed/enabled producer topology, structured producer contract, out-of-band persistence and canonical recurring proof.
+### M2.18 — current producer topology snapshot
 
-Invalid shortcuts fail closed:
+M2.18 rechecked all three M2.17 provider heads against current `main`; each comparison was `identical` at the observation point. It also refreshed the native task topology without mutating any scheduler.
+
+Canonical evidence:
 
 ```text
-2 / 2 after omitting one Domain              REJECTED
-repository substitution                       REJECTED
-arbitrary evidence refs                        REJECTED
-proof-shaped booleans without canonical cycles REJECTED
-source-attested head reused as provider truth   REJECTED
-disabled producer counted as current recurrence REJECTED
+fixtures/management/m2-controller-producer-readiness-current-2026-08-10.json
+tests/m2-controller-producer-readiness-current-topology.test.cjs
 ```
 
-Current real state:
+Current producer truth:
 
 ```text
-required external Domain set                3
-real structured source existence            3 / 3
-independent first-cycle current acceptance  2 / 3
-verified recurring structured producers     0 / 3
-G3                                            PARTIAL
+required external Domains        3
+structured adoption              3 / 3
+enabled producers                2
+  TrainingOS                     enabled
+  Video/Media                    enabled
+disabled producers               1
+  TradeOS                        disabled
+structured producer contracts    0 / 3 observed
+contractMissingCount             3
+out-of-band persistence          3 / 3 observed
+persistenceMissingCount          0
+current recurring producers      0 / 3
 ```
 
-A fresh Controller-channel scan found no second canonical marker in the three Domain channels at the M2.16 observation point. AIEXE does not manufacture the missing cycles.
+Important interpretation:
+
+- TrainingOS has two accepted canonical cycles, but the currently observed native producer itself does not yet prove the structured producer contract required to promote that recurrence into current producer readiness.
+- TradeOS also has two accepted canonical cycles, but its currently observed producer is disabled and its structured producer contract is unproven.
+- Video/Shared Media now has an out-of-band persistence channel and an enabled producer, so the old persistence gap is closed; it still lacks both a proved structured producer contract and a second independently accepted current cycle.
+
+Thus M2.18 closes only the old Video persistence blocker. It does **not** close G3.
 
 ```text
 G3 = PARTIAL / BLOCKED FOR M3
 ```
+
+### Shortest real G3 path
+
+No AIEXE-side synthetic receipt can close these gaps. The remaining evidence must come from the Domain-owned producer path:
+
+```text
+1. each Domain producer binds to and proves the canonical structured producer contract
+2. TradeOS has a current enabled Domain-owned producer
+3. Video/Media emits a later independent canonical accepted cycle
+4. AIEXE independently revalidates each provider head and reconstructs recurrence
+5. fixed-scope G3 recomputes 3 / 3 current recurring producer readiness
+```
+
+External scheduler or Domain mutations remain outside this PR's authority.
 
 ---
 
@@ -234,7 +245,7 @@ remote Worker control
 HumanGate decision
 ```
 
-Even a future G3 gate result of `PASS` explicitly returns:
+Even a future G3 result of `PASS` explicitly keeps:
 
 ```text
 m3EntryAuthorized = false
@@ -242,7 +253,7 @@ a2ExecutionAuthorized = false
 authorityGranted = false
 ```
 
-This prevents G3 truth-readiness from silently becoming execution authority. G4 must be proven separately through the accepted bounded execution path after G3 is real and current.
+G4 must be proven separately through the accepted bounded execution path after G3 is real and current.
 
 ```text
 G4 = PARTIAL / BLOCKED FOR M3
@@ -252,21 +263,39 @@ G4 = PARTIAL / BLOCKED FOR M3
 
 ## G5 — recurring provider-backed read-only ingestion
 
-The existing native AIEXE hourly scheduler remains the single ingestion scheduler:
-
-```text
-timezone = Asia/Shanghai
-cadence  = HOURLY
-minute   = 48
-mode     = exact_schedule
-second scheduler created = false
-```
-
-Multiple distinct spaced successful scheduled captures have already established recurring read-only provider ingestion. No cross-repository credentials or Domain write path were introduced.
+The existing native AIEXE hourly scheduler remains the single ingestion scheduler. Multiple distinct spaced successful scheduled captures have established recurring read-only provider ingestion. No cross-repository credential or Domain write path is introduced by this gate.
 
 ```text
 G5 = PASS
 ```
+
+---
+
+## M2.18 validation evidence and terminology correction
+
+The pull-request validation after the M2.18 fixture/test change completed successfully:
+
+```text
+workflow run                 31377434383
+job                          93419778855
+source syntax                PASS
+tests                        537 / 537 PASS
+M2.18 focused regression     PASS
+provider boundary scan       PASS
+GITHUB_TOKEN                 Contents: read; Metadata: read
+```
+
+Validation terminology is intentionally precise. The `pull_request` workflow checked out the PR merge ref:
+
+```text
+merge ref  4c2fe8c97345e3c80dda8bd27afe886c7368c5b0
+           = merge(0e47afcf7b59a2192b66a355cb217688306c2fd0
+                   into dce842e6874e6842b461cd4b5958df577608da94)
+```
+
+Therefore this run is **head-bound PR merge-ref validation**, not standalone branch-head checkout validation. Any earlier wording that called this style of run "exact-head CI" must not be reused without an actual branch-head checkout proof.
+
+The correction changes evidence terminology, not the observed fact that the M2.18 tree passed the PR validation suite.
 
 ---
 
@@ -278,53 +307,10 @@ G2  PASS
 G3  PARTIAL
 G4  PARTIAL
 G5  PASS
-```
 
-If any gate is not `PASS`:
-
-```text
-managementAuthority = observe-and-propose
-A2 execution         = blocked
-```
-
-Therefore M3 remains blocked on **G3 and G4**.
-
-## Target chain after all gates independently close
-
-```text
-independent provider facts
-+ current exact-head structured Controller attestation
-+ current recurring proof
-        |
-        v
-fixed-scope G3 readiness
-        |
-        v
-portfolio / workstream attention
-        |
-        v
-evidence-backed ManagementProposal (A1)
-        |
-        v
-A2 policy eligibility
-        |
-        v
-canonical capability package@version
-        |
-        v
-accepted S8 delegation policy
-        |
-        v
-destination-local admission / HumanGate
-        |
-        v
-bounded execution
-        |
-        v
-receipt / evidence
-        |
-        v
-next independent read-only observation
+M3                  BLOCKED
+managementAuthority observe-and-propose
+A2 execution         blocked
 ```
 
 ## Authority principles
@@ -343,6 +329,8 @@ PromptContract != DomainTruth
 HumanReadableControllerProse != CanonicalAttestation
 EvidenceRefs != RecurrenceProof
 ProofBooleans != CanonicalCycleReconstruction
+HistoricalRecurrence != CurrentProducerReadiness
+PersistenceObserved != StructuredProducerContract
 G3 PASS != M3 entry authorization
 G3 PASS != A2 execution authorization
 ManagementProposal != A2 eligibility
@@ -358,8 +346,8 @@ G5 PASS != Domain truth authority
 
 1. continue read-only observation of Domain Controller channels and independent provider heads;
 2. ingest later Domain-owned canonical cycles through the existing protocol only;
-3. keep recurrence proof deterministic and source/provider truth separated;
-4. observe producer topology without mutating scheduler configuration;
+3. observe producer topology without mutating scheduler configuration;
+4. recompute canonical recurrence only from independently accepted cycles;
 5. continue authorized recurring read-only provider ingestion;
 6. reopen G2 if new real decision failures are discovered;
 7. test A2 policy mechanically without execution;
@@ -371,7 +359,6 @@ G5 PASS != Domain truth authority
 S8 product files changed = NO
 second S8 owner = NO
 A2 execution enabled = NO
-external Domain receipt framework added = NO
 external Domain repository mutation = NO
 external Domain scheduler mutation = NO
 LLM prose-to-truth extraction = NO
