@@ -14,7 +14,7 @@ scheduler substrate exists
 != recurring scheduled provider ingestion
 ```
 
-The existing AIEXE hourly controlled-progress task is the preferred scheduler substrate. M2.10 does not create a second scheduler implementation.
+The existing AIEXE hourly controlled-progress task is reused as the single scheduler substrate. M2.10 does not create a second scheduler implementation.
 
 ## G3 update: group substrate is now 3 / 3
 
@@ -109,7 +109,7 @@ readOnly = true
 writeAuthority = none
 ```
 
-The receipt derives:
+The receipt derives one-run facts only:
 
 ```text
 successfulScheduledRunObserved
@@ -132,28 +132,57 @@ strictly increasing scheduled times
 minimum spacing >= 60 seconds
 ```
 
-Only then may:
+Only this aggregator may derive:
 
 ```text
 recurringIngestionProven = true
 state = RECURRING_SCHEDULED_PROVIDER_INGESTION_PROVEN
 ```
 
-One scheduled success proves one scheduled run, not recurrence.
+The older scheduler-readiness projection was repaired in M2.10 so one successful scheduled run no longer sets `recurringIngestionProven=true`. Scheduler readiness now points to `aiexe.recurring-scheduled-provider-evidence.v1` as the recurrence proof authority.
 
-## Existing scheduler substrate
+## Real native scheduler binding
 
-The existing AIEXE hourly controlled-progress automation remains the preferred scheduler. Before binding it, preserve the complete existing persistent controller contract and append only a bounded provider-ingestion clause. Do not replace the task with a second scheduler.
+At `2026-08-10T00:27:22.939529Z`, the existing AIEXE hourly controlled-progress automation was updated in place and enabled.
 
-Binding is allowed to do only this additional evidence work:
+The existing schedule remained unchanged:
+
+```text
+timezone = Asia/Shanghai
+cadence  = HOURLY
+minute   = 48
+mode     = exact_schedule
+```
+
+The complete pre-existing AIEXE controller prompt was preserved and the M2 provider-ingestion clause was appended before the persistent-prompt end marker. No second scheduler was created.
+
+The appended binding may only:
 
 ```text
 read the four canonical repository default heads
 read explicit open PR sets
 produce canonical live-provider capture when one coherent read window can be proven
-never infer Domain status/owner/authority from GitHub activity
-persist bounded scheduled-run evidence out of band
+never infer Domain status/owner/authority/Controller adoption from GitHub activity
+write one evidence-only scheduled-run receipt to AIEXE PR #125 when a canonical scheduled capture actually succeeds
 ```
+
+It may not comment or modify TrainingOS, TradeOS or Video / Shared Media.
+
+Real post-binding readiness is:
+
+```text
+schedulerObserved                    true
+hourlyCadenceObserved                true
+schedulerEnabled                     true
+providerIngestionBindingObserved     true
+immutableReceiptPersistenceObserved  false
+successfulScheduledRunObserved       false
+state = SCHEDULER_BOUND_RECEIPT_PERSISTENCE_UNPROVEN
+scheduledRuntimeProven               false
+recurringIngestionProven             false
+```
+
+The prior `lastRunObservedAt` predates this binding and is not promoted into provider-ingestion proof. The next required evidence is the first canonical successful scheduled provider run receipt after binding.
 
 The binding does not authorize:
 
@@ -176,8 +205,8 @@ G1 PASS
 G2 PARTIAL
 G3 PARTIAL  # 3/3 group substrate, 0/3 structured adoption
 G4 PARTIAL
-G5 PARTIAL  # receipt contract ready; real scheduled success still required
+G5 PARTIAL  # real scheduler enabled+bound; first post-binding scheduled receipt still absent
 M3 BLOCKED
 ```
 
-Source readiness is not runtime evidence. PR #125 remains Draft until evidence gates are actually closed.
+Source readiness and scheduler configuration are not scheduled-run evidence. PR #125 remains Draft until evidence gates are actually closed.
