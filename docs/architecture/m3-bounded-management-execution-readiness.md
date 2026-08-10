@@ -12,8 +12,6 @@ BLOCKED
 
 The Group Management Plane remains **observe-and-propose**. M3 starts only when every gate below is `PASS`; no earlier gate implicitly authorizes A2 execution.
 
-Current gate matrix:
-
 ```text
 G1 final S8-F controlled-delegation runtime acceptance   PASS
 G2 broader real replay / evaluation                      PASS
@@ -22,19 +20,11 @@ G4 A2 policy through accepted execution path              PARTIAL
 G5 recurring provider-backed read-only ingestion          PASS
 ```
 
-Current blockers for M3 are **G3 and G4**.
+Current blockers are **G3 and G4**.
 
 ---
 
 ## Gate 1 — accepted S8 controlled-delegation runtime baseline
-
-Accepted product path:
-
-```text
-PR #122  S8-I controlled delegation integration     MERGED
-PR #128  Electron product-root authority repair      MERGED
-PR #130  persistent destination-gate explanation     MERGED
-```
 
 Frozen accepted S8 product head:
 
@@ -55,27 +45,26 @@ Issue #115                                    CLOSED / completed / GO
 QA carrier #129                              CLOSED UNMERGED
 ```
 
-S8 proves controlled delegation only. Destination-local admission and HumanGate remain authoritative. S8 does not grant payment, deployment, credential forwarding, remote Worker control or remote HumanGate authority.
-
-Status:
+S8 proves controlled delegation only. Destination-local admission and HumanGate remain authoritative.
 
 ```text
-PASS
+G1 = PASS
 ```
 
 ---
 
 ## Gate 2 — broader real replay / evaluation evidence
 
-Earlier evidence remains separated by class:
+Evidence classes remain separated:
 
 ```text
 historical project-level real replay     6 labelled cases
 real workstream replay                    3 project scenarios
+M2.12 real transition replay             10 cases
 SIMULATED adversarial replay              11 cases
 ```
 
-The initial real corpus left explicit gaps in:
+M2.12 closes the previously named real-evidence gaps:
 
 ```text
 owner conflict
@@ -86,112 +75,162 @@ false / missed escalation
 recovery after blocker clear
 ```
 
-M2.12 adds:
+Representative real transition pairs:
 
 ```text
-fixtures/management/m2-real-transition-replay-2026-08-10.json
-schema        = aiexe.real-transition-replay.v1
-evidenceClass = REAL_HISTORICAL_AND_PROVIDER_TRANSITION
-real cases    = 10
+TrainingOS #576
+  stale old exact-head evidence -> ESCALATE
+  repaired-head merge recovery  -> CONTINUE
+
+TradeOS #647
+  Production-autodeploy policy block -> PAUSE
+  release-decoupled merge recovery   -> CONTINUE
+
+TrainingOS #476 / #480
+  owner conflict              -> PAUSE
+  owner-safe latest-main rebuild -> CONTINUE
 ```
 
-Real transition coverage includes:
+Provider-churn cases for TrainingOS, TradeOS and Video/Media all require `ESCALATE` when canonical Controller truth is absent and must not invent project-wide `PAUSE`.
+
+M2.12 result:
 
 ```text
-TrainingOS PR #576   stale exact-head evidence -> repaired-head recovery
-TradeOS PR #647      Production-autodeploy policy block -> release-decoupled recovery
-TrainingOS #476/#480 route-owner conflict -> latest-main owner-safe rebuild recovery
-TrainingOS live      provider churn + no canonical Controller -> ESCALATE, not project PAUSE
-TradeOS live         provider churn + no canonical Controller -> ESCALATE, not project PAUSE
-Video/Media live     provider churn + no canonical Controller -> ESCALATE, not project PAUSE
-AIEXE live           old structured receipt exact-head mismatch -> ESCALATE
+real cases          10
+exact matches       10
+false escalations   0
+missed escalations  0
+recovery pairs      3
 ```
 
-Exact replay acceptance:
+The adversarial corpus remains explicitly `SIMULATED` and is not counted as real history. A newly observed real failure may reopen this gate.
 
 ```text
-run                    31358930299  SUCCESS
-job                    93363772751  SUCCESS
-PR merge-ref            9a5374948a9cf1a186ef2276d9dddf92bae76a07
-Source syntax check      PASS
-tests                    511 / 511 PASS
-Provider boundary scan   PASS
-
-M2.12 real cases         10
-exact matches            10
-false escalations        0
-missed escalations       0
-recovery pairs           3
-provider unknown cases   3 / 3 ESCALATE without false project-wide PAUSE
-```
-
-The 11 adversarial cases remain explicitly `SIMULATED`; they are not counted as real history. The named real-evidence gaps that previously blocked G2 are now covered across multiple projects. The acceptance rationale is recorded in `docs/architecture/m2-real-transition-replay-acceptance.md`.
-
-This is bounded evaluation acceptance, not a universal-accuracy claim. A newly observed real failure may reopen G2.
-
-Status:
-
-```text
-PASS
+G2 = PASS
 ```
 
 ---
 
 ## Gate 3 — recurring real structured Controller attestations
 
-AIEXE owns the consumer-side contract:
+### Canonical consumer contract
+
+AIEXE accepts Domain truth only through the existing deterministic chain:
 
 ```text
-aiexe.external-controller-attestation.v1
+aiexe.controller-adoption-source.v1
+-> aiexe.external-controller-attestation-envelope.v1
+-> aiexe.external-controller-attestation.v1
 -> aiexe.domain-controller-receipt.v1
 ```
 
-M2.7 established the canonical out-of-band envelope:
+A promotable source requires one marked JSON envelope, an independently verified exact-body SHA-256 digest, a current exact repository head, supported fields only and valid freshness. Surrounding prose is non-authoritative. LLM fact extraction is forbidden.
+
+### AIEXE current-head sample repaired in M2.13
+
+The old M2.7 AIEXE sample correctly became stale after `main` advanced. M2.13 published a new AIEXE-only out-of-band sample on PR #125:
 
 ```text
-aiexe.external-controller-attestation-envelope.v1
+comment       5236728435
+exactHeadSha  dce842e6874e6842b461cd4b5958df577608da94
+sourceDigest  sha256:e4120c3bac66cf45f9c8d4ef20923f318f004278dcd3447e9c716adacb337715
 ```
 
-A same-main receipt cannot be treated as current exact-head truth because publishing the receipt advances the same git head. Current attestations therefore require a non-head-mutating transport such as a coordinator PR/Issue comment or equivalent receipt store.
+The exact comment body was independently read back and re-hashed. The comment transport does not mutate `main`, so this repairs the AIEXE-side current structured sample only.
 
-The first real AIEXE structured sample on PR #125 proved the transport and parser, but it attests S8 main:
+It does **not** count as one of the three external Domain adoptions.
+
+### External adoption remains 0 / 3
+
+Fresh read-only provider heads observed in M2.13:
 
 ```text
-7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
+TrainingOS   8f0d38dca4dcd28883359c427e133d0c1a9eebb8
+TradeOS      6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b
+Video/Media  23d92ffc4674f1581c4191e595d279a20008be53
 ```
 
-while current AIEXE provider main is:
-
-```text
-dce842e6874e6842b461cd4b5958df577608da94
-```
-
-so that old sample is now correctly **stale / non-promotable**.
-
-Current external adoption truth after the M2.11/M2.12 read-only audit:
-
-```text
-TrainingOS    group integration substrate ready   structured Controller adoption NO
-TradeOS       group integration substrate ready   structured Controller adoption NO
-Video/Media   group integration substrate ready   structured Controller adoption NO
-
-external group integration substrate = 3 / 3
-external structured Controller adoption = 0 / 3
-```
-
-Direct current searches found no external occurrence of:
+Direct repository searches still found no external occurrence of:
 
 ```text
 aiexe.external-controller-attestation.v1
 aiexe.controller-adoption-source.v1
 ```
 
-TrainingOS Controller register Issue #477 and TradeOS Controller register Issue #567 also contain no canonical structured marker. Human-readable Controller prose, repository activity and group adapter names remain non-authoritative.
-
-Status:
+TrainingOS Controller register Issue #477 and TradeOS Controller register Issue #567 also contain no canonical marker. A bounded Video/Media Controller issue search found no current out-of-band Controller register.
 
 ```text
-PARTIAL / BLOCKED FOR M3
+external Domain projects             3
+group integration substrate ready    3 / 3
+structured Controller adoption       0 / 3
+```
+
+### M2.13 producer-readiness decomposition
+
+M2.13 adds a complementary, read-only topology classifier:
+
+```text
+aiexe.controller-producer-readiness.v1
+```
+
+It does not create another attestation protocol and does not parse Controller prose into Domain facts. It only explains why a canonical producer source is still absent.
+
+Real observed producer topology:
+
+```text
+TrainingOS
+  scheduler observed/enabled     true / true
+  latest observed run            2026-08-10T06:08:29Z
+  structured producer contract   missing
+  out-of-band persistence        observed via Issue #477
+  state                          ACTIVE_STRUCTURED_CONTRACT_MISSING
+
+TradeOS
+  scheduler observed/enabled     true / false
+  latest observed run            2026-08-09T11:04:45Z
+  structured producer contract   missing
+  out-of-band persistence        observed via Issue #567
+  state                          PRODUCER_DISABLED
+
+Video / Shared Media
+  scheduler observed/enabled     true / true
+  latest observed run            2026-08-10T05:39:12Z
+  structured producer contract   missing
+  out-of-band Controller channel not observed
+  state                          ACTIVE_CONTRACT_AND_PERSISTENCE_MISSING
+```
+
+Summary:
+
+```text
+enabled producer schedulers              2 / 3
+disabled producer schedulers             1 / 3
+structured producer contract missing     3 / 3
+out-of-band persistence missing           1 / 3
+recurring structured producers proven    0 / 3
+```
+
+Scheduler state is not Domain status. Prompt presence is not Domain truth. A disabled scheduler does not mean a Domain is paused. An enabled scheduler does not mean structured adoption exists.
+
+Shortest real path to G3 closure:
+
+```text
+TrainingOS
+  adopt the canonical marked envelope in the existing recurring Controller output
+
+TradeOS
+  separately resolve whether the disabled Controller should run;
+  if it runs, adopt the canonical marked envelope
+
+Video / Shared Media
+  establish an out-of-band Controller persistence source;
+  adopt the canonical marked envelope
+```
+
+AIEXE must not manufacture those Domain facts or mutate external Controller state on their behalf.
+
+```text
+G3 = PARTIAL / BLOCKED FOR M3
 ```
 
 ---
@@ -205,7 +244,7 @@ aiexe.a2-management-action-policy.v1
 aiexe.a2-management-action-eligibility.v1
 ```
 
-The allow-set remains deliberately narrow: read, plan, bounded approved-test and explicit preapproved-work candidates. Consequential actions remain mechanically denied, including:
+The allow-set remains narrow: read, plan, bounded approved-test and explicit preapproved-work candidates. Consequential actions remain mechanically denied, including:
 
 ```text
 merge
@@ -229,21 +268,19 @@ humanGateDecisionCreated = false
 domainWritePerformed = false
 ```
 
-G1 proves the accepted S8 delegation runtime path exists. G2 proves the attention/evaluation layer against broader real transitions. G5 proves recurring read-only provider ingestion. None of those facts prove management A2 end-to-end execution.
+G1 proves the accepted S8 delegation runtime path exists. G2 proves bounded decision evaluation against broader real transitions. G5 proves recurring read-only provider ingestion. None substitutes for current structured Domain Controller truth.
 
-G4 remains deliberately blocked while G3 has no recurring current structured Domain Controller adoption. A2 must not use GitHub activity as a substitute for Domain truth just because the transport and evaluation layers are now green.
-
-Status:
+G4 remains deliberately downstream of G3. No A2 execution-path proof may treat GitHub activity, scheduler state or human-readable Controller prose as Domain truth.
 
 ```text
-PARTIAL / BLOCKED FOR M3
+G4 = PARTIAL / BLOCKED FOR M3
 ```
 
 ---
 
 ## Gate 5 — recurring provider-backed read-only ingestion
 
-M2.10 reused the existing native AIEXE hourly scheduler rather than creating a second scheduler:
+The existing native AIEXE hourly scheduler is reused:
 
 ```text
 timezone = Asia/Shanghai
@@ -251,17 +288,10 @@ cadence  = HOURLY
 minute   = 48
 mode     = exact_schedule
 provider-ingestion binding = enabled
+second scheduler created   = false
 ```
 
-The provider-ingestion contract requires a coherent canonical:
-
-```text
-aiexe.live-github-observation-capture.v1
-```
-
-and persists out-of-band scheduled receipts rather than modifying Domain repositories.
-
-Post-binding runtime evidence now includes at least two independent canonical successful scheduled runs:
+Canonical successful scheduled evidence includes:
 
 ```text
 run #1
@@ -275,27 +305,9 @@ captureDigest  sha256:08bca95c1e45bc747b88cc9087e0dab5a9c643a701cc06ffea65b7e1ea
 sourceComment  #5235050986
 ```
 
-The digests are distinct and scheduled times are 3600 seconds apart. The second evidence comment contains:
+The two capture digests are distinct and scheduled times are 3600 seconds apart. The second receipt contains canonical recurring evidence with `recurringIngestionProven=true`. A later successful receipt was also observed at `2026-08-10T04:48:00Z`.
 
-```text
-schema = aiexe.recurring-scheduled-provider-evidence.v1
-successfulScheduledRunCount = 2
-minimumSuccessfulRuns = 2
-minimumSpacingSeconds = 60
-observedSpacingSeconds = 3600
-recurringIngestionProven = true
-state = RECURRING_SCHEDULED_PROVIDER_INGESTION_PROVEN
-readOnly = true
-writeAuthority = none
-```
-
-A later successful canonical scheduled receipt was also observed at `2026-08-10T04:48:00Z` with digest:
-
-```text
-sha256:46c606a18386cff054cef34040bd1d6b6d51bf7d6002b2b064ced914633e7fa3
-```
-
-No `02:48Z` receipt was found in independent readback. This gap is explicit and does not invalidate the v1 recurrence rule, which requires multiple distinct spaced successful canonical observations rather than perfect every-hour delivery.
+No `02:48Z` receipt was found in the independent readback. The gap is recorded honestly; the v1 gate requires multiple distinct spaced successful scheduled captures rather than perfect every-hour delivery.
 
 Independent G5 closure receipt:
 
@@ -303,26 +315,11 @@ Independent G5 closure receipt:
 PR #125 comment #5236243699
 ```
 
-No cross-repository token, hidden PAT or Domain write path was added.
-
-Status:
+No cross-repository credentials or Domain write path were added.
 
 ```text
-PASS
+G5 = PASS
 ```
-
----
-
-## Current provider-source heads at the M2.11/M2.12 closure window
-
-```text
-AIEXE        dce842e6874e6842b461cd4b5958df577608da94
-TrainingOS   1f1550c58866eb9f49d6041a8b5e7ed459374ff7
-TradeOS      6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b
-Video/Media  672298b5573d3815e31aca14ac24e597b1783f30
-```
-
-These are provider/source facts only. They never imply Domain status, ownership, HumanGate decisions or execution authority.
 
 ---
 
@@ -391,6 +388,9 @@ Complete != Active
 Observed != CompleteScope
 GitHubActivity != DomainStatus
 GroupAdapter != ControllerAdoption
+SchedulerEnabled != DomainActive
+SchedulerDisabled != DomainPaused
+PromptContract != DomainTruth
 HumanReadableControllerProse != CanonicalAttestation
 RepoContainedReceipt != CurrentExactHeadReceipt
 ManagementProposal != A2 eligibility
@@ -405,11 +405,12 @@ G5 PASS != Domain truth authority
 ## Non-overlapping work allowed before M3
 
 1. continue read-only observation of external Controller adoption;
-2. provide the canonical out-of-band adoption contract/template from AIEXE without creating second Domain controller frameworks;
-3. continue recurring authorized read-only provider ingestion and record gaps honestly;
-4. add newly observed real decision failures to the G2 replay ledger and reopen G2 if needed;
-5. test A2 policy mechanically without executing actions;
-6. maintain the bounded read-only owner cockpit.
+2. provide the canonical adoption contract/template from AIEXE without creating second Domain Controller frameworks;
+3. observe producer topology without mutating external scheduler configuration;
+4. continue recurring authorized read-only provider ingestion and record gaps honestly;
+5. add newly observed real decision failures to the G2 replay ledger and reopen G2 if needed;
+6. test A2 policy mechanically without executing actions;
+7. maintain the bounded read-only owner cockpit.
 
 ## Boundary
 
@@ -417,8 +418,10 @@ G5 PASS != Domain truth authority
 S8 product files changed = NO
 second S8 owner = NO
 A2 execution enabled = NO
-Domain OS receipt framework added = NO
+external Domain receipt framework added = NO
 external Domain repository changes/comments = NO
+external Domain scheduler mutation = NO
+LLM prose-to-truth extraction = NO
 cross-repository credentials added = NO
 Domain writes = NO
 Merge PR #125 = NO while gated
