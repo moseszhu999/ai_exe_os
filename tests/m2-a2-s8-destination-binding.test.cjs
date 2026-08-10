@@ -192,7 +192,7 @@ test('M2.24 observes destination-owned approval and exact binding without perfor
     assert.equal(ownerDecision.acceptance.state, 'accepted');
     assert.ok(ownerDecision.binding.id);
     assert.equal(ownerDecision.actionGate, null);
-    assert.equal(ownerDecision.binding.localExecutionRunId, null);
+    assert.ok(ownerDecision.binding.localExecutionRunId);
 
     const result = observe(destination, destinationAdmission);
     assert.equal(result.destinationBindingObservationAccepted, true);
@@ -206,7 +206,7 @@ test('M2.24 observes destination-owned approval and exact binding without perfor
     assert.equal(result.destinationExecutionBindingObserved, true);
     assert.equal(result.destinationExecutionBindingRef, ownerDecision.binding.id);
     assert.equal(result.destinationLocalMissionRef, ownerDecision.binding.localMissionId);
-    assert.equal(result.destinationLocalExecutionRunRef, null);
+    assert.equal(result.destinationLocalExecutionRunRef, ownerDecision.binding.localExecutionRunId);
     assert.equal(result.destinationHumanGateDecisionCreatedByManagementLayer, false);
     assert.equal(result.destinationExecutionBindingCreatedByManagementLayer, false);
     assert.equal(result.destinationExecutionPerformedByManagementLayer, false);
