@@ -5,8 +5,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
+const { LOCAL_PROVIDER_SNAPSHOT_ID } = require('../src/application/index.cjs');
 const { S8ApplicationService: SourceS8ApplicationService } = require('../src/application/s8-index.cjs');
 const { S8ApplicationService: DestinationS8ApplicationService } = require('../src/application/s8-product-service.cjs');
+const { createProviderContractSnapshot } = require('../src/domain/provider-contract-snapshot.cjs');
 const { submitA2AuthorizedRequestThroughS8Source } = require('../src/management/policy/a2-s8-source-submission.cjs');
 const { observeA2RequestAtS8Destination } = require('../src/management/policy/a2-s8-destination-admission.cjs');
 const { observeA2DestinationDecisionAndBinding } = require('../src/management/policy/a2-s8-destination-binding.cjs');
@@ -64,12 +66,26 @@ function makeSource(exchange) {
 }
 
 function makeDestination(exchange) {
-  return new DestinationS8ApplicationService({
+  const service = new DestinationS8ApplicationService({
     databasePath: ':memory:', workerManager: new FakeWorkerManager(),
     localTarget: 'http://127.0.0.1:43119/task-form.html',
     delegationEndpoint: { id: 'delegation-test-endpoint', status: 'active' },
     delegationTransport: exchange, clock: clockAt('2026-08-10T14:10:00.000Z'),
   });
+  const current = service.providerSnapshot.get(LOCAL_PROVIDER_SNAPSHOT_ID);
+  const fixtureSnapshot = createProviderContractSnapshot({
+    contractId: current.contractId,
+    providerId: current.providerId,
+    surfaceId: current.surfaceId,
+    status: current.status,
+    reviewedAt: current.reviewedAt,
+    expiresAt: current.expiresAt,
+    governingTermsDigest: current.governingTermsDigest,
+    permittedActions: [...new Set([...current.permittedActions, 'run_approved_test_profile'])],
+    prohibitedActions: current.prohibitedActions,
+  });
+  service.providerSnapshot.save({ id: LOCAL_PROVIDER_SNAPSHOT_ID, ...fixtureSnapshot }, 'test.m2_24_provider_scope');
+  return service;
 }
 
 function a2(overrides = {}) {
