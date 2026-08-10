@@ -9,6 +9,7 @@ on:
       - src/group-fabric/federation-mapping-provenance.cjs
       - tests/group-federation-mapping-provenance.test.cjs
       - tests/group-federation-mapping-provenance-structure.test.cjs
+      - tests/group-federation-mapping-provenance-attestation-identity.test.cjs
 
 permissions:
   contents: read
@@ -63,6 +64,15 @@ jobs:
           grep -Eq '# tests[[:space:]]+1$' /tmp/provenance-structure.tap
           grep -Eq '# pass[[:space:]]+1$' /tmp/provenance-structure.tap
           grep -Eq '# fail[[:space:]]+0$' /tmp/provenance-structure.tap
+
+      - name: Run attestation semantic identity contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/group-federation-mapping-provenance-attestation-identity.test.cjs | tee /tmp/provenance-identity.tap
+          grep -Eq '# tests[[:space:]]+1$' /tmp/provenance-identity.tap
+          grep -Eq '# pass[[:space:]]+1$' /tmp/provenance-identity.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/provenance-identity.tap
 
       - name: Run full AIEXE unit suite
         run: npm test
