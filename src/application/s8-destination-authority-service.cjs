@@ -267,9 +267,7 @@ class S8DestinationAuthorityApplicationService extends S8DelegationApplicationSe
     if (!proposal || proposal.workspaceId !== workspaceId) throw new Error('delegation_proposal_not_found');
     const existingBinding = this.delegatedExecutionBinding.list().find((item) => item.proposalId === proposal.id) || null;
     if (existingBinding) {
-      const existingAttempt = existingBinding.localStepAttemptId ? this.stepAttempt.get(existingBinding.localStepAttemptId) : null;
-      const existingActionGate = existingAttempt?.humanGateId ? this.humanGate.get(existingAttempt.humanGateId) : null;
-      return freezeDeep({ proposal: publicRecord(proposal), binding: publicRecord(existingBinding), actionGate: publicRecord(existingActionGate) });
+      return freezeDeep({ proposal: publicRecord(proposal), binding: publicRecord(existingBinding), actionGate: null });
     }
     if (proposal.state !== 'waiting_human') throw new Error('delegation proposal is not waiting_human');
     const request = this.delegationRequest.get(proposal.delegationRequestId);
@@ -294,8 +292,6 @@ class S8DestinationAuthorityApplicationService extends S8DelegationApplicationSe
     }), 'delegation.human_gate_accepted');
     const binding = this.createLocalDelegatedMission({ proposal, request, admission, acceptance, authority: runtimeAuthority });
     proposal = this.delegationProposal.save({ ...proposal, state: 'bound', reasonCode: 'destination_local_execution_bound', updatedAt: this.clock() }, 'delegation.execution_bound');
-    const attempt = binding.localStepAttemptId ? this.stepAttempt.get(binding.localStepAttemptId) : null;
-    const actionGate = attempt?.humanGateId ? this.humanGate.get(attempt.humanGateId) : null;
     this.appendS8Event({
       type: 'delegation.execution_bound',
       workspaceId,
@@ -316,7 +312,7 @@ class S8DestinationAuthorityApplicationService extends S8DelegationApplicationSe
       proposal: publicRecord(proposal),
       acceptance: publicRecord(acceptance),
       binding: publicRecord(binding),
-      actionGate: publicRecord(actionGate),
+      actionGate: null,
     });
   }
 
