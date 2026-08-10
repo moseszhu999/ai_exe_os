@@ -6,7 +6,7 @@
   "main": "src/main/main.cjs",
   "scripts": {
     "check": "node scripts/check-source.cjs",
-    "test": "node --test tests/s8*.test.cjs tests/m2-a2-s8*.test.cjs",
+    "test": "node --test tests/*.test.cjs",
     "validate": "npm run check && npm test",
     "start": "electron .",
     "probe:ipc": "node scripts/s0-runtime-ipc-probe.cjs",
