@@ -162,7 +162,11 @@ function runtimeStep(destination, binding) {
   assert.ok(step);
   const stepBinding = destination.stepBinding.get(step.bindingId);
   assert.ok(stepBinding);
-  return { step, stepBinding };
+  const attempt = destination.stepAttempt.get(binding.localStepAttemptId);
+  assert.ok(attempt);
+  const actionGate = attempt.humanGateId ? destination.humanGate.get(attempt.humanGateId) : null;
+  assert.ok(actionGate);
+  return { step, stepBinding, attempt, actionGate };
 }
 
 test('M2.27 destination owner consumes exact CapabilityVersion binding into runtime StepBinding and stops at action HumanGate', async () => {
@@ -172,16 +176,18 @@ test('M2.27 destination owner consumes exact CapabilityVersion binding into runt
     const proposal = pendingProposal(destination);
     assert.equal(proposal.state, 'waiting_human');
     const decision = destination.approveDelegationProposal({ workspaceId: 'workspace-a', proposalId: proposal.id });
-    const { step, stepBinding } = runtimeStep(destination, decision.binding);
+    const { step, stepBinding, attempt, actionGate } = runtimeStep(destination, decision.binding);
+    assert.equal(decision.actionGate, null);
     assert.equal(request.action, SOURCE_ACTION);
     assert.equal(request.target, SOURCE_TARGET);
     assert.equal(step.executionMode, 's1');
     assert.equal(stepBinding.action, RUNTIME_ACTION);
     assert.equal(stepBinding.target, RUNTIME_TARGET);
     assert.equal(stepBinding.capabilityVersionId, VERSION_ID);
-    assert.equal(decision.actionGate.state, 'requested');
-    assert.equal(decision.actionGate.capabilityAction, RUNTIME_ACTION);
-    assert.equal(decision.actionGate.target, RUNTIME_TARGET);
+    assert.equal(attempt.state, 'waiting_human');
+    assert.equal(actionGate.state, 'requested');
+    assert.equal(actionGate.capabilityAction, RUNTIME_ACTION);
+    assert.equal(actionGate.target, RUNTIME_TARGET);
     assert.equal(destination.workerManager.submissions.length, 0);
   } finally { source.close(); destination.close(); }
 });
@@ -256,11 +262,15 @@ test('M2.27 repeated destination approval is exact-once for Mission/binding and 
     const proposal = pendingProposal(destination);
     const first = destination.approveDelegationProposal({ workspaceId: 'workspace-a', proposalId: proposal.id });
     const second = destination.approveDelegationProposal({ workspaceId: 'workspace-a', proposalId: proposal.id });
+    const { actionGate } = runtimeStep(destination, first.binding);
+    assert.equal(first.actionGate, null);
+    assert.equal(second.actionGate, null);
     assert.equal(second.binding.id, first.binding.id);
     assert.equal(second.binding.localMissionId, first.binding.localMissionId);
     assert.equal(destination.mission.list().filter((item) => item.title?.startsWith('Delegated request')).length, 1);
-    assert.equal(second.actionGate.id, first.actionGate.id);
-    assert.equal(second.actionGate.state, 'requested');
+    assert.equal(actionGate.state, 'requested');
+    assert.equal(actionGate.capabilityAction, RUNTIME_ACTION);
+    assert.equal(actionGate.target, RUNTIME_TARGET);
     assert.equal(destination.workerManager.submissions.length, 0);
   } finally { source.close(); destination.close(); }
 });
