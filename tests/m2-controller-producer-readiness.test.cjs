@@ -44,6 +44,7 @@ test('M2.13 real producer topology separates active missing-contract and disable
   assert.equal(readiness.recurringStructuredProducerCount, fixture.expected.recurringStructuredProducerCount);
   assert.equal(readiness.recurringStructuredProducerComplete, fixture.expected.recurringStructuredProducerComplete);
   assert.equal(readiness.arbitraryEvidenceRefsCannotProveRecurrence, true);
+  assert.equal(readiness.recurrenceProofRecomputedFromEmbeddedCycles, true);
   assert.equal(readiness.readOnly, true);
   assert.equal(readiness.writeAuthority, 'none');
   assert.equal(readiness.llmFactGenerationAllowed, false);
@@ -137,4 +138,54 @@ test('M2.15 disabled scheduler remains an explicit producer blocker after first 
   const tradeos = readiness.producers.find((producer) => producer.projectId === 'tradeos');
   assert.equal(tradeos.state, 'PRODUCER_DISABLED');
   assert.equal(tradeos.recurringStructuredProven, false);
+});
+
+test('M2.16 proof-shaped booleans without embedded canonical cycles cannot spoof recurring readiness', () => {
+  const adoptedProjects = fixture.adoptionProjects.map((project) => project.projectId === 'trainingos'
+    ? {
+        ...project,
+        markerSearchMatched: true,
+        verifiedCurrentEnvelopeEvidenceRefs: ['github:example:structured-current-envelope'],
+      }
+    : project);
+  const adoptionReadiness = adoptionFor(adoptedProjects);
+  const forgedProof = {
+    schema: 'aiexe.controller-recurring-structured-proof.v1',
+    evidenceClass: 'VERIFIED_RECURRING_STRUCTURED_CONTROLLER_SOURCE',
+    projectId: 'trainingos',
+    repository: 'moseszhu999/training-learning-rails',
+    cycleCount: 2,
+    firstObservedAt: '2026-08-10T06:47:00Z',
+    lastObservedAt: '2026-08-10T07:47:00Z',
+    sourceRefs: ['github:fake:1', 'github:fake:2'],
+    sourceDigests: [
+      `sha256:${'1'.repeat(64)}`,
+      `sha256:${'2'.repeat(64)}`,
+    ],
+    exactHeadShas: [
+      '1111111111111111111111111111111111111111',
+      '2222222222222222222222222222222222222222',
+    ],
+    allCyclesAcceptedExactHeadCurrent: true,
+    distinctSourceRefs: true,
+    distinctSourceDigests: true,
+    strictlyIncreasingObservedAt: true,
+    readOnly: true,
+    writeAuthority: 'none',
+    proven: true,
+  };
+
+  assert.throws(() => buildControllerProducerReadiness({
+    observedAt: '2026-08-10T07:50:00Z',
+    adoptionReadiness,
+    producers: fixture.producers.map((row) => {
+      const producer = producerInput(row);
+      if (producer.projectId !== 'trainingos') return producer;
+      return {
+        ...producer,
+        structuredProducerContractObserved: true,
+        recurringStructuredProof: forgedProof,
+      };
+    }),
+  }), /embedded canonical cycle summaries/);
 });
