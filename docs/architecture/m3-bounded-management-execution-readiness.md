@@ -3,6 +3,7 @@
 Date: 2026-08-10  
 Management-plane owner: PR #125 / `agent/group-management-plane-m0`  
 Accepted authorization baseline: A7 merged by PR #139  
+Accepted controlled-delegation baseline: S8  
 Authority: observe-and-propose
 
 ## Current verdict
@@ -18,7 +19,7 @@ M3 = BLOCKED on G3 + G4
 A2 execution = UNAUTHORIZED
 ```
 
-M3 starts only after every required gate independently reaches `PASS`. Controller adoption, recurrence evidence, policy eligibility, provider ingestion, an authorization-core `allow`, S8 request construction, or source-side transport acknowledgement never grants destination execution authority by implication.
+M3 starts only after every required gate independently reaches `PASS`. Controller adoption, recurrence evidence, policy eligibility, provider ingestion, an authorization-core `allow`, S8 request construction, source transport acknowledgement, or destination admission never grants execution authority by implication.
 
 ---
 
@@ -30,7 +31,7 @@ Frozen accepted S8 product head:
 7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48
 ```
 
-S8 proves bounded delegation and destination-local authority. Source-side management authorization cannot replace destination-local admission, HumanGate, or effect control.
+S8 owns bounded delegation, destination-local admission, destination-local HumanGate, execution binding, result publication, and source receipt consumption. The management plane must compose with these owners rather than recreate them.
 
 ```text
 G1 = PASS
@@ -73,11 +74,7 @@ Controller source
 -> fixed three-Domain G3 gate
 ```
 
-A previously accepted attestation becomes stale when its repository main moves. Historical recurrence remains evidence of history; it is not current Domain truth.
-
-### M2.21 live revalidation snapshot
-
-Read-only audit at `2026-08-10T12:03:00Z`:
+Latest read-only audit remains the M2.21 snapshot at `2026-08-10T12:03:00Z`:
 
 ```text
 TrainingOS
@@ -85,8 +82,7 @@ TrainingOS
   current provider main          ca0491ed5166e8f00b8e96f3f4665963a004c860
   compare                        provider ahead by 1
   current adoption               STALE
-  native producer                enabled
-  observed schedule              hourly / minute 0
+  native producer                enabled / hourly minute 0
   structured producer contract   not proved
 
 TradeOS
@@ -103,8 +99,7 @@ Video / Shared Media
   compare                        identical
   current adoption               CURRENT
   independent canonical cycles   2
-  native producer                enabled
-  observed schedule              hourly / minute 36
+  native producer                enabled / hourly minute 36
   structured producer contract   not proved
 ```
 
@@ -131,9 +126,7 @@ current recurring structured producer  0 / 3
 G3 = PARTIAL
 ```
 
-The current `1 / 3` result is a truth-quality property: AIEXE stops carrying a Domain report forward when that Domain's repository moves.
-
-### Current shortest G3 path
+Current shortest G3 path:
 
 ```text
 1. TrainingOS emits a fresh canonical structured Controller attestation at current main
@@ -144,15 +137,13 @@ The current `1 / 3` result is a truth-quality property: AIEXE stops carrying a D
 6. fixed-scope G3 recomputes 3 / 3 current recurring structured producers
 ```
 
-Video already has two accepted source cycles; its remaining G3 blocker is producer-contract proof. AIEXE does not fabricate missing Domain sources and does not mutate external scheduler configuration to make this gate pass.
+AIEXE does not fabricate missing Domain sources and does not mutate external scheduler configuration to make this gate pass.
 
 ---
 
 ## G4 — A2 policy through accepted execution path
 
-### Accepted source chain through M2.22
-
-The source side now composes through the single accepted authorization and S8 owners:
+### Accepted/proved chain through M2.23
 
 ```text
 A2 management policy eligibility
@@ -161,163 +152,204 @@ A2 management policy eligibility
 -> M2.20 exact A2 -> authorization binding
 -> M2.21 canonical S8 DelegationRequest construction
 -> M2.22 canonical S8 source persistence + bounded transport submission
+-> M2.23 destination-local S8 receive + admission observation
+-> destination-local HumanGate state = requested when admissible
 ```
 
-Still-separated authority states:
+Authority remains separated:
 
 ```text
 policy eligible != authorization allow
 authorization allow != S8 request construction
 S8 request constructed != source transport submission
 source transport acknowledged != destination admission
-destination admission != HumanGate approval
-HumanGate approval != completed execution effect
+destination admission admissible != HumanGate approval
+HumanGate requested != HumanGate approved
+HumanGate approved != completed execution effect
+completed destination effect != source receipt consumption
 ```
 
 Consequential actions remain outside A2, including merge, deploy, payment/settlement/wallet/token, credential write, policy widening, Domain truth mutation, Production mutation, remote Worker control, and HumanGate decisions.
 
 ### M2.21 — authorization allow -> canonical S8 request
 
-Evidence:
-
 ```text
 src/management/policy/a2-s8-delegation-request-entry.cjs
 tests/m2-a2-s8-delegation-request-entry.test.cjs
 ```
 
-M2.21 prevents the caller from substituting `action`, `target`, `capabilityVersionId`, or arbitrary `payload`. Those values are derived from the already-bound A2 + A7 chain.
+The caller cannot substitute `action`, `target`, `capabilityVersionId`, or arbitrary payload. Those fields are derived from the already-bound A2 + A7 chain.
 
 ### M2.22 — canonical S8 request -> single S8 source owner -> bounded transport
-
-PR #125 now adds:
 
 ```text
 src/management/policy/a2-s8-source-submission.cjs
 tests/m2-a2-s8-source-submission.test.cjs
+schema: aiexe.a2-s8-source-submission.v1
 ```
 
-Schema:
+M2.22 uses only the accepted S8 source public service surface:
 
 ```text
-aiexe.a2-s8-source-submission.v1
+queryDelegationState
+createDelegationRequest
+pushDelegationRequest
 ```
 
-M2.22 does not import or recreate S8 transport/application ownership. It receives the canonical S8 service and uses only the accepted public source-side methods:
+It verifies exact source instance, peer binding, source/destination workspaces, request sequence, predecessor digest, persisted request id, and persisted request digest before transport. Exact acknowledged repeat is a no-op; uncertain transport outcome is review-needed with `automaticReplayAllowed = false`.
+
+M2.22 therefore proves authorized management instruction -> canonical S8 source persistence -> bounded S8 transport submission. It does not grant destination authority.
+
+### M2.23 — destination receive + fresh destination-local admission
+
+PR #125 now adds:
 
 ```text
-queryDelegationState(workspaceId)
-createDelegationRequest(...)
-pushDelegationRequest(...)
+src/management/policy/a2-s8-destination-admission.cjs
+tests/m2-a2-s8-destination-admission.test.cjs
+schema: aiexe.a2-s8-destination-admission.v1
 ```
 
-Before local persistence or network submission, M2.22 verifies current S8 source state:
+M2.23 accepts only:
 
 ```text
-source workspace exists
-configured S8 endpoint exists
-local source instance matches request
-active exact peer binding matches source/destination/workspaces
-request id has no conflicting persisted digest
-requestSequence is the exact next sequence
-previousRequestDigest equals the exact current predecessor digest
+sourceSubmission
+destinationWorkspaceId
+canonical s8Service
 ```
 
-It then asks the canonical S8 owner to persist the request and verifies:
+It does not accept caller-supplied peer, policy, grant, capability, provider, resource, scheduling, admission, HumanGate, approval, binding, Worker, or execution answers.
+
+The adapter uses only the existing destination owner methods:
 
 ```text
-persisted request id == M2.21 canonical request id
-persisted requestDigest == M2.21 canonical requestDigest
+queryDelegationState(destinationWorkspaceId)
+pullDelegationInbox({ workspaceId: destinationWorkspaceId })
 ```
 
-Only after that exact digest check does it call the canonical S8 owner's `pushDelegationRequest()`.
-
-### Exact-once / uncertainty containment
-
-M2.22 explicitly refuses source-side automatic replay:
+The canonical S8 destination owner itself receives the request, validates the request digest and exact peer scope, and re-reads destination-local authority facts including:
 
 ```text
-exact request already acknowledged
-  -> no-op; zero second transport submission
-
-exact request exists but is not safely acknowledged
-  -> review-needed no-op; zero automatic replay
-
-transport throws / outcome uncertain
-  -> transport_submission_outcome_uncertain
-  -> automaticReplayAllowed = false
-  -> later exact repeat does not POST again
+active destination peer binding
+active delegation policy
+local CapabilityInstallation
+local AgentCapabilityGrant
+local capability version
+local provider snapshot/currentness
+local resource availability
+local scheduling capacity
+pending/accepted delegation counts
 ```
 
-This prevents an ambiguous source transport failure from creating a duplicate downstream effect by blind retry.
+The resulting canonical admission snapshot is then checked back against the exact M2.22 `delegationRequestDigest`.
 
-### What M2.22 proves — and what it does not
+If destination-local admission is inadmissible, M2.23 observes the canonical `inadmissible` proposal and reason codes. It creates no HumanGate, acceptance, binding, Mission, Worker submission, or effect.
 
-The passing integration test uses the real `S8ApplicationService` and in-memory SQLite with an isolated test `SourceExchange`. It proves composition into the accepted S8 source owner without making a production or external Domain network request.
-
-After successful source acknowledgement:
+If destination-local admission is admissible, the accepted S8 owner creates only a destination-local delegation HumanGate request. M2.23 requires the exact state:
 
 ```text
-s8OwnerPreflightPerformed = true
-s8OwnerPreflightPassed = true
-s8RequestPersistencePerformed = true
-s8InvocationPerformed = true
-transportSubmissionAttempted = true
-transportSubmissionObserved = true
-transportSubmissionPerformed = true
-sourceSubmissionAccepted = true
+proposal.state    = waiting_human
+humanGate.state   = requested
+```
 
-automaticReplayAllowed = false
-delegationCreated = false
-destinationAdmissionPerformed = false
+and still fixes:
+
+```text
 destinationHumanGateDecisionCreated = false
+delegationCreated = false
+destinationExecutionBindingCreated = false
 destinationExecutionPerformed = false
 executionAuthorized = false
-domainWritePerformed = false
+domainWritePerformedByManagementLayer = false
+automaticReplayAllowed = false
 binding = false
-authority = s8-source-submission-proof-only
+authority = s8-destination-admission-observation-only
 ```
 
-Therefore M2.22 proves **authorized management instruction -> canonical S8 source persistence -> bounded S8 transport submission**, not destination authority or execution.
+Thus an admissible management request reaches the destination's canonical HumanGate queue but cannot cross it.
 
-### M2.22 first code-head validation
+### M2.23 fail-closed behavior
+
+Focused proof covers:
 
 ```text
-PR code head   8704ac91e45e88851eb3d5b052cba9a4c1a26989
+missing destination-local grant
+  -> admission inadmissible / local_grant_missing
+  -> no HumanGate / binding / effect
+
+tampered transport payload
+  -> canonical request digest/schema rejection
+  -> no proposal/admission promotion
+
+wrong destination Workspace
+  -> no request observation or promotion
+
+exact already-observed request
+  -> existing-exact no-pull no-op
+  -> no second inbox pull / no second HumanGate
+
+source result not safely acknowledged
+  -> zero destination-owner calls
+
+destination pull outcome uncertain
+  -> review-needed containment
+  -> no HumanGate decision / effect / automatic replay
+
+existing proposal already advanced beyond pending HumanGate
+  -> review-needed
+  -> management layer does not overwrite destination authority state
+```
+
+The management adapter imports no second S8 application/transport/admission owner and has no approval, rejection, local Mission creation, Worker execution, generic network, wallet, settlement, or provider-write primitive.
+
+### M2.23 first code-head validation
+
+```text
+PR code head   968e89b93e1fd9575ee613c1acaf710a0e674c20
 main            eb22e91d8bca1378fa87bfcf360c8b4a97574f82
-PR merge ref    c28ec9822e771b84783a4c0ec118f7b3bf0b1711
-workflow run    31388088047  SUCCESS
-job             93453047972  SUCCESS
+PR merge ref    3dfb9618acc385fb8275b23bd3da52e12db04eac
+workflow run    31391549005  SUCCESS
+job             93464240741  SUCCESS
 source syntax   PASS
-tests           589 / 589 PASS
-M2.22 focused   8 / 8 PASS
+tests           597 / 597 PASS
+M2.23 focused   8 / 8 PASS
 provider scan   PASS
 ```
 
-The workflow checked out:
+Workflow checkout identity:
 
 ```text
-c28ec9822e771b84783a4c0ec118f7b3bf0b1711
-= merge(8704ac91e45e88851eb3d5b052cba9a4c1a26989
+3dfb9618acc385fb8275b23bd3da52e12db04eac
+= merge(968e89b93e1fd9575ee613c1acaf710a0e674c20
         into eb22e91d8bca1378fa87bfcf360c8b4a97574f82)
 ```
 
 This is head-bound **PR merge-ref validation**, not standalone branch-head checkout validation.
 
+The integration proof uses isolated in-memory SQLite and a test delegation exchange. No production or external Domain S8 endpoint is contacted by M2.23 work.
+
 ### What still blocks G4
 
-The remaining G4 proof is now destination-side and receipt-side:
+Already proved:
 
 ```text
-already proved
-A2 -> A7 -> canonical S8 request -> canonical S8 source persist/push
+A2 -> A7
+-> canonical S8 request
+-> canonical S8 source persist/push
+-> destination receive
+-> destination-local fresh admission
+-> destination-local HumanGate requested when admissible
+```
 
-still required
--> destination-local pull / receive
--> destination-local admission + fresh authority/policy/capability/resource revalidation
--> destination-local HumanGate when required
+Still required:
+
+```text
+-> destination-local HumanGate decision by the destination authority owner
+-> fresh acceptance snapshot / destination execution binding
 -> exactly one explicitly bounded approved effect
--> destination execution receipt
--> source receipt pull + explicit receipt consumption
+-> destination execution receipt bound to exact request/effect
+-> source receipt pull
+-> explicit source receipt consumption
 -> management evidence ingestion bound to the same request/effect
 ```
 
@@ -326,16 +358,16 @@ Required invariants:
 ```text
 unauthorized effects = 0
 management layer cannot manufacture AuthorityGrant
-management layer cannot make HumanGate decision
+management layer cannot decide destination HumanGate
 source authorization cannot bypass destination-local admission
 source transport acknowledgement is not execution authority
+admission admissible is not approval
 request identity binds policy + authorization + capability + target + evidence
 receipt identity binds back to the exact accepted request/effect
-uncertain source transport outcome never auto-replays
-uncertain destination effect never auto-replays
+uncertain transport/effect never auto-replays
 ```
 
-Until that end-to-end path is proven:
+Until that end-to-end effect-and-receipt path is proven:
 
 ```text
 G4 = PARTIAL / BLOCKED FOR M3
@@ -378,14 +410,16 @@ HistoricalRecurrence != CurrentProducerReadiness
 SchedulerEnabled != StructuredProducerContract
 PersistenceObserved != StructuredProducerContract
 ManagementProposal != ExecutionAuthority
-A2 eligibility != execution.authorization.v1 allow
-AuthorizationAllow != S8 request construction
-S8 request construction != source transport acknowledgement
+A2Eligibility != AuthorizationAllow
+AuthorizationAllow != S8RequestConstruction
+S8RequestConstruction != SourceTransportAck
 SourceTransportAck != DestinationAdmission
-DestinationAdmission != HumanGate approval
-HumanGate status != AIEXE permission to decide it
-AuthorizationDecision != execution effect
+DestinationAdmission != HumanGateApproval
+HumanGateRequested != HumanGateApproved
+HumanGateStatus != AIEXEPermissionToDecideIt
+DestinationEffect != SourceReceiptConsumption
 TransportUncertain != RetryPermission
+EffectUncertain != RetryPermission
 G3 PASS != G4 PASS
 ```
 
@@ -396,8 +430,8 @@ G3 PASS != G4 PASS
 3. observe producer topology without mutating external scheduler configuration;
 4. revalidate currentness on every head movement;
 5. continue authorized recurring read-only provider ingestion;
-6. keep A7 as the single accepted authorization owner and S8 as the single delegation/transport owner;
-7. advance G4 only through destination-local S8 admission, HumanGate, bounded effect, and canonical receipts;
+6. keep A7 as the single accepted authorization owner and S8 as the single delegation/transport/destination-authority owner;
+7. advance G4 only through destination-owned HumanGate, bounded effect, canonical receipt, and explicit source receipt consumption;
 8. keep ambiguous transport/effect outcomes fail-closed with no automatic replay;
 9. keep the owner cockpit fail-closed on unknown or stale Domain truth.
 
@@ -407,9 +441,9 @@ G3 PASS != G4 PASS
 second authorization owner = NO
 second S8 owner = NO
 A2 execution enabled = NO
-production/external S8 submission in M2.22 work = NO
-destination admission performed by management layer = NO
+production/external S8 submission in M2.22/M2.23 work = NO
 HumanGate decision by management layer = NO
+destination execution effect by management layer = NO
 external Domain repository mutation = NO
 external Domain scheduler mutation = NO
 LLM prose-to-truth extraction = NO
