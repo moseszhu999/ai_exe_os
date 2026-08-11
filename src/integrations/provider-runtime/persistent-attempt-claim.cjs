@@ -333,12 +333,15 @@ class ProviderExecutionAttemptClaimGate {
 
 async function executePersistedModelProviderAttempt({ claimGate, workspaceId, ...input }) {
   if (!(claimGate instanceof ProviderExecutionAttemptClaimGate)) throw new TypeError('claimGate must be ProviderExecutionAttemptClaimGate');
+  if (!input.executionAttempt) throw new TypeError('persistent provider execution requires explicit executionAttempt');
+  const explicitAttempt = requireAttempt(input.executionAttempt);
   try {
     const result = await executeModelProviderAttempt({
       ...input,
+      executionAttempt: explicitAttempt,
       effectClaim: claimGate.effectClaim({ workspaceId }),
     });
-    const persistentClaim = claimGate.recordOutcome({ workspaceId, attempt: result.attempt, outcome: result.executionOutcome });
+    const persistentClaim = claimGate.recordOutcome({ workspaceId, attempt: explicitAttempt, outcome: result.executionOutcome });
     return deepFreeze({ ...result, persistentClaim, persistentDuplicate: false });
   } catch (error) {
     if (error instanceof ProviderExecutionClaimNotAcquiredError) {
@@ -346,16 +349,14 @@ async function executePersistedModelProviderAttempt({ claimGate, workspaceId, ..
         ok: false,
         result: null,
         receipt: null,
-        attempt: null,
+        attempt: explicitAttempt,
         executionOutcome: null,
         persistentClaim: error.claim,
         persistentDuplicate: true,
       });
     }
     if (error instanceof ProviderExecutionUncertainError) {
-      const attempt = input.executionAttempt || null;
-      if (!attempt) throw new Error('persistent provider execution requires explicit executionAttempt for uncertain outcome recording');
-      const persistentClaim = claimGate.recordOutcome({ workspaceId, attempt, outcome: error.outcome });
+      const persistentClaim = claimGate.recordOutcome({ workspaceId, attempt: explicitAttempt, outcome: error.outcome });
       error.persistentClaim = persistentClaim;
     }
     throw error;
@@ -364,12 +365,15 @@ async function executePersistedModelProviderAttempt({ claimGate, workspaceId, ..
 
 async function executePersistedMcpProviderAttempt({ claimGate, workspaceId, ...input }) {
   if (!(claimGate instanceof ProviderExecutionAttemptClaimGate)) throw new TypeError('claimGate must be ProviderExecutionAttemptClaimGate');
+  if (!input.executionAttempt) throw new TypeError('persistent MCP execution requires explicit executionAttempt');
+  const explicitAttempt = requireAttempt(input.executionAttempt);
   try {
     const result = await executeMcpProviderAttempt({
       ...input,
+      executionAttempt: explicitAttempt,
       effectClaim: claimGate.effectClaim({ workspaceId }),
     });
-    const persistentClaim = claimGate.recordOutcome({ workspaceId, attempt: result.attempt, outcome: result.executionOutcome });
+    const persistentClaim = claimGate.recordOutcome({ workspaceId, attempt: explicitAttempt, outcome: result.executionOutcome });
     return deepFreeze({ ...result, persistentClaim, persistentDuplicate: false });
   } catch (error) {
     if (error instanceof ProviderExecutionClaimNotAcquiredError) {
@@ -377,16 +381,14 @@ async function executePersistedMcpProviderAttempt({ claimGate, workspaceId, ...i
         ok: false,
         result: null,
         receipt: null,
-        attempt: null,
+        attempt: explicitAttempt,
         executionOutcome: null,
         persistentClaim: error.claim,
         persistentDuplicate: true,
       });
     }
     if (error instanceof ProviderExecutionUncertainError) {
-      const attempt = input.executionAttempt || null;
-      if (!attempt) throw new Error('persistent MCP execution requires explicit executionAttempt for uncertain outcome recording');
-      const persistentClaim = claimGate.recordOutcome({ workspaceId, attempt, outcome: error.outcome });
+      const persistentClaim = claimGate.recordOutcome({ workspaceId, attempt: explicitAttempt, outcome: error.outcome });
       error.persistentClaim = persistentClaim;
     }
     throw error;
