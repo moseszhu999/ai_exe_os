@@ -414,7 +414,46 @@ test('known failure cannot be silently converted into reviewed uncertain retry',
   }), /requires a prior uncertain outcome/);
 });
 
-test('reviewed retry executes once with a new attempt and fresh canonical authorization', async () => {
+test('reviewed retry execution refuses a retry attempt unless the exact prior uncertain outcome is supplied again', async () => {
+  const plan = modelPlan();
+  const first = modelDeps(plan, async () => { throw new Error('unknown result'); });
+  let priorOutcome;
+  await assert.rejects(
+    () => executeModelProviderAttempt({
+      plan,
+      authorizationRequest: authorizationFor(plan),
+      ...first,
+      at: AT,
+      outcomeClock: fixedOutcomeClock('2026-08-11T15:30:00.500Z'),
+    }),
+    (error) => {
+      priorOutcome = error.outcome;
+      return true;
+    },
+  );
+  const retryAttempt = createReviewedProviderRetryAttempt({
+    priorOutcome,
+    attemptId: 'attempt-retry-missing-evidence',
+    idempotencyKey: 'idem.retry-missing-evidence',
+    createdAt: RETRY_AT,
+  });
+  const second = modelDeps(plan);
+  await assert.rejects(
+    () => executeModelProviderAttempt({
+      executionAttempt: retryAttempt,
+      plan,
+      authorizationRequest: authorizationFor(plan, RETRY_AT),
+      ...second,
+      at: RETRY_AT,
+    }),
+    /requires exact prior uncertain outcome/,
+  );
+  assert.equal(second.calls.endpoint, 0);
+  assert.equal(second.calls.credential, 0);
+  assert.equal(second.calls.transport, 0);
+});
+
+test('reviewed retry executes once with a new attempt, exact prior evidence, and fresh canonical authorization', async () => {
   const plan = modelPlan();
   const first = modelDeps(plan, async () => { throw new Error('unknown network result'); });
   let priorOutcome;
@@ -442,6 +481,7 @@ test('reviewed retry executes once with a new attempt and fresh canonical author
   const second = modelDeps(plan);
   const result = await executeModelProviderAttempt({
     executionAttempt: retryAttempt,
+    priorOutcome,
     plan,
     authorizationRequest: authorizationFor(plan, RETRY_AT),
     ...second,
@@ -509,6 +549,7 @@ test('reviewed retry with stale authorization is blocked before the effect port 
   await assert.rejects(
     () => executeModelProviderAttempt({
       executionAttempt: retryAttempt,
+      priorOutcome,
       plan,
       authorizationRequest: authorizationFor(plan, AT),
       ...second,
