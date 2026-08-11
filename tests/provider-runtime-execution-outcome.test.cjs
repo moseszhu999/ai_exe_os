@@ -350,10 +350,17 @@ test('MCP transport exception uses the same uncertain outcome contract and never
 
 test('reviewed retry requires prior uncertain evidence, a new attempt identity, and a new runtime idempotency key', async () => {
   const plan = modelPlan();
+  const initialAttempt = createInitialProviderExecutionAttempt({
+    plan,
+    attemptId: 'attempt-reviewed-retry-original',
+    idempotencyKey: 'idem.reviewed-retry-original',
+    createdAt: AT,
+  });
   const deps = modelDeps(plan, async () => { throw new Error('timeout'); });
   let priorOutcome;
   await assert.rejects(
     () => executeModelProviderAttempt({
+      executionAttempt: initialAttempt,
       plan,
       authorizationRequest: authorizationFor(plan),
       ...deps,
@@ -380,7 +387,7 @@ test('reviewed retry requires prior uncertain evidence, a new attempt identity, 
   assert.throws(() => createReviewedProviderRetryAttempt({
     priorOutcome,
     attemptId: 'attempt-reviewed-retry-bad-key',
-    idempotencyKey: 'idem.' + priorOutcome.retry.idempotencyKeyDigest.slice(7, 39),
+    idempotencyKey: 'idem.reviewed-retry-original',
     createdAt: RETRY_AT,
   }), /new runtime idempotency key/);
 });
