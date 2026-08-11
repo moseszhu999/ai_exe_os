@@ -8,7 +8,8 @@ const { canonicalize } = require('./index.cjs');
 const { PROVIDER_ADAPTER_PLAN_SCHEMA } = require('./adapter-plan.cjs');
 
 const PROVIDER_EXECUTION_RECEIPT_SCHEMA = 'provider.execution.receipt.v1';
-const SUPPORTED_PROTOCOLS = Object.freeze(['openai.responses', 'openai.chat-completions']);
+const ANTHROPIC_API_VERSION = '2023-06-01';
+const SUPPORTED_PROTOCOLS = Object.freeze(['openai.responses', 'openai.chat-completions', 'anthropic.messages']);
 const SUPPORTED_RISK_CLASSES = Object.freeze(['observe', 'draft']);
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const MAX_SECRET_CHARS = 8192;
@@ -53,6 +54,21 @@ function expectedAuthorizationBinding(plan) {
   });
 }
 
+function expectedProtocolOperation(protocolFamily) {
+  if (protocolFamily === 'openai.responses') return 'responses.create';
+  if (protocolFamily === 'openai.chat-completions') return 'chat.completions.create';
+  if (protocolFamily === 'anthropic.messages') return 'messages.create';
+  throw new Error(`P2 model executor does not support protocol family: ${protocolFamily}`);
+}
+
+function protocolVersionFor(protocolFamily) {
+  return protocolFamily === 'anthropic.messages' ? ANTHROPIC_API_VERSION : null;
+}
+
+function credentialSchemeFor(protocolFamily) {
+  return protocolFamily === 'anthropic.messages' ? 'api_key' : 'bearer';
+}
+
 function normalizePlan(plan) {
   const input = assertPlainObject(plan, 'provider adapter plan');
   if (input.schema !== PROVIDER_ADAPTER_PLAN_SCHEMA) throw new Error(`Unsupported provider adapter plan schema: ${input.schema}`);
@@ -88,8 +104,9 @@ function normalizePlan(plan) {
   const humanGatePolicy = requiredText(input.semanticOperation.humanGatePolicy, 'plan Human Gate policy', 20);
   if (!['never', 'task', 'action'].includes(humanGatePolicy)) throw new Error('plan Human Gate policy is unsupported');
   const protocolOperation = requiredText(input.protocolCall?.protocolOperation, 'plan protocol operation', 120);
-  const expectedProtocolOperation = input.protocolFamily === 'openai.responses' ? 'responses.create' : 'chat.completions.create';
-  if (protocolOperation !== expectedProtocolOperation) throw new Error('plan protocol operation drifted from protocol family');
+  if (protocolOperation !== expectedProtocolOperation(input.protocolFamily)) {
+    throw new Error('plan protocol operation drifted from protocol family');
+  }
   const payload = assertPlainObject(input.protocolCall?.payload, 'plan protocol payload');
   const flags = assertPlainObject(input.flags, 'plan flags');
   const allowedFlags = new Set(['authorizationDecisionCreated', 'humanGateDecisionCreated', 'credentialResolved', 'networkPerformed', 'externalActionPerformed']);
@@ -99,7 +116,7 @@ function normalizePlan(plan) {
   for (const [key, value] of Object.entries(flags)) {
     if (value !== false) throw new Error(`provider adapter plan is not execution-pristine: flags.${key}`);
   }
-  const normalized = deepFreeze({
+  return deepFreeze({
     schema: input.schema,
     requestId,
     requestDigest,
@@ -109,6 +126,7 @@ function normalizePlan(plan) {
     providerManifestDigest,
     providerKind: requiredText(input.providerKind, 'plan provider kind', 40),
     protocolFamily: input.protocolFamily,
+    protocolVersion: protocolVersionFor(input.protocolFamily),
     semanticOperation: deepFreeze({
       operationId,
       riskClass: input.semanticOperation.riskClass,
@@ -118,7 +136,6 @@ function normalizePlan(plan) {
     transportBinding: deepFreeze({ endpointRef, credentialRef, networkPolicyRef }),
     protocolCall: deepFreeze({ protocolOperation, payload: structuredClone(payload) }),
   });
-  return normalized;
 }
 
 function assertAuthorization(plan, authorizationRequest, at) {
@@ -150,6 +167,7 @@ async function resolveEndpoint(plan, endpointResolver) {
   const raw = await endpointResolver.resolve({
     providerId: plan.providerId,
     protocolFamily: plan.protocolFamily,
+    protocolVersion: plan.protocolVersion,
     endpointRef: plan.transportBinding.endpointRef,
     networkPolicyRef: plan.transportBinding.networkPolicyRef,
   });
@@ -171,15 +189,33 @@ async function resolveCredential(plan, credentialResolver) {
   if (!credentialResolver || typeof credentialResolver.resolve !== 'function') throw new TypeError('credentialResolver.resolve is required');
   const raw = await credentialResolver.resolve({
     providerId: plan.providerId,
+    protocolFamily: plan.protocolFamily,
     credentialRef: plan.transportBinding.credentialRef,
   });
   const binding = assertPlainObject(raw, 'resolved credential binding');
   if (binding.credentialRef !== plan.transportBinding.credentialRef) throw new Error('resolved credentialRef does not match exact provider plan');
   if (binding.status !== 'ready') throw new Error('resolved credential is not ready');
-  if (binding.scheme !== 'bearer') throw new Error('P2 model executor requires bearer credential scheme');
-  const secret = requiredText(binding.secret, 'resolved bearer credential', MAX_SECRET_CHARS);
-  if (/\r|\n/.test(secret)) throw new Error('resolved bearer credential contains forbidden control characters');
+  const expectedScheme = credentialSchemeFor(plan.protocolFamily);
+  if (binding.scheme !== expectedScheme) {
+    throw new Error(`P2 model executor requires ${expectedScheme} credential scheme for ${plan.protocolFamily}`);
+  }
+  const secret = requiredText(binding.secret, 'resolved model credential', MAX_SECRET_CHARS);
+  if (/\r|\n/.test(secret)) throw new Error('resolved model credential contains forbidden control characters');
   return Object.freeze({ credentialRef: binding.credentialRef, scheme: binding.scheme, secret });
+}
+
+function headersForPlan(plan, credential) {
+  if (plan.protocolFamily === 'anthropic.messages') {
+    return Object.freeze({
+      'x-api-key': credential.secret,
+      'anthropic-version': ANTHROPIC_API_VERSION,
+      'content-type': 'application/json',
+    });
+  }
+  return Object.freeze({
+    authorization: `Bearer ${credential.secret}`,
+    'content-type': 'application/json',
+  });
 }
 
 function normalizeTransportResponse(raw) {
@@ -215,6 +251,7 @@ function makeReceipt({ plan, decision, endpoint, response, startedAt, completedA
     providerContractId: plan.providerContractId,
     providerManifestDigest: plan.providerManifestDigest,
     protocolFamily: plan.protocolFamily,
+    protocolVersion: plan.protocolVersion,
     protocolOperation: plan.protocolCall.protocolOperation,
     semanticOperationId: plan.semanticOperation.operationId,
     riskClass: plan.semanticOperation.riskClass,
@@ -265,12 +302,10 @@ async function executeProviderAdapterPlan({
     rawResponse = await transport.invoke({
       providerId: normalizedPlan.providerId,
       protocolFamily: normalizedPlan.protocolFamily,
+      protocolVersion: normalizedPlan.protocolVersion,
       url: endpoint.url,
       method: 'POST',
-      headers: Object.freeze({
-        authorization: `Bearer ${credential.secret}`,
-        'content-type': 'application/json',
-      }),
+      headers: headersForPlan(normalizedPlan, credential),
       body: JSON.stringify(normalizedPlan.protocolCall.payload),
     });
   } catch {
@@ -291,6 +326,7 @@ async function executeProviderAdapterPlan({
 
 module.exports = {
   PROVIDER_EXECUTION_RECEIPT_SCHEMA,
+  ANTHROPIC_API_VERSION,
   executeProviderAdapterPlan,
   expectedAuthorizationBinding,
 };
