@@ -294,7 +294,14 @@ function wrapSingleEffectPort(effect, label, state, effectClaim, effectContext) 
   if (typeof effect !== 'function') throw new TypeError(`${label} is required`);
   if (effectClaim != null && typeof effectClaim !== 'function') throw new TypeError('effectClaim must be a function');
   return async (request) => {
-    if (effectClaim) await effectClaim(effectContext);
+    if (effectClaim) {
+      try {
+        await effectClaim(effectContext);
+      } catch (error) {
+        state.preEffectClaimError = error;
+        throw error;
+      }
+    }
     state.invocations += 1;
     if (state.invocations !== 1) throw new Error('provider execution attempted more than one network effect in one attempt');
     state.started = true;
@@ -356,7 +363,7 @@ async function executeModelProviderAttempt({
 }) {
   const at = input.at || input.authorizationRequest?.observedAt;
   const attempt = resolveAttempt({ plan: input.plan, executionAttempt, priorOutcome, at });
-  const state = { started: false, invocations: 0 };
+  const state = { started: false, invocations: 0, preEffectClaimError: null };
   const transport = assertPlainObject(input.transport, 'transport');
   const wrappedTransport = Object.freeze({
     invoke: wrapSingleEffectPort(
@@ -376,6 +383,7 @@ async function executeModelProviderAttempt({
       executionOutcome: outcomeFromKnownResult({ attempt, plan: input.plan, result, completedAt }),
     });
   } catch (error) {
+    if (!state.started && state.preEffectClaimError) throw state.preEffectClaimError;
     if (!state.started) throw error;
     if (state.invocations !== 1) throw error;
     const completedAt = completionTime(outcomeClock, at);
@@ -398,7 +406,7 @@ async function executeMcpProviderAttempt({
 }) {
   const at = input.at || input.authorizationRequest?.observedAt;
   const attempt = resolveAttempt({ plan: input.plan, executionAttempt, priorOutcome, at });
-  const state = { started: false, invocations: 0 };
+  const state = { started: false, invocations: 0, preEffectClaimError: null };
   const mcpTransport = assertPlainObject(input.mcpTransport, 'mcpTransport');
   const wrappedMcpTransport = Object.freeze({
     invokeTool: wrapSingleEffectPort(
@@ -418,6 +426,7 @@ async function executeMcpProviderAttempt({
       executionOutcome: outcomeFromKnownResult({ attempt, plan: input.plan, result, completedAt }),
     });
   } catch (error) {
+    if (!state.started && state.preEffectClaimError) throw state.preEffectClaimError;
     if (!state.started) throw error;
     if (state.invocations !== 1) throw error;
     const completedAt = completionTime(outcomeClock, at);
