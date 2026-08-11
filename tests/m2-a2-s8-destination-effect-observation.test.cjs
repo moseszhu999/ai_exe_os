@@ -46,7 +46,7 @@ class FakeWorkerManager {
 class Exchange {
   constructor() { this.requests = []; }
   async submitRequest(request) { this.requests.push(structuredClone(request)); return { state: 'accepted', reasonCode: 'stored' }; }
-  async readInbox({ destinationInstanceId, destinationWorkspaceId }) { return this.requests.filter((item) => item.destinationInstanceId === destinationInstanceId && item.destinationWorkspaceId === destinationWorkspaceId).map(structuredClone); }
+  async readInbox({ destinationInstanceId, destinationWorkspaceId }) { return this.requests.filter((item) => item.destinationInstanceId === destinationInstanceId && item.destinationWorkspaceId === destinationWorkspaceId).map((item) => structuredClone(item)); }
   async acknowledgeRequest(input) { return { ...input }; }
   async readCancellations() { return []; }
 }
