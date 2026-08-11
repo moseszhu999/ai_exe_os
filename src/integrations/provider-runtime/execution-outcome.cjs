@@ -137,6 +137,13 @@ function normalizeOutcome(value, label = 'provider execution outcome') {
   const base = { ...outcome };
   delete base.outcomeDigest;
   if (digest(base) !== supplied) throw new Error(`${label} digest mismatch`);
+  const attemptDigest = assertDigest(outcome.attemptDigest, `${label} attempt digest`);
+  if (outcome.attemptRef !== `provattempt_${attemptDigest.slice(7, 31)}`) {
+    throw new Error(`${label} attempt ref does not match attempt digest`);
+  }
+  const retry = assertPlainObject(outcome.retry, `${label} retry evidence`);
+  assertDigest(retry.idempotencyKeyDigest, `${label} idempotency key digest`);
+  if (retry.automaticRetryPerformed !== false) throw new Error(`${label} cannot claim automatic retry`);
   return outcome;
 }
 
@@ -173,11 +180,38 @@ function assertAttemptMatchesPlan(attempt, plan) {
   delete base.attemptDigest;
   if (digest(base) !== supplied) throw new Error('provider execution attempt digest mismatch');
   if (value.attemptRef !== `provattempt_${supplied.slice(7, 31)}`) throw new Error('provider execution attempt ref mismatch');
+  assertDigest(value.idempotencyKeyDigest, 'provider execution attempt idempotency key digest');
+  if (typeof value.reviewedRetry !== 'boolean') throw new Error('provider execution attempt reviewedRetry must be boolean');
+  if (value.reviewedRetry && value.priorAttemptRef == null) throw new Error('reviewed retry attempt requires priorAttemptRef');
+  if (!value.reviewedRetry && value.priorAttemptRef != null) throw new Error('initial provider attempt must not declare priorAttemptRef');
+  if (value.priorAttemptRef != null && !/^provattempt_[a-f0-9]{24}$/.test(value.priorAttemptRef)) {
+    throw new Error('provider execution attempt priorAttemptRef is invalid');
+  }
   const context = planContext(plan);
   if (value.requestId !== context.requestId) throw new Error('provider execution attempt requestId does not match exact plan');
   if (value.requestDigest !== context.requestDigest) throw new Error('provider execution attempt requestDigest does not match exact plan');
   if (value.planDigest !== context.planDigest) throw new Error('provider execution attempt planDigest does not match exact plan');
   return value;
+}
+
+function assertRetryEvidence(attempt, priorOutcome) {
+  if (!attempt.reviewedRetry) {
+    if (priorOutcome != null) throw new Error('initial provider attempt must not supply prior retry outcome');
+    return null;
+  }
+  if (priorOutcome == null) throw new Error('reviewed retry execution requires exact prior uncertain outcome');
+  const prior = normalizeOutcome(priorOutcome, 'reviewed retry prior outcome');
+  if (prior.outcome !== 'uncertain' || prior.retry.reviewedRetryRequired !== true) {
+    throw new Error('reviewed retry execution requires retry-required uncertain outcome');
+  }
+  if (attempt.priorAttemptRef !== prior.attemptRef) throw new Error('reviewed retry priorAttemptRef does not match prior uncertain outcome');
+  if (attempt.requestId !== prior.requestId) throw new Error('reviewed retry requestId drifted from prior uncertain outcome');
+  if (attempt.requestDigest !== prior.requestDigest) throw new Error('reviewed retry requestDigest drifted from prior uncertain outcome');
+  if (attempt.planDigest !== prior.planDigest) throw new Error('reviewed retry planDigest drifted from prior uncertain outcome');
+  if (attempt.idempotencyKeyDigest === prior.retry.idempotencyKeyDigest) {
+    throw new Error('reviewed retry execution reused prior runtime idempotency key');
+  }
+  return prior;
 }
 
 function automaticInitialAttempt(plan, at) {
@@ -206,7 +240,9 @@ function authorizationEvidence(authorizationRequest) {
 
 function buildOutcome({ attempt, context, authorization, receipt, outcome, knownFailureKind, completedAt, uncertainty }) {
   if (!OUTCOMES.includes(outcome)) throw new Error(`Unsupported provider execution outcome: ${outcome}`);
-  const completed = iso(completedAt, 'provider execution outcome completedAt').text;
+  const completed = iso(completedAt, 'provider execution outcome completedAt');
+  const started = iso(attempt.createdAt, 'provider execution attempt createdAt');
+  if (completed.timestamp < started.timestamp) throw new Error('provider execution outcome completedAt must not be before attempt createdAt');
   const core = {
     schema: PROVIDER_EXECUTION_OUTCOME_SCHEMA,
     attemptRef: attempt.attemptRef,
@@ -227,7 +263,7 @@ function buildOutcome({ attempt, context, authorization, receipt, outcome, known
     credentialRefs: context.credentialRefs,
     networkPolicyRef: context.networkPolicyRef,
     startedAt: attempt.createdAt,
-    completedAt: completed,
+    completedAt: completed.text,
     outcome,
     knownFailureKind: knownFailureKind || null,
     statusCode: receipt?.statusCode ?? null,
@@ -264,9 +300,11 @@ function wrapSingleEffectPort(effect, label, state) {
   };
 }
 
-function resolveAttempt({ plan, executionAttempt, at }) {
+function resolveAttempt({ plan, executionAttempt, priorOutcome, at }) {
   const attempt = executionAttempt || automaticInitialAttempt(plan, at);
-  return assertAttemptMatchesPlan(attempt, plan);
+  const normalized = assertAttemptMatchesPlan(attempt, plan);
+  assertRetryEvidence(normalized, priorOutcome);
+  return normalized;
 }
 
 function completionTime(clock, fallback) {
@@ -309,11 +347,12 @@ function uncertainOutcome({ attempt, plan, authorizationRequest, completedAt }) 
 
 async function executeModelProviderAttempt({
   executionAttempt,
+  priorOutcome,
   outcomeClock = { now: () => new Date().toISOString() },
   ...input
 }) {
   const at = input.at || input.authorizationRequest?.observedAt;
-  const attempt = resolveAttempt({ plan: input.plan, executionAttempt, at });
+  const attempt = resolveAttempt({ plan: input.plan, executionAttempt, priorOutcome, at });
   const state = { started: false, invocations: 0 };
   const transport = assertPlainObject(input.transport, 'transport');
   const wrappedTransport = Object.freeze({
@@ -343,11 +382,12 @@ async function executeModelProviderAttempt({
 
 async function executeMcpProviderAttempt({
   executionAttempt,
+  priorOutcome,
   outcomeClock = { now: () => new Date().toISOString() },
   ...input
 }) {
   const at = input.at || input.authorizationRequest?.observedAt;
-  const attempt = resolveAttempt({ plan: input.plan, executionAttempt, at });
+  const attempt = resolveAttempt({ plan: input.plan, executionAttempt, priorOutcome, at });
   const state = { started: false, invocations: 0 };
   const mcpTransport = assertPlainObject(input.mcpTransport, 'mcpTransport');
   const wrappedMcpTransport = Object.freeze({
