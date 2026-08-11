@@ -290,9 +290,11 @@ class ProviderExecutionUncertainError extends Error {
   }
 }
 
-function wrapSingleEffectPort(effect, label, state) {
+function wrapSingleEffectPort(effect, label, state, effectClaim, effectContext) {
   if (typeof effect !== 'function') throw new TypeError(`${label} is required`);
+  if (effectClaim != null && typeof effectClaim !== 'function') throw new TypeError('effectClaim must be a function');
   return async (request) => {
+    if (effectClaim) await effectClaim(effectContext);
     state.invocations += 1;
     if (state.invocations !== 1) throw new Error('provider execution attempted more than one network effect in one attempt');
     state.started = true;
@@ -348,6 +350,7 @@ function uncertainOutcome({ attempt, plan, authorizationRequest, completedAt }) 
 async function executeModelProviderAttempt({
   executionAttempt,
   priorOutcome,
+  effectClaim,
   outcomeClock = { now: () => new Date().toISOString() },
   ...input
 }) {
@@ -356,7 +359,13 @@ async function executeModelProviderAttempt({
   const state = { started: false, invocations: 0 };
   const transport = assertPlainObject(input.transport, 'transport');
   const wrappedTransport = Object.freeze({
-    invoke: wrapSingleEffectPort(transport.invoke?.bind(transport), 'transport.invoke', state),
+    invoke: wrapSingleEffectPort(
+      transport.invoke?.bind(transport),
+      'transport.invoke',
+      state,
+      effectClaim,
+      Object.freeze({ attempt, plan: input.plan }),
+    ),
   });
   try {
     const result = await executeProviderAdapterPlan({ ...input, transport: wrappedTransport });
@@ -383,6 +392,7 @@ async function executeModelProviderAttempt({
 async function executeMcpProviderAttempt({
   executionAttempt,
   priorOutcome,
+  effectClaim,
   outcomeClock = { now: () => new Date().toISOString() },
   ...input
 }) {
@@ -391,7 +401,13 @@ async function executeMcpProviderAttempt({
   const state = { started: false, invocations: 0 };
   const mcpTransport = assertPlainObject(input.mcpTransport, 'mcpTransport');
   const wrappedMcpTransport = Object.freeze({
-    invokeTool: wrapSingleEffectPort(mcpTransport.invokeTool?.bind(mcpTransport), 'mcpTransport.invokeTool', state),
+    invokeTool: wrapSingleEffectPort(
+      mcpTransport.invokeTool?.bind(mcpTransport),
+      'mcpTransport.invokeTool',
+      state,
+      effectClaim,
+      Object.freeze({ attempt, plan: input.plan }),
+    ),
   });
   try {
     const result = await executeMcpProviderAdapterPlan({ ...input, mcpTransport: wrappedMcpTransport });
@@ -419,6 +435,8 @@ module.exports = {
   PROVIDER_EXECUTION_ATTEMPT_SCHEMA,
   PROVIDER_EXECUTION_OUTCOME_SCHEMA,
   ProviderExecutionUncertainError,
+  assertAttemptMatchesPlan,
+  normalizeOutcome,
   createInitialProviderExecutionAttempt,
   createReviewedProviderRetryAttempt,
   executeModelProviderAttempt,
