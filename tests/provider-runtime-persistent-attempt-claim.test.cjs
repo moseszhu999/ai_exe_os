@@ -35,10 +35,10 @@ const WINDOW = Object.freeze({
 });
 const MIGRATIONS = join(__dirname, '..', 'migrations');
 
-function withDatabase(fn) {
+async function withDatabase(fn) {
   const directory = mkdtempSync(join(tmpdir(), 'ai-exe-provider-claim-'));
   const databasePath = join(directory, 'state.sqlite');
-  try { return fn({ directory, databasePath }); }
+  try { return await fn({ directory, databasePath }); }
   finally { rmSync(directory, { recursive: true, force: true }); }
 }
 
