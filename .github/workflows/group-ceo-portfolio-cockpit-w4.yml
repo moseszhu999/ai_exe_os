@@ -35,6 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           git diff --name-only "${{ github.event.pull_request.base.sha }}" "$TARGET_SHA" | tee /tmp/w4-files.txt
+          test "$(wc -l < /tmp/w4-files.txt | tr -d ' ')" = '4'
           ! grep -E '^src/management/' /tmp/w4-files.txt
           grep -Fx 'src/group-fabric/group-ceo-portfolio-cockpit.cjs' /tmp/w4-files.txt
           grep -Fx 'tests/group-ceo-portfolio-cockpit-w4.test.cjs' /tmp/w4-files.txt
@@ -70,4 +71,4 @@ jobs:
           grep -F "externalActionPerformed: false" "$SRC"
           grep -F "paymentPerformed: false" "$SRC"
           grep -F "productionDeploymentPerformed: false" "$SRC"
-          ! grep -RInE 'llmFactGenerationAllowed:[[:space:]]*true|managementPlaneMutationPerformed:[[:space:]]*true|decisionTruthCreated:[[:space:]]*true|humanGateDecisionCreated:[[:space:]]*true|executionAuthorized:[[:space:]]*true|externalActionPerformed:[[:space:]]*true|paymentPerformed:[[:space:]]*true|productionDeploymentPerformed:[[:space:]]*true' src/group-fabric/group-ceo-portfolio-cockpit.cjs tests/group-ceo-portfolio-cockpit-w4.test.cjs
+          ! grep -InE 'llmFactGenerationAllowed:[[:space:]]*true|managementPlaneMutationPerformed:[[:space:]]*true|decisionTruthCreated:[[:space:]]*true|humanGateDecisionCreated:[[:space:]]*true|executionAuthorized:[[:space:]]*true|externalActionPerformed:[[:space:]]*true|paymentPerformed:[[:space:]]*true|productionDeploymentPerformed:[[:space:]]*true' "$SRC"
