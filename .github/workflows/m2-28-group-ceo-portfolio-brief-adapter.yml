@@ -1,0 +1,81 @@
+name: M2.28 Group CEO Portfolio Brief Adapter
+
+on:
+  pull_request:
+    paths:
+      - src/management/portfolio/group-ceo-portfolio-brief-adapter.cjs
+      - tests/m2-28-group-ceo-portfolio-brief-adapter.test.cjs
+      - docs/architecture/m2-28-group-ceo-portfolio-brief-adapter.md
+      - .github/workflows/m2-28-group-ceo-portfolio-brief-adapter.yml
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+
+      - name: Lock M2.28 scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "${{ github.event.pull_request.base.sha }}" "$TARGET_SHA" | tee /tmp/m228-files.txt
+          test "$(wc -l < /tmp/m228-files.txt | tr -d ' ')" = '4'
+          grep -Fx 'src/management/portfolio/group-ceo-portfolio-brief-adapter.cjs' /tmp/m228-files.txt
+          grep -Fx 'tests/m2-28-group-ceo-portfolio-brief-adapter.test.cjs' /tmp/m228-files.txt
+          grep -Fx 'docs/architecture/m2-28-group-ceo-portfolio-brief-adapter.md' /tmp/m228-files.txt
+          grep -Fx '.github/workflows/m2-28-group-ceo-portfolio-brief-adapter.yml' /tmp/m228-files.txt
+          ! grep -E '^src/(application|delegation|domain)/' /tmp/m228-files.txt
+
+      - name: Syntax check
+        run: node --check src/management/portfolio/group-ceo-portfolio-brief-adapter.cjs
+
+      - name: Run focused M2.28 contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/m2-28-group-ceo-portfolio-brief-adapter.test.cjs | tee /tmp/m228.tap
+          grep -Eq '# tests[[:space:]]+12$' /tmp/m228.tap
+          grep -Eq '# pass[[:space:]]+12$' /tmp/m228.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/m228.tap
+
+      - name: Run full AIEXE unit suite
+        run: node --test tests/*.test.cjs
+
+      - name: Lock owner-safe read-only boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=src/management/portfolio/group-ceo-portfolio-brief-adapter.cjs
+          grep -F "const MANAGEMENT_AUTHORITY = 'observe-and-propose'" "$SRC"
+          grep -F "const SOURCE_TRUTH_AUTHORITY = 'external'" "$SRC"
+          grep -F "managementProposalCreated: false" "$SRC"
+          grep -F "sourceSemanticsReinterpreted: false" "$SRC"
+          grep -F "readOnly: true" "$SRC"
+          grep -F "writeAuthority: 'none'" "$SRC"
+          grep -F "executionAuthorized" "$SRC"
+          grep -F "externalActionPerformed" "$SRC"
+          ! grep -InE 'managementProposalCreated:[[:space:]]*true|sourceSemanticsReinterpreted:[[:space:]]*true|writeAuthority:[[:space:]]*["'"'](write|domain|external)|executionAuthorized:[[:space:]]*true|externalActionPerformed:[[:space:]]*true|paymentPerformed:[[:space:]]*true|productionDeploymentPerformed:[[:space:]]*true' "$SRC"
+
+      - name: Lock no side-effect imports
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=src/management/portfolio/group-ceo-portfolio-brief-adapter.cjs
+          ! grep -InE "require\(['\"](node:fs|fs|node:child_process|child_process|node:http|http|node:https|https|.*provider.*|.*delegation.*|.*application.*)['\"]\)" "$SRC"
+          ! grep -InE '\b(fetch|spawn|exec|execFile|fork)\s*\(' "$SRC"
