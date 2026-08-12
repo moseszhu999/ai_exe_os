@@ -11,6 +11,7 @@ on:
       - src/discovery/**
       - tests/agent-resource-publication.test.cjs
       - tests/agent-selection-evaluator.test.cjs
+      - tests/agent-selection-host-collector.test.cjs
       - tests/agent-selection-observation-batch.test.cjs
       - tests/agent-selection-observation-receipt.test.cjs
       - tests/mock-supplier-verification.test.cjs
@@ -55,6 +56,7 @@ jobs:
           set -euo pipefail
           node --check src/discovery/agent-resource-publication.cjs
           node --check src/discovery/agent-selection-evaluator.cjs
+          node --check src/discovery/agent-selection-host-collector.cjs
           node --check src/discovery/agent-selection-observation-batch.cjs
           node --check src/discovery/agent-selection-observation-receipt.cjs
           node --check src/discovery/mock-supplier-verification.cjs
@@ -66,6 +68,7 @@ jobs:
           node --test \
             tests/agent-resource-publication.test.cjs \
             tests/agent-selection-evaluator.test.cjs \
+            tests/agent-selection-host-collector.test.cjs \
             tests/agent-selection-observation-batch.test.cjs \
             tests/agent-selection-observation-receipt.test.cjs \
             tests/mock-supplier-verification.test.cjs \
@@ -87,4 +90,10 @@ jobs:
           grep -F "networkPerformedByThisModule: false" src/discovery/agent-selection-observation-batch.cjs
           grep -F "rankingClaimCreated: false" src/discovery/agent-selection-observation-receipt.cjs
           grep -F "executionAuthorized: false" src/discovery/agent-selection-observation-receipt.cjs
+          grep -F "evaluationPolicyOwnedByCollector: false" src/discovery/agent-selection-host-collector.cjs
+          grep -F "acceptanceThresholdsOwnedByCollector: false" src/discovery/agent-selection-host-collector.cjs
+          grep -F "externalHostProvenanceVerifiedByThisModule: false" src/discovery/agent-selection-host-collector.cjs
+          grep -F "transportCredentialsOwnedByThisModule: false" src/discovery/agent-selection-host-collector.cjs
+          grep -F "arbitraryUrlAcceptedByThisModule: false" src/discovery/agent-selection-host-collector.cjs
+          ! grep -E "fetch\\(|axios|https?\\.request|process\\.env|Authorization|Bearer" src/discovery/agent-selection-host-collector.cjs
           ! grep -RInE "providerAccessGranted:[[:space:]]*true|rankingClaimCreated:[[:space:]]*true|executionAuthorized:[[:space:]]*true|paymentPerformed:[[:space:]]*true|domainWritePerformed:[[:space:]]*true" src/discovery
