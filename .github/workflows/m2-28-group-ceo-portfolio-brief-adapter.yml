@@ -70,12 +70,12 @@ jobs:
           grep -F "writeAuthority: 'none'" "$SRC"
           grep -F "executionAuthorized" "$SRC"
           grep -F "externalActionPerformed" "$SRC"
-          ! grep -InE 'managementProposalCreated:[[:space:]]*true|sourceSemanticsReinterpreted:[[:space:]]*true|writeAuthority:[[:space:]]*["'"'](write|domain|external)|executionAuthorized:[[:space:]]*true|externalActionPerformed:[[:space:]]*true|paymentPerformed:[[:space:]]*true|productionDeploymentPerformed:[[:space:]]*true' "$SRC"
+          ! grep -InE "managementProposalCreated:[[:space:]]*true|sourceSemanticsReinterpreted:[[:space:]]*true|writeAuthority:[[:space:]]*['\"](write|domain|external)|executionAuthorized:[[:space:]]*true|externalActionPerformed:[[:space:]]*true|paymentPerformed:[[:space:]]*true|productionDeploymentPerformed:[[:space:]]*true" "$SRC"
 
       - name: Lock no side-effect imports
         shell: bash
         run: |
           set -euo pipefail
           SRC=src/management/portfolio/group-ceo-portfolio-brief-adapter.cjs
-          ! grep -InE "require\(['\"](node:fs|fs|node:child_process|child_process|node:http|http|node:https|https|.*provider.*|.*delegation.*|.*application.*)['\"]\)" "$SRC"
-          ! grep -InE '\b(fetch|spawn|exec|execFile|fork)\s*\(' "$SRC"
+          ! grep -InE "require\\(['\"](node:fs|fs|node:child_process|child_process|node:http|http|node:https|https|.*provider.*|.*delegation.*|.*application.*)['\"]\\)" "$SRC"
+          ! grep -InE '\\b(fetch|spawn|exec|execFile|fork)\\s*\\(' "$SRC"
