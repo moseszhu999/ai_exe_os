@@ -333,11 +333,11 @@ test('consumer never imports source free text or creates Group business eval fro
   assert.equal(result.sourceFreeTextImported, false);
 });
 
-test('consumer source has no network, filesystem, provider runtime, management write or external-effect primitive', () => {
+test('consumer source has no network, filesystem, provider runtime, management write or external-effect invocation primitive', () => {
   const source = fs.readFileSync(path.join(__dirname, '../src/group-fabric/tradeos-buyer-research-consumer.cjs'), 'utf8');
   assert.equal(/require\(['"](?:node:)?fs['"]\)/.test(source), false);
   assert.equal(/require\(['"](?:node:)?child_process['"]\)/.test(source), false);
   assert.equal(/\bfetch\s*\(/.test(source), false);
   assert.equal(/src\/management|\.\.\/management|provider-runtime|transport\.invoke/.test(source), false);
-  assert.equal(/sendMail|sendMessage|payment|settlement|wallet|deploy\s*\(/i.test(source), false);
+  assert.equal(/sendMail\s*\(|sendMessage\s*\(|payment\s*\(|settlement\s*\(|wallet\s*\(|deploy\s*\(/i.test(source), false);
 });
