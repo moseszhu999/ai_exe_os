@@ -53,7 +53,13 @@ function isPlaceholderDigest(value) {
 
 function isPlaceholderHost(hostname) {
   const lower = hostname.toLowerCase();
-  return lower === 'example.com' || lower === 'example.net' || lower === 'example.org' || lower.endsWith('.example');
+  return lower === 'example.com' ||
+    lower.endsWith('.example.com') ||
+    lower === 'example.net' ||
+    lower.endsWith('.example.net') ||
+    lower === 'example.org' ||
+    lower.endsWith('.example.org') ||
+    lower.endsWith('.example');
 }
 
 function normalizePublication(value) {
