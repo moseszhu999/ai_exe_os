@@ -11,19 +11,22 @@ exact frozen eval fixture
 + exact host capture for every case
 + bounded collector classification
 + opaque observation reference + response digest per case
+→ deterministic host collection
+→ unverified host provenance envelope
 → deterministic observation-set digest
 → offline selection evaluation
 → surface-specific observation receipt
 → deterministic batch digest
 ```
 
-A summary metric is never sufficient by itself. The receipt must bind the exact observation set from which the metrics were derived.
+A summary metric is never sufficient by itself. Integrity evidence and external-host authenticity are also separate concerns: a self-consistent capture set does not prove that a public Agent host produced it.
 
 ## Schemas
 
 ```text
 ado.selection.eval.fixture.v1
 ado.selection.host-observation.collection.v1
+ado.selection.host-provenance-envelope.v1
 ado.selection.observation.batch.v1
 ado.selection.evaluation.v1
 ado.selection.observation.receipt.v1
@@ -84,18 +87,71 @@ The collector does not own acceptance thresholds or evaluation policy. It also d
 Every collection fixes:
 
 ```text
-evaluationPolicyOwnedByCollector          = false
-acceptanceThresholdsOwnedByCollector      = false
-rankingClaimCreated                       = false
-registryPublicationPerformed              = false
-paymentPerformed                          = false
-domainWritePerformed                      = false
-rawHostResponseStored                     = false
-responseDigestBound                       = true
+evaluationPolicyOwnedByCollector           = false
+acceptanceThresholdsOwnedByCollector       = false
+rankingClaimCreated                        = false
+registryPublicationPerformed               = false
+paymentPerformed                           = false
+domainWritePerformed                       = false
+rawHostResponseStored                      = false
+responseDigestBound                        = true
 externalHostProvenanceVerifiedByThisModule = false
-transportCredentialsOwnedByThisModule     = false
-arbitraryUrlAcceptedByThisModule          = false
+transportCredentialsOwnedByThisModule      = false
+arbitraryUrlAcceptedByThisModule           = false
 ```
+
+## Unverified Host provenance envelope
+
+`createAgentSelectionHostProvenanceEnvelope(...)` binds a structurally valid exact host collection to the Host identity that a capture owner says produced it.
+
+The envelope binds:
+
+```text
+collection schema / collector id / collection digest
+fixture digest / observation count
+surface
+host name
+host version/build reference
+model name/reference
+UTC observedAt
+capture-set reference
+optional external attestation metadata
+```
+
+Before envelope creation, AIEXE recomputes the supplied `collectionDigest`. Therefore the envelope cannot bind a tampered collection while preserving the old collection identity.
+
+The optional external attestation may carry:
+
+```text
+attestation_ref
+verifier_ref
+key_ref
+signature_algorithm
+signature
+issued_at
+valid_until
+```
+
+This first envelope does **not** verify that signature and does not configure a trust root. An attached signature is therefore evidence material only, not authenticity proof.
+
+The envelope always fixes:
+
+```text
+provenanceStatus = unverified
+collectionIntegrityVerifiedByThisModule      = true
+externalSignatureVerificationPerformedByThisModule = false
+externalTrustRootConfiguredByThisModule      = false
+externalHostProvenanceVerified                = false
+rankingClaimCreated                           = false
+registryPublicationPerformed                  = false
+paymentPerformed                              = false
+domainWritePerformed                          = false
+executionAuthorized                           = false
+```
+
+Caller-supplied `provenanceStatus`, `trusted`, authorization material or other undeclared fields are rejected. A caller therefore cannot convert an opaque trace into a verified real-host claim by adding a boolean.
+
+This follows the same architectural rule as the separate federation provenance work: deterministic integrity and portable evidence are not themselves a provider-local trust decision. Positive provenance requires a separately owned trusted verifier/trust-root path.
 
 ## Exact observation evidence
 
@@ -205,14 +261,17 @@ Therefore an accepted observation batch is evidence about one supplied selection
 
 ## Next execution slice
 
-The remaining step is a host-specific adapter outside this product-neutral collector contract. It must provide a real capture/trace reference and raw response text to the injected collector, while keeping credentials and transport configuration in the owning host adapter.
+The remaining real-world step is a host-specific adapter plus a separately owned verifier/trust-root integration.
 
-That adapter must not provide a precomputed PASS/FAIL summary and must not receive the fixture `expected_behavior` through this contract. AIEXE recomputes evaluation from the exact observation set.
+The Host adapter must provide a real capture/trace reference and raw response text to the injected collector while keeping credentials and transport configuration in the owning adapter. It must not receive the fixture `expected_behavior` through this contract and must not provide a precomputed PASS/FAIL summary.
+
+If the Host or capture system supplies signed attestation material, a future verifier can consume the unverified provenance envelope together with a provider-local trusted verifier record. Until that verification exists and succeeds, the envelope remains `unverified` by construction.
 
 ## Closed boundaries
 
 ```text
 external host provenance verification     = NO
+external trust-root configuration          = NO
 raw model/host response persistence       = NO
 Registry publication                      = NO
 ChatGPT App publication                   = NO
