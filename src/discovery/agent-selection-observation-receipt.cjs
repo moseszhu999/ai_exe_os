@@ -4,6 +4,7 @@ const { createHash } = require('node:crypto');
 const { deepFreeze, requiredText } = require('../domain/workspace-model.cjs');
 
 const RECEIPT_SCHEMA = 'ado.selection.observation.receipt.v1';
+const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const ALLOWED_SURFACES = new Set([
   'chatgpt_app',
   'mcp_client',
@@ -29,11 +30,27 @@ function digest(value) {
   return `sha256:${createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex')}`;
 }
 
+function requireDigest(value, label) {
+  const normalized = requiredText(value, label, 160);
+  if (!SHA256_PATTERN.test(normalized)) throw new Error(`${label} must be a sha256 digest`);
+  return normalized;
+}
+
+function requireObservedAt(value) {
+  const normalized = requiredText(value, 'observedAt', 80);
+  const parsed = Date.parse(normalized);
+  if (!Number.isFinite(parsed) || !/Z$/.test(normalized)) {
+    throw new Error('observedAt must be a valid UTC timestamp ending in Z');
+  }
+  return normalized;
+}
+
 function createAgentSelectionObservationReceipt({
   capabilityId,
   capabilityVersion,
   offerDigest,
   evalFixtureDigest,
+  observationSetDigest,
   surface,
   hostName,
   hostVersion,
@@ -60,8 +77,11 @@ function createAgentSelectionObservationReceipt({
     capabilityRef: {
       capabilityId: requiredText(capabilityId, 'capabilityId', 160),
       capabilityVersion: requiredText(capabilityVersion, 'capabilityVersion', 80),
-      offerDigest: requiredText(offerDigest, 'offerDigest', 160),
-      evalFixtureDigest: requiredText(evalFixtureDigest, 'evalFixtureDigest', 160),
+      offerDigest: requireDigest(offerDigest, 'offerDigest'),
+      evalFixtureDigest: requireDigest(evalFixtureDigest, 'evalFixtureDigest'),
+    },
+    observationEvidence: {
+      observationSetDigest: requireDigest(observationSetDigest, 'observationSetDigest'),
     },
     surface: normalizedSurface,
     host: {
@@ -69,7 +89,7 @@ function createAgentSelectionObservationReceipt({
       version: requiredText(hostVersion, 'hostVersion', 120),
       modelName: requiredText(modelName, 'modelName', 160),
     },
-    observedAt: requiredText(observedAt, 'observedAt', 80),
+    observedAt: requireObservedAt(observedAt),
     observationCount,
     evaluation,
     authority: {
@@ -88,5 +108,6 @@ function createAgentSelectionObservationReceipt({
 module.exports = {
   ALLOWED_SURFACES,
   RECEIPT_SCHEMA,
+  SHA256_PATTERN,
   createAgentSelectionObservationReceipt,
 };
