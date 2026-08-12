@@ -18,7 +18,8 @@ The commercial/discovery flow is intentionally separated from Domain execution:
 canonical capability identity
 + agent.resource.offer.v1
 → deterministic discovery artifacts
-→ later Registry / App / LLM publication adapter
+→ static Official MCP Registry readiness
+→ later authorized Registry / App / LLM publication adapter
 → Agent considers exact capability
 → existing authorization / provider runtime
 → TradeOS-owned verification truth
@@ -28,13 +29,7 @@ canonical capability identity
 
 AIEXE owns this slice because AIEXE already owns capability identity, versioning, MCP binding and provider/runtime envelopes.
 
-This slice owns only:
-
-```text
-src/discovery/agent-resource-publication.cjs
-src/discovery/agent-selection-evaluator.cjs
-src/discovery/mock-supplier-verification.cjs  # fixture-only contract demonstration
-```
+This slice owns only product-neutral discovery/evidence contracts under `src/discovery/`. It does not take ownership of Provider Runtime, TradeOS supplier truth, Registry authentication, endpoint deployment, external Host execution, or an external trust root.
 
 Existing owners remain unchanged:
 
@@ -103,6 +98,72 @@ The Registry artifact uses the current remote-server metadata shape:
 
 `_meta.io.modelcontextprotocol.registry/publisher-provided` carries the exact resource/capability/digest/policy refs so a published surface can remain traceable to the canonical AIEXE object.
 
+## Official MCP Registry static readiness
+
+`evaluateMcpRegistryPublicationStaticReadiness(...)` evaluates the compiled artifact against publication constraints that can be proven without publishing or performing network I/O.
+
+Schema:
+
+```text
+ado.mcp-registry.publication-static-readiness.v1
+```
+
+The Official MCP Registry currently supports namespace-based publishing authentication. For `io.github.*` server names, GitHub OAuth or GitHub OIDC is the relevant authentication path. A remote Registry server must also be publicly accessible at the URL in its `remotes` entry.
+
+The static readiness check therefore separates three classes of evidence:
+
+```text
+static PASS      = shape/identity is locally provable
+static BLOCK     = known local defect prevents publication
+UNVERIFIED       = requires an external Registry/network action
+```
+
+It checks:
+
+- exact official schema reference;
+- compiled server name/version binding back to the canonical offer;
+- `io.github.<owner>/...` namespace compatibility;
+- exact Streamable HTTP remote binding;
+- reserved example-domain endpoints;
+- obvious placeholder capability integrity digests;
+- the Official Registry 4 KiB limit for `_meta.io.modelcontextprotocol.registry/publisher-provided`;
+- repository metadata presence as a non-blocking quality warning.
+
+The current reference fixture is correctly `blocked` because it still contains both:
+
+```text
+https://tradeos.example/mcp
+sha256:1111111111111111111111111111111111111111111111111111111111111111
+```
+
+If those static placeholders are replaced with non-placeholder values, this module can advance only to:
+
+```text
+external_checks_required
+```
+
+It can never return `ready`, because the module deliberately does not authenticate to the Registry and does not probe the remote endpoint.
+
+Every readiness result fixes:
+
+```text
+registrySchemaValidatedByOfficialPublisher = false
+registryAuthenticationPerformed            = false
+registryNamespaceOwnershipVerified         = false
+remoteReachabilityChecked                  = false
+remotePublicAccessibilityVerified          = false
+registrySearchPerformed                    = false
+publicationPerformed                       = false
+networkPerformed                           = false
+paymentPerformed                           = false
+domainWritePerformed                       = false
+executionAuthorized                        = false
+```
+
+This prevents a local linter from being misrepresented as Official Registry acceptance, namespace ownership proof, live endpoint proof, or publication.
+
+The current `io.github.moseszhu999/tradeos-supplier-verification` name is structurally compatible with GitHub OAuth/OIDC namespace authentication for GitHub owner `moseszhu999`; actual authentication still has to occur at publish time.
+
 ## Discovery-only authority boundary
 
 The compiler always returns:
@@ -130,6 +191,8 @@ A real publication must replace these values with:
 - a namespace the publisher can actually prove ownership of;
 - a real approved public HTTPS Streamable HTTP MCP endpoint;
 - explicit publication authorization.
+
+The Official Registry supports GitHub OAuth/OIDC for `io.github.*` namespaces; the current server name is shaped for that route, but no Registry login, OIDC exchange, publication, or Registry search is performed by this PR.
 
 ## Read-only supplier mock
 
@@ -195,6 +258,9 @@ Future adapters may include internal ledger, x402/MPP/Stripe, Alipay AI Pay or m
 
 ```text
 Registry publication       = NO
+Registry authentication    = NO
+Registry search            = NO
+remote reachability probe  = NO
 ChatGPT App publication    = NO
 public endpoint deployment = NO
 payment activation         = NO
