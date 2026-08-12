@@ -13,13 +13,14 @@ exact frozen eval fixture
 + opaque observation reference + response digest per case
 → deterministic host collection
 → unverified host provenance envelope
+→ external provenance verification request
 → deterministic observation-set digest
 → offline selection evaluation
 → surface-specific observation receipt
 → deterministic batch digest
 ```
 
-A summary metric is never sufficient by itself. Integrity evidence and external-host authenticity are also separate concerns: a self-consistent capture set does not prove that a public Agent host produced it.
+A summary metric is never sufficient by itself. Integrity evidence and external-host authenticity are also separate concerns: a self-consistent capture set does not prove that a public Agent host produced it, and generating a verification request is not verification.
 
 ## Schemas
 
@@ -27,6 +28,7 @@ A summary metric is never sufficient by itself. Integrity evidence and external-
 ado.selection.eval.fixture.v1
 ado.selection.host-observation.collection.v1
 ado.selection.host-provenance-envelope.v1
+ado.selection.host-provenance-verification-request.v1
 ado.selection.observation.batch.v1
 ado.selection.evaluation.v1
 ado.selection.observation.receipt.v1
@@ -132,26 +134,96 @@ issued_at
 valid_until
 ```
 
-This first envelope does **not** verify that signature and does not configure a trust root. An attached signature is therefore evidence material only, not authenticity proof.
+This envelope does **not** verify that signature and does not configure a trust root. An attached signature is therefore evidence material only, not authenticity proof.
 
 The envelope always fixes:
 
 ```text
 provenanceStatus = unverified
-collectionIntegrityVerifiedByThisModule      = true
+collectionIntegrityVerifiedByThisModule           = true
 externalSignatureVerificationPerformedByThisModule = false
-externalTrustRootConfiguredByThisModule      = false
-externalHostProvenanceVerified                = false
-rankingClaimCreated                           = false
-registryPublicationPerformed                  = false
-paymentPerformed                              = false
-domainWritePerformed                          = false
-executionAuthorized                           = false
+externalTrustRootConfiguredByThisModule           = false
+externalHostProvenanceVerified                    = false
+rankingClaimCreated                                = false
+registryPublicationPerformed                      = false
+paymentPerformed                                  = false
+domainWritePerformed                              = false
+executionAuthorized                               = false
 ```
 
 Caller-supplied `provenanceStatus`, `trusted`, authorization material or other undeclared fields are rejected. A caller therefore cannot convert an opaque trace into a verified real-host claim by adding a boolean.
 
 This follows the same architectural rule as the separate federation provenance work: deterministic integrity and portable evidence are not themselves a provider-local trust decision. Positive provenance requires a separately owned trusted verifier/trust-root path.
+
+## External provenance verification request
+
+`createAgentSelectionHostProvenanceVerificationRequest(...)` prepares an immutable request for a future external trusted verifier. It does not perform that verification.
+
+The request accepts only:
+
+```text
+envelope
+verifierPolicyRef
+maxAttestationAgeSeconds
+requestedAt
+```
+
+The expected Host identity is copied from the integrity-checked envelope rather than supplied independently by the caller. The request therefore binds:
+
+```text
+envelope digest
+collection digest / fixture digest / observation count
+expected Host surface/name/build/model
+envelope observedAt
+verification requestedAt
+verifier policy ref
+maximum attestation age
+decision vocabulary = verified / denied / unknown
+whether external attestation material is present
+```
+
+The request status is fixed:
+
+```text
+pending_external_verification
+```
+
+The request requires external attestation for a future positive decision, but missing attestation remains an explicit input state rather than an implicit denial or success.
+
+The caller cannot provide any of these through the request contract:
+
+```text
+verified/denied decision
+trusted boolean
+trust root
+public key
+credential / authorization
+provider URL
+transport method
+```
+
+The request always fixes:
+
+```text
+externalVerificationPerformedByThisModule = false
+verificationDecisionCreatedByThisModule    = false
+externalTrustRootConfiguredByThisModule    = false
+publicKeyEmbeddedByThisModule              = false
+transportCredentialsOwnedByThisModule      = false
+networkPerformedByThisModule               = false
+externalHostProvenanceVerified             = false
+rankingClaimCreated                        = false
+registryPublicationPerformed               = false
+paymentPerformed                           = false
+domainWritePerformed                       = false
+executionAuthorized                        = false
+```
+
+Before request creation AIEXE recomputes the supplied envelope digest. A modified Host/build/model/collection therefore cannot be submitted under an old envelope identity.
+
+`maxAttestationAgeSeconds` is bounded to 60 seconds through 7 days. `requestedAt` must be UTC and cannot precede the envelope observation time.
+
+This object is a portable verification request, not a verifier, trust store or positive provenance receipt.
 
 ## Exact observation evidence
 
@@ -261,17 +333,19 @@ Therefore an accepted observation batch is evidence about one supplied selection
 
 ## Next execution slice
 
-The remaining real-world step is a host-specific adapter plus a separately owned verifier/trust-root integration.
+The remaining real-world step is an externally owned verifier/trust-root integration plus a real Host-specific capture adapter.
 
-The Host adapter must provide a real capture/trace reference and raw response text to the injected collector while keeping credentials and transport configuration in the owning adapter. It must not receive the fixture `expected_behavior` through this contract and must not provide a precomputed PASS/FAIL summary.
+A future verification result contract may consume this request together with evidence from a separately configured trusted verifier, but it must not let the caller manufacture a trust root or positive decision inside the discovery module.
 
-If the Host or capture system supplies signed attestation material, a future verifier can consume the unverified provenance envelope together with a provider-local trusted verifier record. Until that verification exists and succeeds, the envelope remains `unverified` by construction.
+Until an external verifier actually authenticates Host/capture attestation under a trusted policy, the Host provenance envelope remains `unverified` and the request remains `pending_external_verification`.
 
 ## Closed boundaries
 
 ```text
 external host provenance verification     = NO
 external trust-root configuration          = NO
+verification decision creation             = NO
+provider transport owned here              = NO
 raw model/host response persistence       = NO
 Registry publication                      = NO
 ChatGPT App publication                   = NO
