@@ -48,8 +48,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node -e "const s=require('@modelcontextprotocol/server/package.json'); if(s.version!=='2.0.0') process.exit(1); console.log('server='+s.version)"
-          node -e "const n=require('@modelcontextprotocol/node/package.json'); if(n.version!=='2.0.0') process.exit(1); console.log('node='+n.version)"
+          npm ls --depth=0 @modelcontextprotocol/server@2.0.0 @modelcontextprotocol/node@2.0.0
 
       - name: Syntax check endpoint
         run: node --check src/discovery/tradeos-supplier-mcp-endpoint.cjs
