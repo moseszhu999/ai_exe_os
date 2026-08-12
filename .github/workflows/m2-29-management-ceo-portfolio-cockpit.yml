@@ -1,0 +1,100 @@
+name: M2.29 Management CEO Portfolio Cockpit
+
+on:
+  pull_request:
+    paths:
+      - src/operator-console/read-model/management-ceo-portfolio.cjs
+      - src/application/s4-index.cjs
+      - src/renderer/s4/view-model.cjs
+      - src/renderer/s4/render.cjs
+      - tests/m2-29-management-ceo-portfolio-cockpit.test.cjs
+      - docs/architecture/m2-29-management-ceo-portfolio-cockpit.md
+      - .github/workflows/m2-29-management-ceo-portfolio-cockpit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+
+      - name: Lock M2.29 scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "${{ github.event.pull_request.base.sha }}" "$TARGET_SHA" | tee /tmp/m229-files.txt
+          test "$(wc -l < /tmp/m229-files.txt | tr -d ' ')" = '7'
+          grep -Fx 'src/operator-console/read-model/management-ceo-portfolio.cjs' /tmp/m229-files.txt
+          grep -Fx 'src/application/s4-index.cjs' /tmp/m229-files.txt
+          grep -Fx 'src/renderer/s4/view-model.cjs' /tmp/m229-files.txt
+          grep -Fx 'src/renderer/s4/render.cjs' /tmp/m229-files.txt
+          grep -Fx 'tests/m2-29-management-ceo-portfolio-cockpit.test.cjs' /tmp/m229-files.txt
+          grep -Fx 'docs/architecture/m2-29-management-ceo-portfolio-cockpit.md' /tmp/m229-files.txt
+          grep -Fx '.github/workflows/m2-29-management-ceo-portfolio-cockpit.yml' /tmp/m229-files.txt
+          ! grep -E '^src/(delegation|domain)/|^src/application/s[0-35-9]-|^src/.*ipc' /tmp/m229-files.txt
+
+      - name: Syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check src/operator-console/read-model/management-ceo-portfolio.cjs
+          node --check src/application/s4-index.cjs
+          node --check src/renderer/s4/view-model.cjs
+          node --check src/renderer/s4/render.cjs
+
+      - name: Run focused M2.29 contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/m2-29-management-ceo-portfolio-cockpit.test.cjs | tee /tmp/m229.tap
+          grep -Eq '# tests[[:space:]]+6$' /tmp/m229.tap
+          grep -Eq '# pass[[:space:]]+6$' /tmp/m229.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/m229.tap
+
+      - name: Run full AIEXE unit suite
+        run: node --test tests/*.test.cjs
+
+      - name: Lock portfolio authority and Workspace boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=src/operator-console/read-model/management-ceo-portfolio.cjs
+          APP=src/application/s4-index.cjs
+          UI=src/renderer/s4/render.cjs
+          grep -F "const MANAGEMENT_AUTHORITY = 'observe-and-propose'" "$SRC"
+          grep -F "readOnly: true" "$SRC"
+          grep -F "writeAuthority: 'none'" "$SRC"
+          grep -F "managementProposalCreated: false" "$SRC"
+          grep -F "decisionTruthCreated: false" "$SRC"
+          grep -F "humanGateDecisionCreated: false" "$SRC"
+          grep -F "authorizationDecisionCreated: false" "$SRC"
+          grep -F "delegationCreated: false" "$SRC"
+          grep -F "externalActionPerformed: false" "$SRC"
+          grep -F "if (activeWorkspaceId !== ownerWorkspaceId) return null" "$SRC"
+          grep -F "groupManagementWorkspaceId" "$APP"
+          grep -F 'CEO Portfolio / Management Read Model' "$UI"
+          grep -F 'proposal-only' "$UI"
+          ! grep -InE 'Approve CEO|Reject CEO|Execute CEO|Authorize CEO|Delegate CEO' "$UI"
+
+      - name: Lock read-model-only helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=src/operator-console/read-model/management-ceo-portfolio.cjs
+          ! grep -InE "require\\(['\"](node:fs|fs|node:child_process|child_process|node:http|http|node:https|https|.*provider.*|.*delegation.*)['\"]\\)" "$SRC"
+          ! grep -InE '\\b(fetch|spawn|exec|execFile|fork)\\s*\\(' "$SRC"

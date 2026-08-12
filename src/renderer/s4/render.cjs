@@ -17,6 +17,33 @@ function section(document, title, items, formatter) {
   return root;
 }
 
+function listBlock(document, title, items, formatter) {
+  const root = document.createElement('div');
+  root.append(text(document, 'h4', title));
+  const list = document.createElement('ul');
+  if (!items.length) list.append(text(document, 'li', 'No items'));
+  for (const item of items) list.append(text(document, 'li', formatter(item)));
+  root.append(list);
+  return root;
+}
+
+function renderManagementPortfolio(document, managementPortfolio) {
+  if (!managementPortfolio) return null;
+  const root = document.createElement('section');
+  root.append(text(document, 'h3', 'CEO Portfolio / Management Read Model'));
+  root.append(text(document, 'p', `Status: ${managementPortfolio.reasonCode || 'unknown'} · READ-ONLY · authority: ${managementPortfolio.managementAuthority || 'observe-and-propose'}`));
+  if (!managementPortfolio.available || !managementPortfolio.view) return root;
+
+  const view = managementPortfolio.view;
+  const counts = view.counts || {};
+  root.append(text(document, 'p', `Health: ${view.portfolioHealth || 'unknown'} · Cards: ${counts.cardCount ?? 0} · Attention: ${counts.attentionCardCount ?? 0} · Stale: ${counts.staleCardCount ?? 0}`));
+  root.append(text(document, 'p', `Observed: ${view.observedAt || 'unknown'} · source truth: ${view.sourceTruthAuthority || 'external'} · write authority: ${view.writeAuthority || 'none'}`));
+  root.append(listBlock(document, 'Portfolio projects', view.projects || [], (item) => `${item.managementProjectId} · ${item.health} · cards ${item.cardCount} · attention ${item.attentionCardCount}`));
+  root.append(listBlock(document, 'Owner attention', view.ownerAttention || [], (item) => `${item.managementProjectId} · ${item.title} · ${item.health} · ${item.reasonCode}`));
+  root.append(listBlock(document, 'CEO decision proposals', view.decisions?.decisions || [], (item) => `${item.urgency} · ${item.decisionKind} · ${item.decisionLabel} · proposal-only`));
+  return root;
+}
+
 function controlButton(document, label, enabled, onClick) {
   const button = document.createElement('button');
   button.type = 'button';
@@ -34,6 +61,8 @@ function renderS4Cockpit(root, viewModel, handlers = {}) {
   root.append(text(document, 'p', viewModel.found ? `Workspace: ${viewModel.activeWorkspaceId}` : `Workspace unavailable: ${viewModel.activeWorkspaceId || 'none'}`));
   if (!viewModel.found) return root;
 
+  const managementPortfolio = renderManagementPortfolio(document, viewModel.managementPortfolio);
+  if (managementPortfolio) root.append(managementPortfolio);
   root.append(section(document, 'Missions / Execution Graph', viewModel.missions, (item) => `${item.title || item.missionId} · ${item.state}`));
   root.append(section(document, 'Workers & Sessions', viewModel.workers, (item) => `${item.workerId} · ${item.browserChannel || 'runtime'} · ${item.status}`));
   root.append(section(document, 'Human Gate Inbox', viewModel.humanGates, (item) => `${item.id} · ${item.state}`));
@@ -54,4 +83,4 @@ function renderS4Cockpit(root, viewModel, handlers = {}) {
   return root;
 }
 
-module.exports = { renderS4Cockpit };
+module.exports = { renderS4Cockpit, renderManagementPortfolio };
