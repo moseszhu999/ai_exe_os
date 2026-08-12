@@ -1,0 +1,74 @@
+name: Group CEO Portfolio Cockpit W4
+
+on:
+  pull_request:
+    paths:
+      - src/group-fabric/group-ceo-portfolio-cockpit.cjs
+      - tests/group-ceo-portfolio-cockpit-w4.test.cjs
+      - docs/architecture/group-ceo-portfolio-cockpit-w4.md
+      - .github/workflows/group-ceo-portfolio-cockpit-w4.yml
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+
+      - name: Lock path ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "${{ github.event.pull_request.base.sha }}" "$TARGET_SHA" | tee /tmp/w4-files.txt
+          test "$(wc -l < /tmp/w4-files.txt | tr -d ' ')" = '4'
+          ! grep -E '^src/management/' /tmp/w4-files.txt
+          grep -Fx 'src/group-fabric/group-ceo-portfolio-cockpit.cjs' /tmp/w4-files.txt
+          grep -Fx 'tests/group-ceo-portfolio-cockpit-w4.test.cjs' /tmp/w4-files.txt
+          grep -Fx 'docs/architecture/group-ceo-portfolio-cockpit-w4.md' /tmp/w4-files.txt
+          grep -Fx '.github/workflows/group-ceo-portfolio-cockpit-w4.yml' /tmp/w4-files.txt
+
+      - name: Syntax check
+        run: node --check src/group-fabric/group-ceo-portfolio-cockpit.cjs
+
+      - name: Run focused W4 contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/group-ceo-portfolio-cockpit-w4.test.cjs | tee /tmp/w4.tap
+          grep -Eq '# tests[[:space:]]+12$' /tmp/w4.tap
+          grep -Eq '# pass[[:space:]]+12$' /tmp/w4.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/w4.tap
+
+      - name: Run full AIEXE unit suite
+        run: node --test tests/*.test.cjs
+
+      - name: Lock read-model and no-authority boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=src/group-fabric/group-ceo-portfolio-cockpit.cjs
+          grep -F "MAX_CARD_AGE_SECONDS = 24 * 60 * 60" "$SRC"
+          grep -F "llmFactGenerationAllowed: false" "$SRC"
+          grep -F "managementPlaneMutationPerformed: false" "$SRC"
+          grep -F "decisionTruthCreated: false" "$SRC"
+          grep -F "humanGateDecisionCreated: false" "$SRC"
+          grep -F "executionAuthorized: false" "$SRC"
+          grep -F "externalActionPerformed: false" "$SRC"
+          grep -F "paymentPerformed: false" "$SRC"
+          grep -F "productionDeploymentPerformed: false" "$SRC"
+          ! grep -InE 'llmFactGenerationAllowed:[[:space:]]*true|managementPlaneMutationPerformed:[[:space:]]*true|decisionTruthCreated:[[:space:]]*true|humanGateDecisionCreated:[[:space:]]*true|executionAuthorized:[[:space:]]*true|externalActionPerformed:[[:space:]]*true|paymentPerformed:[[:space:]]*true|productionDeploymentPerformed:[[:space:]]*true' "$SRC"
