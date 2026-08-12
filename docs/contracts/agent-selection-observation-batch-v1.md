@@ -2,13 +2,14 @@
 
 ## Purpose
 
-This contract turns the frozen Agent Discovery Optimization selection fixture into an auditable evidence chain without claiming that AIEXE itself invoked or controlled any external Agent host.
+This contract turns the frozen Agent Discovery Optimization selection fixture into an auditable evidence chain without claiming that AIEXE itself controls or proves the provenance of any external Agent host.
 
 The invariant is:
 
 ```text
 exact frozen eval fixture
-+ exact externally collected observation for every case
++ exact host capture for every case
++ bounded collector classification
 + opaque observation reference + response digest per case
 → deterministic observation-set digest
 → offline selection evaluation
@@ -22,6 +23,7 @@ A summary metric is never sufficient by itself. The receipt must bind the exact 
 
 ```text
 ado.selection.eval.fixture.v1
+ado.selection.host-observation.collection.v1
 ado.selection.observation.batch.v1
 ado.selection.evaluation.v1
 ado.selection.observation.receipt.v1
@@ -33,6 +35,66 @@ The reference fixture remains:
 tests/fixtures/trade.verify_supplier.selection-eval.v1.json
 resource_id = trade.verify_supplier.v1
 case count  = 53
+```
+
+## Injected host collector
+
+`collectAgentSelectionHostObservations(...)` is the bounded bridge between a future host-specific adapter and the existing batch contract.
+
+The collector accepts two injected functions:
+
+```text
+invokeHost(case input)        → observation_ref + response_text
+classifyResponse(response)    → one allowed observed behavior
+```
+
+The collector itself contains no provider URL, credential, token, provider SDK, HTTP client, Registry publisher or payment path.
+
+The host invocation input deliberately excludes `expected_behavior`. The classifier input also excludes `expected_behavior`. Therefore the frozen answer key is not supplied to either injected dependency through this contract.
+
+Only these case fields are exposed to the host adapter:
+
+```text
+case_id
+category
+prompt
+resource_id
+```
+
+Only these response capture fields are accepted back:
+
+```text
+observation_ref
+response_text
+```
+
+Unknown capture fields fail closed. This prevents transport credentials, headers or arbitrary provider metadata from being smuggled into the collector output.
+
+Raw response text is bounded to 256 KiB, classified in memory, SHA-256 hashed, and discarded from the returned collection object. The output observation contains only:
+
+```text
+case id
+classified observed behavior
+opaque observation reference
+SHA-256 response digest
+```
+
+The collector does not own acceptance thresholds or evaluation policy. It also does not claim that the injected adapter truly represented a public external Agent host. External-host provenance remains a separate evidence problem.
+
+Every collection fixes:
+
+```text
+evaluationPolicyOwnedByCollector          = false
+acceptanceThresholdsOwnedByCollector      = false
+rankingClaimCreated                       = false
+registryPublicationPerformed              = false
+paymentPerformed                          = false
+domainWritePerformed                      = false
+rawHostResponseStored                     = false
+responseDigestBound                       = true
+externalHostProvenanceVerifiedByThisModule = false
+transportCredentialsOwnedByThisModule     = false
+arbitraryUrlAcceptedByThisModule          = false
 ```
 
 ## Exact observation evidence
@@ -114,9 +176,9 @@ exact offline-derived evaluation
 
 A different host/model/surface or a different observation set produces a different receipt identity.
 
-## Collection boundary
+## Batch collection boundary
 
-This module does not invoke the external Agent host. It consumes evidence collected by a separate bounded adapter or reviewed manual capture path.
+The batch module does not invoke an external Agent host. It consumes bounded observations produced elsewhere, including by the injected collector above.
 
 Every batch fixes:
 
@@ -139,31 +201,24 @@ domainWritePerformed           = false
 executionAuthorized            = false
 ```
 
-Therefore an accepted observation batch is evidence about one observed selection run. It is not a ranking guarantee, Registry/App publication receipt, payment receipt, TradeOS authorization, provider authorization, Domain write or execution approval.
+Therefore an accepted observation batch is evidence about one supplied selection run. It is not a ranking guarantee, Registry/App publication receipt, payment receipt, TradeOS authorization, provider authorization, Domain write or execution approval.
 
 ## Next execution slice
 
-A later host-specific collection adapter may perform the actual 53-case run. It must return only bounded observation evidence into this contract:
+The remaining step is a host-specific adapter outside this product-neutral collector contract. It must provide a real capture/trace reference and raw response text to the injected collector, while keeping credentials and transport configuration in the owning host adapter.
 
-```text
-case id
-classified observed behavior
-opaque capture/trace ref
-SHA-256 response digest
-```
-
-The host adapter must not be allowed to provide a precomputed PASS/FAIL summary. AIEXE recomputes evaluation from the exact observation set.
+That adapter must not provide a precomputed PASS/FAIL summary and must not receive the fixture `expected_behavior` through this contract. AIEXE recomputes evaluation from the exact observation set.
 
 ## Closed boundaries
 
 ```text
-external host invocation by this module = NO
-raw model/host response persistence      = NO
-Registry publication                    = NO
-ChatGPT App publication                 = NO
-payment activation                      = NO
-TradeOS Domain write                    = NO
-supplier approval                       = NO
-Merge                                  = NO in this slice
-Deploy                                 = NO
+external host provenance verification     = NO
+raw model/host response persistence       = NO
+Registry publication                      = NO
+ChatGPT App publication                   = NO
+payment activation                        = NO
+TradeOS Domain write                      = NO
+supplier approval                         = NO
+Merge                                     = NO in this slice
+Deploy                                    = NO
 ```
