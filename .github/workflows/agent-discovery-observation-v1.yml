@@ -1,0 +1,90 @@
+name: Agent Discovery Observation v1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/agent-discovery-observation-v1.yml
+      - docs/contracts/agent-resource-publication-v1.md
+      - docs/contracts/agent-selection-observation-batch-v1.md
+      - examples/agent-resource-offers/**
+      - src/discovery/**
+      - tests/agent-resource-publication.test.cjs
+      - tests/agent-selection-evaluator.test.cjs
+      - tests/agent-selection-observation-batch.test.cjs
+      - tests/agent-selection-observation-receipt.test.cjs
+      - tests/mock-supplier-verification.test.cjs
+      - tests/fixtures/trade.verify_supplier.selection-eval.v1.json
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Check out immutable PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Assert immutable PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          echo "exact-head=$TARGET_SHA"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Resolve pinned development dependencies without install scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Syntax check discovery core
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check src/discovery/agent-resource-publication.cjs
+          node --check src/discovery/agent-selection-evaluator.cjs
+          node --check src/discovery/agent-selection-observation-batch.cjs
+          node --check src/discovery/agent-selection-observation-receipt.cjs
+          node --check src/discovery/mock-supplier-verification.cjs
+
+      - name: Run focused Agent discovery contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            tests/agent-resource-publication.test.cjs \
+            tests/agent-selection-evaluator.test.cjs \
+            tests/agent-selection-observation-batch.test.cjs \
+            tests/agent-selection-observation-receipt.test.cjs \
+            tests/mock-supplier-verification.test.cjs \
+            | tee /tmp/agent-discovery.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/agent-discovery.tap
+
+      - name: Run full AIEXE unit suite
+        run: npm test
+
+      - name: Lock discovery-only authority boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "publicationPerformed: false" src/discovery/agent-resource-publication.cjs
+          grep -F "networkPerformed: false" src/discovery/agent-resource-publication.cjs
+          grep -F "paymentPerformed: false" src/discovery/agent-resource-publication.cjs
+          grep -F "domainWritePerformed: false" src/discovery/agent-resource-publication.cjs
+          grep -F "hostInvocationPerformedByThisModule: false" src/discovery/agent-selection-observation-batch.cjs
+          grep -F "networkPerformedByThisModule: false" src/discovery/agent-selection-observation-batch.cjs
+          grep -F "rankingClaimCreated: false" src/discovery/agent-selection-observation-receipt.cjs
+          grep -F "executionAuthorized: false" src/discovery/agent-selection-observation-receipt.cjs
+          ! grep -RInE "providerAccessGranted:[[:space:]]*true|rankingClaimCreated:[[:space:]]*true|executionAuthorized:[[:space:]]*true|paymentPerformed:[[:space:]]*true|domainWritePerformed:[[:space:]]*true" src/discovery
