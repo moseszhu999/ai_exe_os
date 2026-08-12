@@ -20,6 +20,11 @@ function compileOffer(mutator = null) {
   return compileAgentResourcePublication(offer);
 }
 
+function makeStaticNonPlaceholder(offer) {
+  offer.capabilityRef.integrityDigest = `sha256:${'a1'.repeat(32)}`;
+  offer.registry.remoteUrl = 'https://mcp.tradeos.ai/mcp';
+}
+
 test('current TradeOS fixture is correctly BLOCKED by real publication placeholders without performing Registry/network effects', () => {
   const publication = compileOffer();
   const readiness = evaluateMcpRegistryPublicationStaticReadiness({
@@ -41,11 +46,17 @@ test('current TradeOS fixture is correctly BLOCKED by real publication placehold
   assert.match(readiness.readinessDigest, /^sha256:[0-9a-f]{64}$/);
 });
 
-test('non-placeholder static metadata can only reach EXTERNAL_CHECKS_REQUIRED, never READY', () => {
+test('reserved example.com subdomains are also blocked as placeholders', () => {
   const publication = compileOffer((offer) => {
     offer.capabilityRef.integrityDigest = `sha256:${'a1'.repeat(32)}`;
     offer.registry.remoteUrl = 'https://api.tradeos.example.com/mcp';
   });
+  const readiness = evaluateMcpRegistryPublicationStaticReadiness({ publication, githubOwner: 'moseszhu999' });
+  assert.ok(readiness.blockingCodes.includes('REMOTE_ENDPOINT_PLACEHOLDER'));
+});
+
+test('non-placeholder static metadata can only reach EXTERNAL_CHECKS_REQUIRED, never READY', () => {
+  const publication = compileOffer(makeStaticNonPlaceholder);
   const readiness = evaluateMcpRegistryPublicationStaticReadiness({
     publication,
     githubOwner: 'moseszhu999',
@@ -61,10 +72,7 @@ test('non-placeholder static metadata can only reach EXTERNAL_CHECKS_REQUIRED, n
 });
 
 test('GitHub namespace mismatch blocks publication readiness', () => {
-  const publication = compileOffer((offer) => {
-    offer.capabilityRef.integrityDigest = `sha256:${'ab'.repeat(32)}`;
-    offer.registry.remoteUrl = 'https://api.tradeos.example.com/mcp';
-  });
+  const publication = compileOffer(makeStaticNonPlaceholder);
   const readiness = evaluateMcpRegistryPublicationStaticReadiness({
     publication,
     githubOwner: 'another-owner',
@@ -75,10 +83,7 @@ test('GitHub namespace mismatch blocks publication readiness', () => {
 });
 
 test('server schema/identity drift fails closed instead of trusting caller-compiled metadata', () => {
-  const publication = clone(compileOffer((offer) => {
-    offer.capabilityRef.integrityDigest = `sha256:${'ab'.repeat(32)}`;
-    offer.registry.remoteUrl = 'https://api.tradeos.example.com/mcp';
-  }));
+  const publication = clone(compileOffer(makeStaticNonPlaceholder));
   publication.registryServerJson.$schema = 'https://invalid.example/schema.json';
   publication.registryServerJson.version = '9.9.9';
 
@@ -92,10 +97,7 @@ test('server schema/identity drift fails closed instead of trusting caller-compi
 });
 
 test('publisher-provided metadata over 4 KiB blocks static readiness', () => {
-  const publication = clone(compileOffer((offer) => {
-    offer.capabilityRef.integrityDigest = `sha256:${'ab'.repeat(32)}`;
-    offer.registry.remoteUrl = 'https://api.tradeos.example.com/mcp';
-  }));
+  const publication = clone(compileOffer(makeStaticNonPlaceholder));
   publication.registryServerJson._meta['io.modelcontextprotocol.registry/publisher-provided'].oversized = 'x'.repeat(5000);
 
   const readiness = evaluateMcpRegistryPublicationStaticReadiness({
