@@ -4,8 +4,11 @@ const { S8SourceHandoffApplicationService } = require('./s8-source-handoff-servi
 const { S8DestinationAuthorityApplicationService } = require('./s8-destination-authority-service.cjs');
 
 const DESTINATION_AUTHORITY_METHODS = Object.freeze([
+  'localAuthorityForRequest',
+  'currentAdmission',
   'requestDelegationGate',
   'decideDelegationGate',
+  'createLocalDelegatedMission',
   'approveDelegationProposal',
   'rejectDelegationProposal',
 ]);

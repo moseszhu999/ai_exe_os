@@ -1,0 +1,41 @@
+{
+  "schema": "aiexe.real-external-controller-adoption-cycle.v1",
+  "evidenceClass": "REAL_EXTERNAL_STRUCTURED_CONTROLLER_ADOPTION_CYCLE",
+  "capturedAt": "2026-08-10T07:00:00Z",
+  "readOnly": true,
+  "writeAuthority": "none",
+  "externalDomainCount": 3,
+  "structuredSourceExistenceCount": 3,
+  "acceptedInFixtureCount": 3,
+  "recurringStructuredProducerProven": false,
+  "g3Verdict": "PARTIAL",
+  "sources": [
+    {
+      "projectId": "trainingos",
+      "sourceKind": "coordinator-issue",
+      "sourceRef": "https://github.com/moseszhu999/training-learning-rails/issues/477#issuecomment-5236850688",
+      "repository": "moseszhu999/training-learning-rails",
+      "headSha": "8f0d38dca4dcd28883359c427e133d0c1a9eebb8",
+      "body": "## AIEXE structured Controller adoption — TrainingOS v1\n\nThis comment is the first bounded out-of-band structured Controller source for AIEXE group management-plane ingestion. The marked JSON block is authoritative; surrounding prose is not. It grants no write or execution authority and does not change TrainingOS domain truth.\n\n<!-- aiexe.external-controller-attestation.v1 -->\n```json\n{\n  \"projectId\": \"trainingos\",\n  \"controllerId\": \"trainingos-hourly-controller\",\n  \"repository\": \"moseszhu999/training-learning-rails\",\n  \"exactHeadSha\": \"8f0d38dca4dcd28883359c427e133d0c1a9eebb8\",\n  \"domainStatus\": \"active\",\n  \"owner\": \"moseszhu999\",\n  \"milestone\": \"Canonical Organization/Membership and human CapabilityCredential issuance/lifecycle are merged; next priority is live group Work capability projection plus real-pilot and production-release gates.\",\n  \"blockerCodes\": [\n    \"production_release_not_authorized\",\n    \"real_pilot_not_closed\"\n  ],\n  \"evidenceRefs\": [\n    \"github:moseszhu999/training-learning-rails:issue:477\",\n    \"github:moseszhu999/training-learning-rails:pr:692\",\n    \"github:moseszhu999/training-learning-rails:pr:706\",\n    \"github:moseszhu999/training-learning-rails:commit:8f0d38dca4dcd28883359c427e133d0c1a9eebb8\"\n  ],\n  \"observedAt\": \"2026-08-10T06:47:00Z\"\n}\n```\n<!-- /aiexe.external-controller-attestation.v1 -->\n\nBoundary: readOnly=true; writeAuthority=none; AuthorityGrant=NO; Agent execution=NO; Production deploy/migration=NO.",
+      "sourceDigest": "sha256:51ccfc55e633011d21e673f1fdd9e219e9667900088dc63a763d038557c2e915"
+    },
+    {
+      "projectId": "tradeos",
+      "sourceKind": "coordinator-issue",
+      "sourceRef": "https://github.com/moseszhu999/chaintrace-app/issues/567#issuecomment-5236890201",
+      "repository": "moseszhu999/chaintrace-app",
+      "headSha": "6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b",
+      "body": "## AIEXE structured Controller adoption — TradeOS v1\n\nThis controller issue now emits a bounded out-of-band structured Domain status source for AIEXE. The marked JSON block is authoritative; surrounding prose is not. This is read-only management truth and grants no business/execution authority.\n\n<!-- aiexe.external-controller-attestation.v1 -->\n```json\n{\n  \"projectId\": \"tradeos\",\n  \"controllerId\": \"tradeos-saas-core-controller\",\n  \"repository\": \"moseszhu999/chaintrace-app\",\n  \"exactHeadSha\": \"6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b\",\n  \"domainStatus\": \"active\",\n  \"owner\": \"moseszhu999\",\n  \"milestone\": \"N2 canonical SpecificationRevision to SourcingProject runtime is implemented on PR #671 and is awaiting unchanged-exact-head authentic managed-JWT temporary-Neon acceptance before merge; N3 RFQ/Shared Case remains downstream.\",\n  \"blockerCodes\": [\n    \"n2_authentic_acceptance_pending\",\n    \"production_release_not_authorized\"\n  ],\n  \"evidenceRefs\": [\n    \"github:moseszhu999/chaintrace-app:issue:567\",\n    \"github:moseszhu999/chaintrace-app:pr:671\",\n    \"github:moseszhu999/training-learning-rails:pr:700\",\n    \"github:moseszhu999/chaintrace-app:commit:6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b\"\n  ],\n  \"observedAt\": \"2026-08-10T06:56:00Z\"\n}\n```\n<!-- /aiexe.external-controller-attestation.v1 -->\n\nBoundary: readOnly=true; writeAuthority=none; Supplier/RFQ/Quotation creation by this attestation=NO; external send=NO; Agent execution=NO; Production deploy/migration=NO; payment/settlement/wallet/token action=NO.",
+      "sourceDigest": "sha256:759dc3a4fdf8a695cb24a4976f31d8522c895f78c774d9176dad364586ad81a6"
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "sourceKind": "coordinator-issue",
+      "sourceRef": "https://github.com/moseszhu999/global-tool-radar/issues/115#issuecomment-5236897897",
+      "repository": "moseszhu999/global-tool-radar",
+      "headSha": "24996407449df28b2d83fce1a145b3200fff168a",
+      "body": "## AIEXE structured Controller adoption — Video Operation / Shared Media v1\n\nThis existing P0 control issue also serves as the bounded out-of-band Domain status source for AIEXE. The marked JSON block is authoritative; surrounding prose is not. It changes no Mac runtime and grants no publication or execution authority.\n\n<!-- aiexe.external-controller-attestation.v1 -->\n```json\n{\n  \"projectId\": \"video-operation-shared-media\",\n  \"controllerId\": \"shared-media-video-controller\",\n  \"repository\": \"moseszhu999/global-tool-radar\",\n  \"exactHeadSha\": \"24996407449df28b2d83fce1a145b3200fff168a\",\n  \"domainStatus\": \"active\",\n  \"owner\": \"moseszhu999\",\n  \"milestone\": \"Shared Media canonical receipt source contract is accepted but controlled live Mac rollout is still pending; Video M10 source-asset development has promoted Blender Hero v5 as the preferred static baseline while final creative approval remains blocked on source quality.\",\n  \"blockerCodes\": [\n    \"live_canonical_receipt_rollout_pending\",\n    \"static_hero_creative_approval_pending\"\n  ],\n  \"evidenceRefs\": [\n    \"github:moseszhu999/global-tool-radar:issue:115\",\n    \"github:moseszhu999/global-tool-radar:pr:112\",\n    \"github:moseszhu999/global-tool-radar:pr:117\",\n    \"github:moseszhu999/global-tool-radar:commit:24996407449df28b2d83fce1a145b3200fff168a\"\n  ],\n  \"observedAt\": \"2026-08-10T06:58:00Z\"\n}\n```\n<!-- /aiexe.external-controller-attestation.v1 -->\n\nBoundary: readOnly=true; writeAuthority=none; live Mac mutation=NO; service restart=NO; render submission=NO; rigging/animation=NO; publication=NO; Production business action=NO.",
+      "sourceDigest": "sha256:2dc84bd7b8d3e6aa8bf5e6a1766cc47850206ce99445e15c0a85cbe0ad69f1d6"
+    }
+  ]
+}

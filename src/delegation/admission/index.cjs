@@ -46,6 +46,9 @@ function evaluateDelegationAdmission(input) {
   if (!request) throw new TypeError('delegation request is required');
   const observedAt = isoInstant(input.observedAt || new Date().toISOString(), 'admission observedAt');
   const reasons = [];
+  const localRuntimeIntent = input.localRuntimeIntent || null;
+  const localAction = localRuntimeIntent?.runtimeAction || request.action;
+  const localTarget = localRuntimeIntent?.runtimeTarget || request.target;
 
   addReason(reasons, !peerBinding, 'peer_binding_missing');
   if (peerBinding) {
@@ -84,8 +87,8 @@ function evaluateDelegationAdmission(input) {
     addReason(reasons, localGrant.workspaceId !== request.destinationWorkspaceId, 'cross_workspace');
     addReason(reasons, localInstallation && localGrant.installationId !== localInstallation.id, 'local_grant_installation_mismatch');
     addReason(reasons, localGrant.status && localGrant.status !== 'active', 'local_grant_inactive');
-    addReason(reasons, Array.isArray(localGrant.allowedActions) && !localGrant.allowedActions.includes(request.action), 'local_grant_action_missing');
-    addReason(reasons, Array.isArray(localGrant.allowedTargets) && !localGrant.allowedTargets.includes(request.target), 'local_grant_target_missing');
+    addReason(reasons, Array.isArray(localGrant.allowedActions) && !localGrant.allowedActions.includes(localAction), 'local_grant_action_missing');
+    addReason(reasons, Array.isArray(localGrant.allowedTargets) && !localGrant.allowedTargets.includes(localTarget), 'local_grant_target_missing');
   }
 
   if (input.providerRequired === true) {

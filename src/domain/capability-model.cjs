@@ -16,6 +16,31 @@ function uniqueStrings(values, label, { identifiers = false } = {}) {
   return normalized;
 }
 
+function createDelegatedActionBinding(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('delegated action binding must be an object');
+  const allowed = new Set(['sourceAction', 'sourceTarget', 'runtimeAction', 'runtimeTarget', 'payloadBinding']);
+  for (const key of Object.keys(input)) {
+    if (!allowed.has(key)) throw new Error(`delegated action binding contains unsupported field: ${key}`);
+  }
+  return deepFreeze({
+    sourceAction: assertSafeIdentifier(input.sourceAction, 'delegated source action'),
+    sourceTarget: requiredText(input.sourceTarget, 'delegated source target', 500),
+    runtimeAction: assertSafeIdentifier(input.runtimeAction, 'delegated runtime action'),
+    runtimeTarget: requiredText(input.runtimeTarget, 'delegated runtime target', 500),
+    payloadBinding: assertSafeIdentifier(input.payloadBinding, 'delegated payload binding'),
+  });
+}
+
+function normalizeDelegatedActionBindings(bindings = []) {
+  if (!Array.isArray(bindings)) throw new TypeError('delegatedActionBindings must be an array');
+  const normalized = bindings.map(createDelegatedActionBinding);
+  const sourceKeys = normalized.map((binding) => `${binding.sourceAction}\u0000${binding.sourceTarget}`);
+  if (new Set(sourceKeys).size !== sourceKeys.length) {
+    throw new Error('delegatedActionBindings must not contain duplicate source action/target bindings');
+  }
+  return normalized;
+}
+
 function createCapabilityPackage(input) {
   const publisher = requiredText(input?.publisher, 'publisher', 40);
   if (!PUBLISHERS.has(publisher)) throw new Error(`Unsupported capability publisher: ${publisher}`);
@@ -50,6 +75,7 @@ function publishCapabilityVersion(input) {
     evidenceRequirements: uniqueStrings(input.evidenceRequirements || [], 'evidence requirement'),
     resourceRequirements: uniqueStrings(input.resourceRequirements || [], 'resource requirement'),
     providerContractIds: uniqueStrings(input.providerContractIds || [], 'provider contract id', { identifiers: true }),
+    delegatedActionBindings: normalizeDelegatedActionBindings(input.delegatedActionBindings || []),
     humanGatePolicy,
     status: input.status || 'available',
   });
@@ -100,6 +126,8 @@ module.exports = {
   capabilityVersionDigest,
   createCapabilityInstallation,
   createCapabilityPackage,
+  createDelegatedActionBinding,
+  normalizeDelegatedActionBindings,
   publishCapabilityVersion,
   transitionInstallation,
 };

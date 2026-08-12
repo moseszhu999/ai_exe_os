@@ -1,0 +1,214 @@
+{
+  "schema": "aiexe.real-workstream-replay.v1",
+  "capturedAt": "2026-08-09T09:55:00Z",
+  "labelPolicy": "Labels are derived from explicit current project/controller/PR boundaries. Complete work is not active safe capacity, and project-wide pause requires either authoritative project status or an explicitly complete workstream decision scope.",
+  "projects": [
+    {
+      "project": {
+        "id": "trainingos",
+        "name": "TrainingOS",
+        "kind": "domain-os",
+        "status": "active",
+        "sourceOfTruth": "github:moseszhu999/training-learning-rails@main",
+        "owner": "trainingos-hourly-controller",
+        "milestone": "owner-safe current-main progress",
+        "summary": "Course Video and Marketplace are held; Shared Media smoke is complete, but this replay does not claim a complete inventory of all TrainingOS workstreams.",
+        "attentionSignals": [],
+        "evidenceRefs": [
+          "github:moseszhu999/training-learning-rails:main@987afdbeeb8fe996813fbca7180d2c848c798bb9",
+          "github:moseszhu999/training-learning-rails:issue:477"
+        ],
+        "observedAt": "2026-08-09T09:55:00Z"
+      },
+      "decisionScopeComplete": false,
+      "workstreams": [
+        {
+          "projectId": "trainingos",
+          "id": "course-video-shared-media",
+          "name": "Course Video Shared Media adapter",
+          "status": "blocked",
+          "owner": "trainingos-course-video-owner",
+          "milestone": "latest-main sync and fresh exact-head application validation",
+          "critical": true,
+          "blockerCodes": ["exact_head_revalidation_required"],
+          "evidenceRefs": [
+            "github:moseszhu999/training-learning-rails:pr:545@966c6502e8a130836b91a50efc8c6fd1ba4b08cd"
+          ],
+          "observedAt": "2026-08-09T09:46:32Z"
+        },
+        {
+          "projectId": "trainingos",
+          "id": "marketplace-live-workspace",
+          "name": "Marketplace live discovery to Agent Workspace",
+          "status": "blocked",
+          "owner": "trainingos-marketplace-owner",
+          "milestone": "real browser acceptance and release reconciliation",
+          "critical": true,
+          "blockerCodes": ["browser_acceptance_unproven"],
+          "evidenceRefs": [
+            "github:moseszhu999/training-learning-rails:pr:536@b1308795b979824432a4635b9bdf8ae31afd2740"
+          ],
+          "observedAt": "2026-08-09T08:04:05Z"
+        },
+        {
+          "projectId": "trainingos",
+          "id": "shared-media-mac-smoke",
+          "name": "Shared Media bounded Mac smoke evidence",
+          "status": "complete",
+          "owner": "trainingos-shared-media-smoke-controller",
+          "milestone": "canonical non-production Mac smoke evidence captured",
+          "critical": false,
+          "blockerCodes": [],
+          "evidenceRefs": [
+            "github:moseszhu999/training-learning-rails:main@987afdbeeb8fe996813fbca7180d2c848c798bb9",
+            "github-actions:moseszhu999/training-learning-rails:run:31301105716"
+          ],
+          "observedAt": "2026-08-09T05:14:43Z"
+        }
+      ],
+      "expected": {
+        "type": "escalate",
+        "bucket": "needs_attention",
+        "primaryReason": "decision_scope_incomplete",
+        "projectWidePause": false,
+        "continueEligibleWorkstreamIds": [],
+        "completedWorkstreamIds": ["shared-media-mac-smoke"],
+        "heldWorkstreamIds": ["course-video-shared-media", "marketplace-live-workspace"]
+      }
+    },
+    {
+      "project": {
+        "id": "tradeos",
+        "name": "TradeOS",
+        "kind": "domain-os",
+        "status": "active",
+        "sourceOfTruth": "github:moseszhu999/chaintrace-app@main",
+        "owner": "tradeos-controller",
+        "milestone": "parallel bounded product and shared-contract progress",
+        "summary": "N2 persistence remains held, while backend-neutral BusinessChannel work can continue independently; P2 planning is already complete.",
+        "attentionSignals": [],
+        "evidenceRefs": [
+          "github:moseszhu999/chaintrace-app:main@d2bba1b34590f8f04aed9f0e9b4ab717f2e06f27",
+          "github:moseszhu999/chaintrace-app:issue:567"
+        ],
+        "observedAt": "2026-08-09T09:55:00Z"
+      },
+      "decisionScopeComplete": false,
+      "workstreams": [
+        {
+          "projectId": "tradeos",
+          "id": "n2-market-shared-case-proposal",
+          "name": "N2 persisted human-confirmed MarketSharedCaseProposal",
+          "status": "blocked",
+          "owner": "tradeos-market-shared-case-proposal-owner",
+          "milestone": "authentic managed-JWT runtime acceptance on temporary Neon branch",
+          "critical": true,
+          "blockerCodes": ["authentic_runtime_acceptance_required"],
+          "evidenceRefs": [
+            "github:moseszhu999/chaintrace-app:pr:642@85ac433c0b35ea6140a37a3762660967bead4e2d"
+          ],
+          "observedAt": "2026-08-09T09:55:00Z"
+        },
+        {
+          "projectId": "tradeos",
+          "id": "business-channel-contract-core",
+          "name": "BusinessChannel shared contract core",
+          "status": "active",
+          "owner": "tradeos-business-channel-contract-owner",
+          "milestone": "bounded backend-neutral contract review and current-main reconciliation",
+          "critical": false,
+          "blockerCodes": [],
+          "evidenceRefs": [
+            "github:moseszhu999/chaintrace-app:pr:646@c230d2e36bfe8e7a7678a9cf916392a98659bb73",
+            "github-actions:moseszhu999/tradeos-public:run:31305064873"
+          ],
+          "observedAt": "2026-08-09T09:11:18Z"
+        },
+        {
+          "projectId": "tradeos",
+          "id": "p2-bottom-up-cockpit-plan",
+          "name": "P2 Bottom-up single-player cockpit plan",
+          "status": "complete",
+          "owner": "tradeos-p2-planning-owner",
+          "milestone": "current plan locked on main",
+          "critical": false,
+          "blockerCodes": [],
+          "evidenceRefs": [
+            "github:moseszhu999/chaintrace-app:main@d2bba1b34590f8f04aed9f0e9b4ab717f2e06f27"
+          ],
+          "observedAt": "2026-08-09T09:16:02Z"
+        }
+      ],
+      "expected": {
+        "type": "reprioritize",
+        "bucket": "needs_attention",
+        "primaryReason": "partial_workstream_block",
+        "projectWidePause": false,
+        "continueEligibleWorkstreamIds": ["business-channel-contract-core"],
+        "completedWorkstreamIds": ["p2-bottom-up-cockpit-plan"],
+        "heldWorkstreamIds": ["n2-market-shared-case-proposal"]
+      }
+    },
+    {
+      "project": {
+        "id": "video-operation-shared-media",
+        "name": "Video Operation / Shared Media",
+        "kind": "shared-service",
+        "status": "active",
+        "sourceOfTruth": "github:moseszhu999/global-tool-radar@main",
+        "owner": "video-operation-controller",
+        "milestone": "M10 human full-candidate review",
+        "summary": "The current decision scope is the M10→M11 critical path; both observed workstreams are held and no additional independent workstream is claimed inside this decision scope.",
+        "attentionSignals": [],
+        "evidenceRefs": [
+          "github:moseszhu999/global-tool-radar:main@e4728a0b1694bb9e89bd17f7f03bc3d3746e61e8",
+          "github:moseszhu999/global-tool-radar:AI_START_HERE.md"
+        ],
+        "observedAt": "2026-08-09T09:55:00Z"
+      },
+      "decisionScopeComplete": true,
+      "workstreams": [
+        {
+          "projectId": "video-operation-shared-media",
+          "id": "m10-human-full-review",
+          "name": "M10 full human candidate review",
+          "status": "blocked",
+          "owner": "video-operation-human-review-gate",
+          "milestone": "human ACCEPT or REJECT bound to exact MP4 digest",
+          "critical": true,
+          "blockerCodes": ["human_review_required"],
+          "evidenceRefs": [
+            "github:moseszhu999/global-tool-radar:pr:105",
+            "github:moseszhu999/global-tool-radar:pr:106",
+            "github:moseszhu999/global-tool-radar:pr:107",
+            "sha256:1de5e8a6e25b8e25ef4f7a7db8a628941794687432ba0420eb956fdc0ba6f598"
+          ],
+          "observedAt": "2026-08-09T09:12:51Z"
+        },
+        {
+          "projectId": "video-operation-shared-media",
+          "id": "m11-publication",
+          "name": "M11 social publication",
+          "status": "blocked",
+          "owner": "video-operation-publication-owner",
+          "milestone": "publication preparation only after M10 human approval",
+          "critical": true,
+          "blockerCodes": ["upstream_human_review_required"],
+          "evidenceRefs": [
+            "github:moseszhu999/global-tool-radar:AI_START_HERE.md"
+          ],
+          "observedAt": "2026-08-09T09:12:51Z"
+        }
+      ],
+      "expected": {
+        "type": "pause",
+        "bucket": "blocked",
+        "primaryReason": "all_decision_scope_critical_workstreams_held",
+        "projectWidePause": true,
+        "continueEligibleWorkstreamIds": [],
+        "completedWorkstreamIds": [],
+        "heldWorkstreamIds": ["m10-human-full-review", "m11-publication"]
+      }
+    }
+  ]
+}

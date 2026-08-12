@@ -1,0 +1,68 @@
+{
+  "schema": "aiexe.controller-evidence-scan.v1",
+  "evidenceClass": "REAL_READ_ONLY_CONTROLLER_EVIDENCE_SCAN",
+  "capturedAt": "2026-08-09T15:56:00Z",
+  "promotionPolicy": "Only a deterministic marked JSON envelope with verified source digest, explicit authoritative fields, current exact head and current freshness may become a canonical external Controller attestation.",
+  "findings": [
+    {
+      "projectId": "aiexe",
+      "repository": "moseszhu999/ai_exe_os",
+      "currentProviderHead": "7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48",
+      "sourceKind": "coordinator-issue",
+      "sourceRef": "https://github.com/moseszhu999/ai_exe_os/pull/125#issuecomment-5232406288",
+      "reportedHead": "7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48",
+      "structuredEnvelopePresent": true,
+      "sourceDigestVerified": true,
+      "currentExactHead": true,
+      "promotable": true,
+      "reason": "current_exact_head_structured_out_of_band_attestation"
+    },
+    {
+      "projectId": "trainingos",
+      "repository": "moseszhu999/training-learning-rails",
+      "currentProviderHead": "0b69d1d7ad2c67c4ba36294ec153280c3da69352",
+      "sourceKind": "coordinator-issue",
+      "sourceRef": "https://github.com/moseszhu999/training-learning-rails/issues/477#issuecomment-5229886759",
+      "reportedHead": "42e3b35948b4ff0fc19bdb72af175a730ece1496",
+      "structuredEnvelopePresent": false,
+      "sourceDigestVerified": false,
+      "currentExactHead": false,
+      "promotable": false,
+      "reason": "human_readable_controller_output_and_exact_head_mismatch"
+    },
+    {
+      "projectId": "tradeos",
+      "repository": "moseszhu999/chaintrace-app",
+      "currentProviderHead": "355a7169bfe8e48c7f78fa874cc422a394553d56",
+      "sourceKind": "coordinator-issue",
+      "sourceRef": "https://github.com/moseszhu999/chaintrace-app/issues/567#issuecomment-5229879484",
+      "reportedHead": "02985010fbd91277df94d97984401af913a7922a",
+      "structuredEnvelopePresent": false,
+      "sourceDigestVerified": false,
+      "currentExactHead": false,
+      "promotable": false,
+      "reason": "human_readable_controller_output_and_exact_head_mismatch"
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "repository": "moseszhu999/global-tool-radar",
+      "currentProviderHead": "24996407449df28b2d83fce1a145b3200fff168a",
+      "sourceKind": "controller-handoff",
+      "sourceRef": "https://github.com/moseszhu999/global-tool-radar/blob/24996407449df28b2d83fce1a145b3200fff168a/docs/video/evidence/m10-explainer-v2-controller-reverification-2026-08-09.md",
+      "reportedHead": "7f86239d6e56522d2cec2138defae32116380dc9",
+      "structuredEnvelopePresent": false,
+      "sourceDigestVerified": false,
+      "currentExactHead": false,
+      "promotable": false,
+      "reason": "repo_contained_receipt_self_advances_main_and_is_exact_head_stale"
+    }
+  ],
+  "summary": {
+    "controllerEvidenceSourcesObserved": 4,
+    "structuredOutOfBandSources": 1,
+    "promotableCurrentAttestations": 1,
+    "externalDomainPromotableCurrentAttestations": 0,
+    "recurringHumanReadableControllerRegistersObserved": 2,
+    "repoContainedControllerReceiptsObserved": 1
+  }
+}
