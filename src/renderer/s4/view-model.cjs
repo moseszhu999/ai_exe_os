@@ -22,6 +22,13 @@ function sanitize(value, key = '', seen = new Set()) {
   return output;
 }
 
+function freezeDeep(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  Object.freeze(value);
+  for (const nested of Object.values(value)) freezeDeep(nested);
+  return value;
+}
+
 function createS4CockpitViewModel(snapshot, activeWorkspaceId, selectedWorkerId = null) {
   if (!snapshot || typeof snapshot !== 'object') throw new TypeError('S4 cockpit snapshot is required');
   const exactWorkspace = snapshot.workspaceId === activeWorkspaceId && snapshot.found === true;
@@ -38,6 +45,9 @@ function createS4CockpitViewModel(snapshot, activeWorkspaceId, selectedWorkerId 
   const safe = sanitize(snapshot);
   const workers = Array.isArray(safe.workers) ? safe.workers : [];
   const selectedWorker = workers.find((item) => item.workerId === selectedWorkerId) || workers[0] || null;
+  const managementPortfolio = safe.managementPortfolio && typeof safe.managementPortfolio === 'object'
+    ? freezeDeep(safe.managementPortfolio)
+    : null;
   return Object.freeze({
     surfaces: SURFACES,
     activeWorkspaceId,
@@ -61,6 +71,7 @@ function createS4CockpitViewModel(snapshot, activeWorkspaceId, selectedWorkerId 
       canPause: Boolean(selectedWorker?.controls?.canPause),
       canResume: Boolean(selectedWorker?.controls?.canResume),
     }),
+    ...(managementPortfolio ? { managementPortfolio } : {}),
   });
 }
 

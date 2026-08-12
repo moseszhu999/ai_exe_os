@@ -2,6 +2,7 @@
 
 const { S3ApplicationService } = require('./s3-index.cjs');
 const { createOperatorCockpitSnapshot } = require('../operator-console/read-model/operator-cockpit.cjs');
+const { readManagementCeoPortfolioSurface } = require('../operator-console/read-model/management-ceo-portfolio.cjs');
 const { createEvidenceLineage } = require('../operator-console/explanation/lineage.cjs');
 const { aggregateAttention } = require('../operator-console/attention/attention-inbox.cjs');
 const { WorkerSessionControlAdapter } = require('../operator-console/control/worker-session-control.cjs');
@@ -9,6 +10,15 @@ const { WorkerSessionControlAdapter } = require('../operator-console/control/wor
 class S4ApplicationService extends S3ApplicationService {
   constructor(options = {}) {
     super(options);
+    if (options.groupCeoPortfolioBriefReader != null && typeof options.groupCeoPortfolioBriefReader !== 'function') {
+      throw new TypeError('groupCeoPortfolioBriefReader must be a function');
+    }
+    if (options.groupCeoPortfolioBriefReader != null
+      && (typeof options.groupManagementWorkspaceId !== 'string' || !options.groupManagementWorkspaceId.trim())) {
+      throw new TypeError('groupManagementWorkspaceId is required when Group CEO portfolio reader is configured');
+    }
+    this.groupCeoPortfolioBriefReader = options.groupCeoPortfolioBriefReader || null;
+    this.groupManagementWorkspaceId = options.groupManagementWorkspaceId?.trim() || null;
     this.s4WorkerControl = new WorkerSessionControlAdapter({
       workerManager: this.workerManager,
       resolveWorkspaceId: (workerId) => {
@@ -49,7 +59,17 @@ class S4ApplicationService extends S3ApplicationService {
     });
     const attention = aggregateAttention({ workspaceId, missionState, githubState });
     const lineage = Object.fromEntries(attention.map((item) => [item.id, createEvidenceLineage({ attentionItem: item, missionState, githubState })]));
-    return Object.freeze({ ...base, attention, lineage: Object.freeze(lineage) });
+    const managementPortfolio = readManagementCeoPortfolioSurface({
+      workspaceId,
+      groupManagementWorkspaceId: this.groupManagementWorkspaceId,
+      groupCeoPortfolioBriefReader: this.groupCeoPortfolioBriefReader,
+    });
+    return Object.freeze({
+      ...base,
+      attention,
+      lineage: Object.freeze(lineage),
+      ...(managementPortfolio ? { managementPortfolio } : {}),
+    });
   }
 
   async controlWorker(action, input) {
