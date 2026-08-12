@@ -2,12 +2,14 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { createHash } = require('node:crypto');
 const { mkdtempSync, rmSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const { S1SqliteEventStore } = require('../src/storage/index.cjs');
 const {
   PROVIDER_RUNTIME_MANIFEST_SCHEMA,
+  canonicalize,
   createProviderRuntimeCatalog,
   resolveProviderRuntimeRoute,
 } = require('../src/integrations/provider-runtime/index.cjs');
@@ -37,15 +39,23 @@ const MIGRATIONS = join(__dirname, '..', 'migrations');
 async function withDatabase(fn) {
   const directory = mkdtempSync(join(tmpdir(), 'ai-exe-domain-action-'));
   const databasePath = join(directory, 'state.sqlite');
-  try { return await fn(databasePath); }
-  finally { rmSync(directory, { recursive: true, force: true }); }
+  try {
+    return await fn(databasePath);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 function storeAt(databasePath) {
   return new S1SqliteEventStore({ databasePath, migrationsDirectory: MIGRATIONS });
 }
 
+function sha256(value) {
+  return `sha256:${createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex')}`;
+}
+
 function domainPlan({
+  requestId = 'req-domain-payment-001',
   providerId = 'trade-bank-fixture',
   operationId = 'submit-payment',
   providerOperation = 'payments.submit',
@@ -84,7 +94,7 @@ function domainPlan({
     route,
     request: {
       schema: 'provider.runtime.request.v1',
-      requestId: 'req-domain-payment-001',
+      requestId,
       providerId,
       operationId,
       parameters,
@@ -225,24 +235,23 @@ function deterministicClock() {
   return { now: () => values.shift() || '2026-08-12T06:00:00.200Z' };
 }
 
-async function execute({ databasePath, plan = domainPlan(), attempt = null, auth = null, deps = null } = {}) {
+async function runPersisted({ databasePath, plan, attempt, auth, deps, workspaceId = 'workspace.tradeos.fixture' }) {
   const store = storeAt(databasePath);
   const claimGate = new ProviderExecutionAttemptClaimGate({ store, clock: () => '2026-08-12T06:00:00.050Z' });
-  const executionAttempt = attempt || initialAttempt(plan);
+  const actualAttempt = attempt || initialAttempt(plan);
   const actualDeps = deps || dependencies(plan);
   return {
     store,
     claimGate,
-    executionAttempt,
     deps: actualDeps,
     promise: executePersistedDomainExternalActionAttempt({
       claimGate,
-      workspaceId: 'workspace.tradeos.fixture',
+      workspaceId,
       plan,
-      executionAttempt,
+      executionAttempt: actualAttempt,
       authorizationRequest: auth || authorizationFor(plan),
       ...actualDeps,
-      at: AT,
+      at: auth?.observedAt || AT,
       clock: deterministicClock(),
     }),
   };
@@ -251,7 +260,7 @@ async function execute({ databasePath, plan = domainPlan(), attempt = null, auth
 test('authorized action-gated domain operation executes exactly once and persists a secret-free success receipt', async () => {
   await withDatabase(async (databasePath) => {
     const plan = domainPlan();
-    const run = await execute({ databasePath, plan });
+    const run = await runPersisted({ databasePath, plan });
     const result = await run.promise;
     assert.equal(result.ok, true);
     assert.equal(result.persistentDuplicate, false);
@@ -276,10 +285,11 @@ test('authorized action-gated domain operation executes exactly once and persist
 test('authorization denial or rejected HumanGate blocks before endpoint credential claim or effect', async () => {
   await withDatabase(async (databasePath) => {
     const plan = domainPlan();
-    for (const auth of [
+    const cases = [
       authorizationFor(plan, { resolved: { authorityGrant: { ...authorizationFor(plan).resolved.authorityGrant, status: 'revoked' } } }),
       authorizationFor(plan, { resolved: { humanGate: { ref: 'gate.domain-payment', state: 'rejected' } } }),
-    ]) {
+    ];
+    for (let index = 0; index < cases.length; index += 1) {
       const deps = dependencies(plan);
       const store = storeAt(databasePath);
       const claimGate = new ProviderExecutionAttemptClaimGate({ store, clock: () => AT });
@@ -287,8 +297,8 @@ test('authorization denial or rejected HumanGate blocks before endpoint credenti
         claimGate,
         workspaceId: 'workspace.tradeos.fixture',
         plan,
-        executionAttempt: initialAttempt(plan, String(Math.random()).slice(2, 7)),
-        authorizationRequest: auth,
+        executionAttempt: initialAttempt(plan, `deny-${index}`),
+        authorizationRequest: cases[index],
         ...deps,
         at: AT,
       }), /authorization denied/);
@@ -334,20 +344,17 @@ test('executor refuses non-domain non-http-json non-externalAction or non-action
       { semanticOperation: { ...valid.semanticOperation, riskClass: 'draft' } },
       { semanticOperation: { ...valid.semanticOperation, humanGatePolicy: 'task' } },
     ];
-    for (const mutation of mutations) {
-      const base = { ...valid, ...mutation };
+    for (let index = 0; index < mutations.length; index += 1) {
+      const base = { ...valid, ...mutations[index] };
       delete base.planDigest;
-      const crypto = require('node:crypto');
-      const { canonicalize } = require('../src/integrations/provider-runtime/index.cjs');
-      const planDigest = `sha256:${crypto.createHash('sha256').update(JSON.stringify(canonicalize(base))).digest('hex')}`;
-      const forged = Object.freeze({ ...base, planDigest });
+      const forged = Object.freeze({ ...base, planDigest: sha256(base) });
       const store = storeAt(databasePath);
       const claimGate = new ProviderExecutionAttemptClaimGate({ store, clock: () => AT });
       await assert.rejects(() => executePersistedDomainExternalActionAttempt({
         claimGate,
         workspaceId: 'workspace.tradeos.fixture',
         plan: forged,
-        executionAttempt: initialAttempt(valid, `scope-${Math.random().toString(16).slice(2, 8)}`),
+        executionAttempt: initialAttempt(valid, `scope-${index}`),
         authorizationRequest: authorizationFor(valid),
         ...dependencies(valid),
         at: AT,
@@ -451,23 +458,42 @@ test('adapter is exact operation-only and cannot claim provider idempotency auto
   });
 });
 
-test('P1 domain parameters cannot smuggle URL method headers credentials or runtime idempotency key', () => {
-  const bad = [
+test('P1 rejects transport and credential smuggling while P5 separately refuses caller-driven provider idempotency', async () => {
+  for (const parameters of [
     { url: 'https://evil.example.test' },
     { method: 'DELETE' },
     { headers: { x: 'y' } },
     { apiKey: 'secret' },
     { credentialRef: 'credential.evil' },
-    { idempotencyKey: 'provider-replay-me' },
-  ];
-  for (const parameters of bad) {
+  ]) {
     assert.throws(() => domainPlan({ parameters }), /forbidden transport\/credential field/);
   }
+
+  await withDatabase(async (databasePath) => {
+    const plan = domainPlan({
+      requestId: 'req-domain-payment-caller-idempotency',
+      parameters: { paymentInstructionRef: 'payment-ref-idem', idempotencyKey: 'provider-replay-me' },
+    });
+    const deps = dependencies(plan);
+    const store = storeAt(databasePath);
+    const claimGate = new ProviderExecutionAttemptClaimGate({ store, clock: () => AT });
+    await assert.rejects(() => executePersistedDomainExternalActionAttempt({
+      claimGate,
+      workspaceId: 'workspace.tradeos.fixture',
+      plan,
+      executionAttempt: initialAttempt(plan, 'caller-idempotency'),
+      authorizationRequest: authorizationFor(plan),
+      ...deps,
+      at: AT,
+    }), /forbidden field: idempotencyKey/);
+    assert.deepEqual(deps.calls, { endpoint: 0, credential: 0, adapter: 0, adapterRequest: null });
+    assert.equal(claimGate.list().length, 0);
+  });
 });
 
 test('non-2xx provider response is a known terminal failure with one external action attempt and no provider body return', async () => {
   await withDatabase(async (databasePath) => {
-    const plan = domainPlan();
+    const plan = domainPlan({ requestId: 'req-domain-payment-409' });
     const deps = dependencies(plan, {
       response: {
         statusCode: 409,
@@ -476,7 +502,7 @@ test('non-2xx provider response is a known terminal failure with one external ac
         providerRequestId: 'provider-request-fixture-409',
       },
     });
-    const run = await execute({ databasePath, plan, deps });
+    const run = await runPersisted({ databasePath, plan, deps });
     const result = await run.promise;
     assert.equal(result.ok, false);
     assert.equal(result.result, null);
@@ -493,7 +519,7 @@ test('non-2xx provider response is a known terminal failure with one external ac
 
 test('adapter exception after effect-port entry becomes persisted uncertain evidence with zero automatic replay', async () => {
   await withDatabase(async (databasePath) => {
-    const plan = domainPlan();
+    const plan = domainPlan({ requestId: 'req-domain-payment-uncertain' });
     const deps = dependencies(plan, { adapterThrow: true });
     const store = storeAt(databasePath);
     const claimGate = new ProviderExecutionAttemptClaimGate({ store, clock: () => '2026-08-12T06:00:00.050Z' });
@@ -510,7 +536,9 @@ test('adapter exception after effect-port entry becomes persisted uncertain evid
         at: AT,
         clock: deterministicClock(),
       });
-    } catch (error) { caught = error; }
+    } catch (error) {
+      caught = error;
+    }
     assert.equal(caught instanceof ProviderExecutionUncertainError, true);
     assert.equal(caught.outcome.outcome, 'uncertain');
     assert.equal(caught.outcome.uncertainty.effectMayHaveOccurred, true);
@@ -522,9 +550,8 @@ test('adapter exception after effect-port entry becomes persisted uncertain evid
   });
 });
 
-test('untrusted response shape JSON or sensitive payload after effect entry is uncertain rather than trustworthy failure evidence', async () => {
+test('each untrusted response gets its own canonical request and becomes uncertain after exactly one effect entry', async () => {
   await withDatabase(async (databasePath) => {
-    const plan = domainPlan();
     const responses = [
       { statusCode: 200, contentType: 'application/json', bodyText: '{}', providerRequestId: 'req-1', headers: { authorization: 'Bearer x' } },
       { statusCode: 200, contentType: 'text/plain', bodyText: '{}', providerRequestId: 'req-2' },
@@ -532,6 +559,7 @@ test('untrusted response shape JSON or sensitive payload after effect entry is u
       { statusCode: 200, contentType: 'application/json', bodyText: JSON.stringify({ access_token: 'secret' }), providerRequestId: 'req-4' },
     ];
     for (let index = 0; index < responses.length; index += 1) {
+      const plan = domainPlan({ requestId: `req-domain-bad-response-${index}` });
       const deps = dependencies(plan, { response: responses[index] });
       const store = storeAt(databasePath);
       const claimGate = new ProviderExecutionAttemptClaimGate({ store, clock: () => `2026-08-12T06:00:0${index}.050Z` });
@@ -552,7 +580,7 @@ test('untrusted response shape JSON or sensitive payload after effect entry is u
 
 test('exact duplicate persistent initial claim never invokes the external action a second time', async () => {
   await withDatabase(async (databasePath) => {
-    const plan = domainPlan();
+    const plan = domainPlan({ requestId: 'req-domain-payment-duplicate' });
     const attempt = initialAttempt(plan, 'duplicate');
     const store = storeAt(databasePath);
     const claimGate = new ProviderExecutionAttemptClaimGate({ store, clock: () => '2026-08-12T06:00:00.050Z' });
@@ -588,7 +616,7 @@ test('exact duplicate persistent initial claim never invokes the external action
 
 test('P5 v1 refuses reviewed external-action retry even after an exact prior uncertain outcome', async () => {
   await withDatabase(async (databasePath) => {
-    const plan = domainPlan();
+    const plan = domainPlan({ requestId: 'req-domain-payment-retry-source' });
     const deps = dependencies(plan, { adapterThrow: true });
     const store = storeAt(databasePath);
     const claimGate = new ProviderExecutionAttemptClaimGate({ store, clock: () => '2026-08-12T06:00:00.050Z' });
@@ -605,7 +633,9 @@ test('P5 v1 refuses reviewed external-action retry even after an exact prior unc
         at: AT,
         clock: deterministicClock(),
       });
-    } catch (error) { priorOutcome = error.outcome; }
+    } catch (error) {
+      priorOutcome = error.outcome;
+    }
     const retryAttempt = createReviewedProviderRetryAttempt({
       priorOutcome,
       attemptId: 'attempt-domain-payment-retry-2',
@@ -628,12 +658,12 @@ test('P5 v1 refuses reviewed external-action retry even after an exact prior unc
 
 test('providerRequestId and result payload cannot persist secret or session-shaped material', async () => {
   await withDatabase(async (databasePath) => {
-    const plan = domainPlan();
     const responses = [
       { statusCode: 200, contentType: 'application/json', bodyText: JSON.stringify({ ok: true }), providerRequestId: 'Bearer abc.def.ghi' },
       { statusCode: 200, contentType: 'application/json', bodyText: JSON.stringify({ ok: true, session_id: 'session-secret' }), providerRequestId: 'provider-request-ok' },
     ];
     for (let index = 0; index < responses.length; index += 1) {
+      const plan = domainPlan({ requestId: `req-domain-secret-response-${index}` });
       const deps = dependencies(plan, { response: responses[index] });
       const store = storeAt(databasePath);
       const claimGate = new ProviderExecutionAttemptClaimGate({ store, clock: () => `2026-08-12T06:00:1${index}.050Z` });
@@ -647,6 +677,7 @@ test('providerRequestId and result payload cannot persist secret or session-shap
         at: AT,
         clock: deterministicClock(),
       }), ProviderExecutionUncertainError);
+      assert.equal(deps.calls.adapter, 1);
     }
   });
 });
