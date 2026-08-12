@@ -1,0 +1,69 @@
+name: Provider MCP Local Launcher v1
+
+on:
+  pull_request:
+    branches: [agent/unified-provider-persistent-attempt-claim-v1]
+    paths:
+      - .github/workflows/provider-mcp-local-launcher-v1.yml
+      - docs/contracts/provider-mcp-local-launcher-v1.md
+      - src/integrations/provider-runtime/mcp-local-launcher-executor.cjs
+      - tests/provider-runtime-mcp-local-launcher.test.cjs
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Check out immutable PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Assert immutable PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          echo "exact-head=$TARGET_SHA"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Resolve pinned development dependencies without install scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Syntax check local MCP launcher executor
+        run: node --check src/integrations/provider-runtime/mcp-local-launcher-executor.cjs
+
+      - name: Run focused local MCP launcher contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/provider-runtime-mcp-local-launcher.test.cjs | tee /tmp/provider-mcp-local-launcher.tap
+          grep -Eq '# tests[[:space:]]+8$' /tmp/provider-mcp-local-launcher.tap
+          grep -Eq '# pass[[:space:]]+8$' /tmp/provider-mcp-local-launcher.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/provider-mcp-local-launcher.tap
+
+      - name: Run full AIEXE unit suite
+        run: npm test
+
+      - name: Lock bounded local-launcher boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=src/integrations/provider-runtime/mcp-local-launcher-executor.cjs
+          grep -F "registered_local_launcher" "$SRC"
+          grep -F "launcherRef" "$SRC"
+          grep -F "protocolOperation=tools/call" docs/contracts/provider-mcp-local-launcher-v1.md || grep -F "tools/call" docs/contracts/provider-mcp-local-launcher-v1.md
+          ! grep -E "child_process|exec\(|spawn\(|execFile\(|shell:[[:space:]]*true" "$SRC"
+          ! grep -E "externalActionPerformed:[[:space:]]*true|networkPerformed:[[:space:]]*true|credentialResolved:[[:space:]]*true" "$SRC"
