@@ -16,6 +16,7 @@ on:
       - tests/agent-selection-host-provenance-verification-request.test.cjs
       - tests/agent-selection-observation-batch.test.cjs
       - tests/agent-selection-observation-receipt.test.cjs
+      - tests/mcp-registry-publication-readiness.test.cjs
       - tests/mock-supplier-verification.test.cjs
       - tests/fixtures/trade.verify_supplier.selection-eval.v1.json
 
@@ -63,6 +64,7 @@ jobs:
           node --check src/discovery/agent-selection-host-provenance-verification-request.cjs
           node --check src/discovery/agent-selection-observation-batch.cjs
           node --check src/discovery/agent-selection-observation-receipt.cjs
+          node --check src/discovery/mcp-registry-publication-readiness.cjs
           node --check src/discovery/mock-supplier-verification.cjs
 
       - name: Run focused Agent discovery contracts
@@ -77,6 +79,7 @@ jobs:
             tests/agent-selection-host-provenance-verification-request.test.cjs \
             tests/agent-selection-observation-batch.test.cjs \
             tests/agent-selection-observation-receipt.test.cjs \
+            tests/mcp-registry-publication-readiness.test.cjs \
             tests/mock-supplier-verification.test.cjs \
             | tee /tmp/agent-discovery.tap
           grep -Eq '# fail[[:space:]]+0$' /tmp/agent-discovery.tap
@@ -113,5 +116,12 @@ jobs:
           grep -F "publicKeyEmbeddedByThisModule: false" src/discovery/agent-selection-host-provenance-verification-request.cjs
           grep -F "networkPerformedByThisModule: false" src/discovery/agent-selection-host-provenance-verification-request.cjs
           grep -F "externalHostProvenanceVerified: false" src/discovery/agent-selection-host-provenance-verification-request.cjs
-          ! grep -E "fetch\\(|axios|https?\\.request|process\\.env|Authorization|Bearer" src/discovery/agent-selection-host-collector.cjs src/discovery/agent-selection-host-provenance-envelope.cjs src/discovery/agent-selection-host-provenance-verification-request.cjs
-          ! grep -RInE "providerAccessGranted:[[:space:]]*true|rankingClaimCreated:[[:space:]]*true|executionAuthorized:[[:space:]]*true|paymentPerformed:[[:space:]]*true|domainWritePerformed:[[:space:]]*true|externalHostProvenanceVerified:[[:space:]]*true|externalVerificationPerformedByThisModule:[[:space:]]*true|verificationDecisionCreatedByThisModule:[[:space:]]*true" src/discovery
+          grep -F "registrySchemaValidatedByOfficialPublisher: false" src/discovery/mcp-registry-publication-readiness.cjs
+          grep -F "registryAuthenticationPerformed: false" src/discovery/mcp-registry-publication-readiness.cjs
+          grep -F "registryNamespaceOwnershipVerified: false" src/discovery/mcp-registry-publication-readiness.cjs
+          grep -F "remoteReachabilityChecked: false" src/discovery/mcp-registry-publication-readiness.cjs
+          grep -F "remotePublicAccessibilityVerified: false" src/discovery/mcp-registry-publication-readiness.cjs
+          grep -F "publicationPerformed: false" src/discovery/mcp-registry-publication-readiness.cjs
+          grep -F "networkPerformed: false" src/discovery/mcp-registry-publication-readiness.cjs
+          ! grep -E "fetch\\(|axios|https?\\.request|process\\.env|Authorization|Bearer" src/discovery/agent-selection-host-collector.cjs src/discovery/agent-selection-host-provenance-envelope.cjs src/discovery/agent-selection-host-provenance-verification-request.cjs src/discovery/mcp-registry-publication-readiness.cjs
+          ! grep -RInE "providerAccessGranted:[[:space:]]*true|rankingClaimCreated:[[:space:]]*true|executionAuthorized:[[:space:]]*true|paymentPerformed:[[:space:]]*true|domainWritePerformed:[[:space:]]*true|externalHostProvenanceVerified:[[:space:]]*true|externalVerificationPerformedByThisModule:[[:space:]]*true|verificationDecisionCreatedByThisModule:[[:space:]]*true|registryAuthenticationPerformed:[[:space:]]*true|registryNamespaceOwnershipVerified:[[:space:]]*true|remotePublicAccessibilityVerified:[[:space:]]*true|publicationPerformed:[[:space:]]*true" src/discovery
