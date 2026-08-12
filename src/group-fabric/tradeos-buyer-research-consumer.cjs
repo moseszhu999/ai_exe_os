@@ -62,6 +62,15 @@ function safeCode(value, label) {
   return normalized;
 }
 
+function safeIdentifier(value, label) {
+  const normalized = text(value, label, 200);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/.test(normalized)) throw new TypeError(`${label} must be a bounded opaque identifier`);
+  if (/bearer|password|secret|token|api[_-]?key|cookie|session/i.test(normalized)) {
+    throw new TypeError(`${label} must not contain secret/session-like material`);
+  }
+  return normalized;
+}
+
 function safeRef(value, label, prefix = null) {
   const normalized = text(value, label, 280);
   if (prefix && !normalized.startsWith(prefix)) throw new TypeError(`${label} must start with ${prefix}`);
@@ -199,7 +208,7 @@ function normalizeSource(value) {
   }
   return freezeDeep({
     snapshotGeneratedAt: timestamp(value.snapshotGeneratedAt, 'snapshotGeneratedAt').text,
-    leadKey: safeCode(value.leadKey, 'leadKey'),
+    leadKey: safeIdentifier(value.leadKey, 'leadKey'),
     leadStatus,
     sourcePackageIds,
     evidenceSources: uniqueStrings(value.evidenceSources, 'evidenceSources'),
@@ -275,7 +284,7 @@ function normalizeDraftIntent(value, routeState) {
   if (/@[^/\s]+\.[A-Za-z]{2,}/.test(buyerOrPublisher)) throw new TypeError('buyerOrPublisher must not contain email-like PII');
   return freezeDeep({
     kind,
-    leadKey: safeCode(value.leadKey, 'draftIntent.leadKey'),
+    leadKey: safeIdentifier(value.leadKey, 'draftIntent.leadKey'),
     buyerOrPublisher,
     objective: text(value.objective, 'draftIntent.objective', 500),
     evidenceFactRefs: uniqueStrings(value.evidenceFactRefs, 'evidenceFactRefs', 1, 256),
@@ -335,7 +344,7 @@ function normalizeTradeOSReceipt(receipt) {
   if (digest(unsigned) !== loopDigest) throw new TypeError('TradeOS buyer research loopDigest mismatch');
 
   const route = normalizeRoute(receipt.route);
-  const normalized = freezeDeep({
+  return freezeDeep({
     schemaVersion: TRADEOS_BUYER_RESEARCH_LOOP_SCHEMA,
     loopReceiptRef: safeRef(receipt.loopReceiptRef, 'loopReceiptRef', 'tradeos:group-buyer-research-loop:'),
     loopDigest,
@@ -347,8 +356,6 @@ function normalizeTradeOSReceipt(receipt) {
     businessEvalHandoff: normalizeBusinessEvalHandoff(receipt.businessEvalHandoff),
     boundaries: normalizeBoundaries(receipt.boundaries),
   });
-
-  return normalized;
 }
 
 function assertExactGroupBinding(receipt, workEntry, policy) {
@@ -377,8 +384,6 @@ function deriveNextWork(receipt) {
       requiredAutonomyLevel: 'L0',
       workKind: 'research_evidence',
       intentCode: 'continue_buyer_research',
-      requiresNewWorkEntry: true,
-      requiresPolicyMatch: true,
       ownerApprovalBeforeExternalEffect: false,
     });
   }
@@ -390,8 +395,6 @@ function deriveNextWork(receipt) {
     requiredAutonomyLevel: 'L1',
     workKind: 'draft_text',
     intentCode: draftIntent.kind,
-    requiresNewWorkEntry: true,
-    requiresPolicyMatch: true,
     ownerApprovalBeforeExternalEffect: true,
   });
 }
