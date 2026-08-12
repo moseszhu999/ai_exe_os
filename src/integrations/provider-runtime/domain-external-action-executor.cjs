@@ -25,6 +25,7 @@ const MAX_SECRET_CHARS = 8192;
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 const FORBIDDEN_DATA_KEY = /^(authorization|proxy-authorization|cookie|set-cookie|api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret|credential|credentialRef|credentialRefs|private[_ -]?key|url|uri|endpoint|endpointRef|headers?|method|idempotencyKey)$/i;
 const FORBIDDEN_RESPONSE_KEY = /^(authorization|proxy-authorization|cookie|set-cookie|api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret|credential|private[_ -]?key|session[_-]?id)$/i;
+const SENSITIVE_VALUE = /(Bearer\s+[A-Za-z0-9._~+\/-]+|sk-[A-Za-z0-9_-]{8,}|BEGIN [A-Z ]*PRIVATE KEY|session=|api[_-]?key=)/i;
 
 function assertPlainObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -103,7 +104,7 @@ function assertNoSensitiveResponse(value, label = 'domain provider response', de
     }
     return;
   }
-  if (typeof value === 'string' && /(Bearer\s+[A-Za-z0-9._~+\/-]+|sk-[A-Za-z0-9_-]{8,}|BEGIN [A-Z ]*PRIVATE KEY|session=|api[_-]?key=)/i.test(value)) {
+  if (typeof value === 'string' && SENSITIVE_VALUE.test(value)) {
     throw new Error(`${label} contains sensitive value`);
   }
 }
@@ -302,6 +303,9 @@ function normalizeResponse(raw) {
   const providerRequestId = response.providerRequestId == null
     ? null
     : requiredText(response.providerRequestId, 'domain provider request id', 300);
+  if (providerRequestId && SENSITIVE_VALUE.test(providerRequestId)) {
+    throw new Error('domain provider request id contains sensitive value');
+  }
   return Object.freeze({ statusCode: response.statusCode, contentType, payload, providerRequestId });
 }
 
