@@ -38,6 +38,7 @@ function input(overrides = {}) {
     capabilityVersion: '1.0.0',
     offerDigest: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     evalFixtureDigest: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    observationSetDigest: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
     surface: 'chatgpt_app',
     hostName: 'ChatGPT',
     hostVersion: 'observed-build-ref',
@@ -49,12 +50,13 @@ function input(overrides = {}) {
   };
 }
 
-test('binds exact capability, offer, eval fixture and host surface into deterministic receipt', () => {
+test('binds exact capability, offer, fixture, observation set and host surface into deterministic receipt', () => {
   const a = createAgentSelectionObservationReceipt(input());
   const b = createAgentSelectionObservationReceipt(input());
   assert.equal(a.receiptDigest, b.receiptDigest);
   assert.equal(a.surface, 'chatgpt_app');
   assert.equal(a.capabilityRef.capabilityId, 'trade.verify_supplier.v1');
+  assert.equal(a.observationEvidence.observationSetDigest, input().observationSetDigest);
   assert.equal(a.observationCount, 53);
   assert.deepEqual(a.authority, {
     rankingClaimCreated: false,
@@ -66,18 +68,25 @@ test('binds exact capability, offer, eval fixture and host surface into determin
   });
 });
 
-test('host or model drift changes receipt identity', () => {
+test('host, model or observation drift changes receipt identity', () => {
   const a = createAgentSelectionObservationReceipt(input());
   const b = createAgentSelectionObservationReceipt(input({ modelName: 'different-model-ref' }));
+  const c = createAgentSelectionObservationReceipt(input({
+    observationSetDigest: 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+  }));
   assert.notEqual(a.receiptDigest, b.receiptDigest);
+  assert.notEqual(a.receiptDigest, c.receiptDigest);
 });
 
-test('rejects unsupported surface and observation-count mismatch', () => {
+test('rejects unsupported surface, observation-count mismatch and malformed evidence digests', () => {
   assert.throws(() => createAgentSelectionObservationReceipt(input({ surface: 'unknown_host' })), /Unsupported observation surface/);
   assert.throws(() => createAgentSelectionObservationReceipt(input({ observationCount: 52 })), /observationCount must equal/);
+  assert.throws(() => createAgentSelectionObservationReceipt(input({ observationSetDigest: 'not-a-digest' })), /sha256 digest/);
+  assert.throws(() => createAgentSelectionObservationReceipt(input({ offerDigest: 'not-a-digest' })), /sha256 digest/);
 });
 
-test('rejects evaluation that claims model/network/publication effects', () => {
+test('rejects non-UTC observation time and evaluation that claims model/network/publication effects', () => {
+  assert.throws(() => createAgentSelectionObservationReceipt(input({ observedAt: '2026-08-12T08:40:00+08:00' })), /valid UTC timestamp/);
   assert.throws(() => createAgentSelectionObservationReceipt(input({ evaluation: evaluation({ model_invocation_performed: true }) })), /offline-derived/);
   assert.throws(() => createAgentSelectionObservationReceipt(input({ evaluation: evaluation({ network_performed: true }) })), /offline-derived/);
   assert.throws(() => createAgentSelectionObservationReceipt(input({ evaluation: evaluation({ publication_performed: true }) })), /offline-derived/);
