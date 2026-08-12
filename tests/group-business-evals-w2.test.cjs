@@ -71,12 +71,12 @@ function businessEval(id, overrides = {}) {
     requestedDomain: pol.ownerDomain,
     targetRef: `${pol.ownerDomain}:target:${id}`,
   });
-  const esc = overrides.escalation || escalation(id, work, pol);
+  const esc = overrides.decisionEscalation || escalation(id, work, pol);
   const input = {
     evalRef: `group:business-eval:${id}`,
     workEntry: work,
     policy: pol,
-    escalation: esc,
+    decisionEscalation: esc,
     trialCount: 10,
     successfulTrials: 8,
     unknownTrials: 1,
@@ -92,7 +92,7 @@ function businessEval(id, overrides = {}) {
     observedAt: '2026-08-12T00:05:00Z',
   };
   for (const [key, value] of Object.entries(overrides)) {
-    if (!['policy', 'workEntry', 'escalation'].includes(key)) input[key] = value;
+    if (!['policy', 'workEntry', 'decisionEscalation'].includes(key)) input[key] = value;
   }
   return createGroupBusinessEval(input);
 }
