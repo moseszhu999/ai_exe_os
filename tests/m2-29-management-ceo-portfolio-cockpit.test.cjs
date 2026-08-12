@@ -17,6 +17,22 @@ const HEX_A = 'a'.repeat(64);
 const HEX_B = 'b'.repeat(64);
 const HEX_C = 'c'.repeat(64);
 
+class FakeWorkerManager {
+  constructor() {
+    this.workers = new Map([
+      ['s1-worker-chrome', { id: 's1-worker-chrome', projectId: 's1-local-project', role: 'implementation', browserChannel: 'chrome', status: 'idle' }],
+      ['s1-worker-chromium', { id: 's1-worker-chromium', projectId: 's1-local-project', role: 'review', browserChannel: 'chromium', status: 'idle' }],
+    ]);
+  }
+  list() { return [...this.workers.values()].map((item) => ({ ...item })); }
+  async focus(id) { return { ...this.workers.get(id) }; }
+  pause(id) { this.workers.set(id, { ...this.workers.get(id), status: 'paused' }); return { ...this.workers.get(id) }; }
+  resume(id) { this.workers.set(id, { ...this.workers.get(id), status: 'idle' }); return { ...this.workers.get(id) }; }
+  async stop(id) { this.workers.set(id, { ...this.workers.get(id), status: 'stopped' }); return { ...this.workers.get(id) }; }
+  async submitAuthorizedLocalTask() { throw new Error('M2.29 query path must not submit runtime work'); }
+  async stopAll() {}
+}
+
 const NO_AUTHORITY = Object.freeze({
   sourceSemanticsVerifiedByThisModule: false,
   llmFactGenerationAllowed: false,
@@ -168,6 +184,7 @@ test('M2.29 source failure and tampering remain bounded visible read-model state
 
 test('M2.29 S4 cockpit composition is query-only and does not create Mission execution state', () => {
   const service = new S4ApplicationService({
+    workerManager: new FakeWorkerManager(),
     groupManagementWorkspaceId: 'workspace-a',
     groupCeoPortfolioBriefReader: () => brief(),
   });
