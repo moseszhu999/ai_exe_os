@@ -8,6 +8,7 @@ AI Execution OS (AIEXE) is execution-control infrastructure. This file is a repo
 | AI Native Platform | `moseszhu999/ai-native-platform` | Shared Workspace, generic Case/Conversation, Plugin/App composition, Agent Router/Agent Runtime abstraction, Capability Router, MCP Gateway, host/channel integration | AIEXE may be an executor/infrastructure provider; it does not replace the Platform Workspace or Platform's stable Agent Runtime contract |
 | TrainingOS | `moseszhu999/training-learning-rails` | Education/training truth, schedule, OJT, assessment, evidence interpretation, capability/credential semantics and education-domain authority | AIEXE may execute bounded tasks for TrainingOS but cannot mint TrainingOS truth/authority |
 | TradeOS / Supply Chain OS | `moseszhu999/chaintrace-app` | Trade/sourcing/supplier/RFQ/quotation/evidence/review truth and trade-domain authority | AIEXE may expose/execute bounded TradeOS capabilities but cannot become trade/supplier authority |
+| PMAI / ProjectOS | `moseszhu999/pmai` | Project/task state, schedule/recovery, execution graph, proposals, HumanCheckpoint and project-change authority | PMAI may delegate bounded execution to AIEXE; AIEXE returns execution evidence but does not mutate project truth on its own |
 | Video Operation / ToolRadar / Shared Media | `moseszhu999/global-tool-radar` | Tool discovery/content operations and product-neutral media render/TTS/timeline/artifact-evidence infrastructure where explicitly shared | AIEXE may orchestrate allowed media/content tasks but does not own media result truth or social publishing decisions |
 
 ## AIEXE vs Agent Harness
@@ -24,9 +25,11 @@ AI Native Workspace
 → evidence / receipt back to the owning system
 ```
 
+PMAI / ProjectOS can be one owner that requests long-running execution from AIEXE and then decides how returned evidence changes project/task state.
+
 ## Rules
 
-- Execution success is not Domain truth. TrainingOS/TradeOS/Shared Media must validate and own their canonical result semantics.
+- Execution success is not Domain truth. TrainingOS/TradeOS/PMAI/Shared Media must validate and own their canonical result semantics.
 - Provider/browser availability is not permission; every automated surface must pass current provider/compliance gates.
 - AIEXE must not become a hidden second Workspace, second Domain database, or second business authority owner.
 - Platform MCP/Agent Runtime and AIEXE execution contracts should meet at explicit adapters, not copied routing/business logic.
