@@ -6,6 +6,8 @@ const { assertSafeIdentifier } = require('../../domain/identifiers.cjs');
 const { deepFreeze, requiredText } = require('../../domain/workspace-model.cjs');
 const { canonicalize } = require('./index.cjs');
 const { PROVIDER_ADAPTER_PLAN_SCHEMA } = require('./adapter-plan.cjs');
+const { resolveCredentialBinding } = require('./credential-binding.cjs');
+const { OperationGrantLedger } = require('../../authorization/execution-operation-grant-ledger.cjs');
 
 const PROVIDER_EXECUTION_RECEIPT_SCHEMA = 'provider.execution.receipt.v1';
 const ANTHROPIC_API_VERSION = '2023-06-01';
@@ -240,7 +242,7 @@ function normalizeTransportResponse(raw) {
   return Object.freeze({ statusCode: response.statusCode, contentType, payload, bodyText: response.bodyText, providerRequestId });
 }
 
-function makeReceipt({ plan, decision, endpoint, response, startedAt, completedAt, outcome }) {
+function makeReceipt({ plan, decision, endpoint, response, startedAt, completedAt, outcome, credentialBinding, operationGrantUse }) {
   const responseDigest = response ? digest(response.payload) : null;
   const core = {
     schema: PROVIDER_EXECUTION_RECEIPT_SCHEMA,
@@ -259,6 +261,10 @@ function makeReceipt({ plan, decision, endpoint, response, startedAt, completedA
     authorizationEvidenceDigest: decision.decisionEvidenceDigest,
     endpointRef: endpoint.endpointRef,
     credentialRefs: [plan.transportBinding.credentialRef],
+    credentialBindingDigest: credentialBinding?.bindingDigest || null,
+    credentialExpiresAt: credentialBinding?.expiresAt || null,
+    operationGrantRef: operationGrantUse?.grant.grantRef || null,
+    operationGrantUseDigest: operationGrantUse?.useDigest || null,
     networkPolicyRef: endpoint.networkPolicyRef,
     startedAt,
     completedAt,
@@ -286,12 +292,24 @@ async function executeProviderAdapterPlan({
   transport,
   at = authorizationRequest?.observedAt,
   clock = { now: () => new Date().toISOString() },
+  operationGrant,
+  operationGrantLedger,
 }) {
   const normalizedPlan = normalizePlan(plan);
   const executionAt = iso(at, 'execution at').text;
   const decision = assertAuthorization(normalizedPlan, authorizationRequest, executionAt);
   const endpoint = await resolveEndpoint(normalizedPlan, endpointResolver);
-  const credential = await resolveCredential(normalizedPlan, credentialResolver);
+  const credential = await resolveCredentialBinding({ plan: normalizedPlan, authorization: decision, credentialResolver, at: executionAt });
+  let operationGrantUse = null;
+  if (operationGrant || operationGrantLedger) {
+    const ledger = operationGrantLedger || new OperationGrantLedger();
+    if (!operationGrant) throw new Error('operation grant is required when a grant ledger is supplied');
+    const expected = expectedAuthorizationBinding(normalizedPlan);
+    if (operationGrant.operationRef !== normalizedPlan.semanticOperation.operationId) throw new Error('grant operation drift');
+    if (operationGrant.targetRef !== expected.targetRef) throw new Error('grant target drift');
+    if (operationGrant.organizationRef !== authorizationRequest.organizationRef || operationGrant.actorRef !== authorizationRequest.actorRef) throw new Error('grant actor or organization drift');
+    operationGrantUse = await ledger.consume(operationGrant.grantRef, operationGrant, executionAt);
+  }
   if (!transport || typeof transport.invoke !== 'function') throw new TypeError('transport.invoke is required');
 
   if (!clock || typeof clock.now !== 'function') throw new TypeError('clock.now is required');
@@ -316,7 +334,7 @@ async function executeProviderAdapterPlan({
   const completedAt = completed.text;
   const response = normalizeTransportResponse(rawResponse);
   const outcome = response.statusCode >= 200 && response.statusCode < 300 ? 'success' : 'provider_error';
-  const receipt = makeReceipt({ plan: normalizedPlan, decision, endpoint, response, startedAt, completedAt, outcome });
+  const receipt = makeReceipt({ plan: normalizedPlan, decision, endpoint, response, startedAt, completedAt, outcome, credentialBinding: credential.public, operationGrantUse });
   return deepFreeze({
     ok: outcome === 'success',
     result: outcome === 'success' ? response.payload : null,

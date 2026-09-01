@@ -1,5 +1,6 @@
 # execution.authorization.v1 — Entry Proof and No-Self-Authorization Boundary
 
+Operation grants and credential bindings remain derivative evidence. They do not become a second authorization evaluator, Secret Store, or Domain authority owner; `execution.authorization.v1` remains the sole decision boundary.
 Date: 2026-08-10  
 Controller: Issue #126  
 Baseline: `dce842e6874e6842b461cd4b5958df577608da94`  

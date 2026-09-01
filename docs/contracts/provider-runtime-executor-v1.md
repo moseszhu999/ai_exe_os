@@ -1,5 +1,6 @@
 # Provider Runtime Executor v1 — P2 model transport
 
+Credential resolution is effect-time and opaque (`execution.credential-binding.v1`). Automated or repeatable operations may additionally carry `execution.operation-grant.v1`; the grant is revalidated against the live source approval and exact operation digests immediately before transport.
 Status: stacked implementation contract on P0 `provider.runtime.manifest.v1` and P1 `provider.adapter.plan.v1`.
 
 ## Purpose
