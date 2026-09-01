@@ -1,0 +1,50 @@
+{
+  "schema": "agent.resource.offer.v1",
+  "resourceId": "trade.verify_supplier.v1",
+  "capabilityRef": {
+    "packageId": "trade.verify-supplier",
+    "version": "1.0.0",
+    "integrityDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "publicTitle": "TradeOS Supplier Verification",
+  "toolName": "verify_supplier",
+  "description": "Verify whether a named supplier is the claimed legal or manufacturing entity and whether current public evidence supports its capability for a specified product or buyer requirement. Returns structured verification checks, dated evidence references, gaps, confidence, and a machine-readable receipt. Use before supplier onboarding, sourcing, RFQ preparation, or counterparty review. Does not approve suppliers, guarantee performance, or provide legal advice.",
+  "locales": {
+    "en-US": {
+      "title": "TradeOS Supplier Verification",
+      "description": "Verify whether a named supplier is the claimed legal or manufacturing entity and whether current public evidence supports its capability for a specified product or buyer requirement. Returns structured verification checks, dated evidence references, gaps, confidence, and a machine-readable receipt. Use before supplier onboarding, sourcing, RFQ preparation, or counterparty review. Does not approve suppliers, guarantee performance, or provide legal advice.",
+      "useWhen": "Use before supplier onboarding, sourcing, RFQ preparation, or counterparty review when a buyer or agent needs evidence-based supplier identity or capability verification.",
+      "limitations": "Public evidence can be incomplete. Verification is not supplier approval, a legal opinion, certification issuance, or a guarantee of future supplier performance."
+    },
+    "ja-JP": {
+      "title": "TradeOS サプライヤー検証",
+      "description": "指定されたサプライヤーが申告された法人・製造主体であるか、また指定製品や買い手要件に関する能力を現在の公開証拠が裏付けているかを検証します。検証項目、日付付き証拠、未確認事項、信頼度、機械可読レシートを返します。",
+      "useWhen": "サプライヤー登録、調達、RFQ準備、取引先レビューの前に、法人実体または製造能力を証拠付きで確認したい場合に使用します。",
+      "limitations": "公開情報には欠落があり得ます。本結果はサプライヤー承認、法的助言、認証の発行、将来の履行保証ではありません。"
+    },
+    "zh-CN": {
+      "title": "TradeOS 供应商核验",
+      "description": "核验指定供应商是否为其声称的法定或制造主体，以及当前公开证据是否支持其针对指定产品或买方要求的能力。返回结构化核验项、带日期的证据引用、缺口、置信度和机器可读回执。",
+      "useWhen": "在供应商准入、采购、RFQ 准备或交易对手审查前，需要基于证据核验供应商身份或能力时使用。",
+      "limitations": "公开证据可能不完整。本结果不等于供应商批准、法律意见、认证签发或对未来履约的保证。"
+    }
+  },
+  "pricePolicyRef": "price.trade.verify_supplier.v1",
+  "evidencePolicyRef": "evidence.trade.verify_supplier.public-v1",
+  "registry": {
+    "serverName": "io.github.moseszhu999/tradeos-supplier-verification",
+    "serverVersion": "1.0.0",
+    "remoteUrl": "https://tradeos.example/mcp"
+  },
+  "llmDiscovery": {
+    "capabilityPath": "/capabilities/trade.verify_supplier.v1.md",
+    "llmsIndexPath": "/llms.txt",
+    "llmsApisPath": "/llms-apis.txt"
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true
+  }
+}

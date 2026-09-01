@@ -1,0 +1,82 @@
+name: TradeOS Supplier MCP Endpoint v1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/tradeos-supplier-mcp-endpoint-v1.yml
+      - package.json
+      - docs/contracts/tradeos-supplier-mcp-endpoint-v1.md
+      - src/discovery/tradeos-supplier-mcp-endpoint.cjs
+      - src/discovery/mock-supplier-verification.cjs
+      - tests/tradeos-supplier-mcp-endpoint.test.cjs
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Check out immutable PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Assert immutable PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          echo "exact-head=$TARGET_SHA"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Resolve exact MCP runtime dependencies without install scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Assert pinned stable MCP v2 package versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ls --depth=0 @modelcontextprotocol/server@2.0.0 @modelcontextprotocol/node@2.0.0
+
+      - name: Syntax check endpoint
+        run: node --check src/discovery/tradeos-supplier-mcp-endpoint.cjs
+
+      - name: Run focused MCP endpoint contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/tradeos-supplier-mcp-endpoint.test.cjs | tee /tmp/tradeos-supplier-mcp.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/tradeos-supplier-mcp.tap
+
+      - name: Run full AIEXE unit suite
+        run: npm test
+
+      - name: Lock inbound MCP authority and deployment boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE=src/discovery/tradeos-supplier-mcp-endpoint.cjs
+          grep -F "verificationProviderRequired: true" "$FILE"
+          grep -F "listenerCreatedByThisModule: false" "$FILE"
+          grep -F "deploymentPerformed: false" "$FILE"
+          grep -F "registryPublicationPerformed: false" "$FILE"
+          grep -F "registryAuthenticationPerformed: false" "$FILE"
+          grep -F "credentialOwnedByThisModule: false" "$FILE"
+          grep -F "paymentPerformedByThisModule: false" "$FILE"
+          grep -F "domainWritePerformedByThisModule: false" "$FILE"
+          grep -F "supplierApprovalPerformedByThisModule: false" "$FILE"
+          grep -F "verificationProviderTruthOwnedByThisModule: false" "$FILE"
+          ! grep -E "\.listen\(|createServer\(|process\.env|Authorization|Bearer|x402|Payment-Proof|private[_-]?key" "$FILE"
+          ! grep -E "paymentPerformedByThisModule:[[:space:]]*true|domainWritePerformedByThisModule:[[:space:]]*true|supplierApprovalPerformedByThisModule:[[:space:]]*true|deploymentPerformed:[[:space:]]*true|registryPublicationPerformed:[[:space:]]*true" "$FILE"
