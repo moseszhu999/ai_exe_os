@@ -284,6 +284,32 @@ function makeReceipt({ plan, decision, endpoint, response, startedAt, completedA
   return deepFreeze({ ...core, executionRef: `provexec_${receiptDigest.slice(7, 31)}`, receiptDigest });
 }
 
+function operationGrantInvocation({ plan, authorizationRequest, operationGrantContext }) {
+  if (!operationGrantContext || typeof operationGrantContext !== 'object' || Array.isArray(operationGrantContext)) {
+    throw new TypeError('operationGrantContext is required when an operation grant is supplied');
+  }
+  const expected = expectedAuthorizationBinding(plan);
+  const required = ['automationRef', 'jobRef', 'commandDigest', 'cwdDigest', 'envDigest', 'configDigest', 'capabilityDigest'];
+  for (const field of required) {
+    if (typeof operationGrantContext[field] !== 'string' || operationGrantContext[field].length < 2) {
+      throw new TypeError(`operationGrantContext.${field} is required`);
+    }
+  }
+  return Object.freeze({
+    organizationRef: authorizationRequest.organizationRef,
+    actorRef: authorizationRequest.actorRef,
+    automationRef: operationGrantContext.automationRef,
+    jobRef: operationGrantContext.jobRef,
+    operationRef: plan.semanticOperation.operationId,
+    targetRef: expected.targetRef,
+    commandDigest: operationGrantContext.commandDigest,
+    cwdDigest: operationGrantContext.cwdDigest,
+    envDigest: operationGrantContext.envDigest,
+    configDigest: operationGrantContext.configDigest,
+    capabilityDigest: operationGrantContext.capabilityDigest,
+  });
+}
+
 async function executeProviderAdapterPlan({
   plan,
   authorizationRequest,
@@ -294,6 +320,7 @@ async function executeProviderAdapterPlan({
   clock = { now: () => new Date().toISOString() },
   operationGrant,
   operationGrantLedger,
+  operationGrantContext,
 }) {
   const normalizedPlan = normalizePlan(plan);
   const executionAt = iso(at, 'execution at').text;
@@ -304,11 +331,8 @@ async function executeProviderAdapterPlan({
   if (operationGrant || operationGrantLedger) {
     const ledger = operationGrantLedger || new OperationGrantLedger();
     if (!operationGrant) throw new Error('operation grant is required when a grant ledger is supplied');
-    const expected = expectedAuthorizationBinding(normalizedPlan);
-    if (operationGrant.operationRef !== normalizedPlan.semanticOperation.operationId) throw new Error('grant operation drift');
-    if (operationGrant.targetRef !== expected.targetRef) throw new Error('grant target drift');
-    if (operationGrant.organizationRef !== authorizationRequest.organizationRef || operationGrant.actorRef !== authorizationRequest.actorRef) throw new Error('grant actor or organization drift');
-    operationGrantUse = await ledger.consume(operationGrant.grantRef, operationGrant, executionAt);
+    const invocation = operationGrantInvocation({ plan: normalizedPlan, authorizationRequest, operationGrantContext });
+    operationGrantUse = await ledger.consume(operationGrant.grantRef, invocation, executionAt);
   }
   if (!transport || typeof transport.invoke !== 'function') throw new TypeError('transport.invoke is required');
 
@@ -347,4 +371,5 @@ module.exports = {
   ANTHROPIC_API_VERSION,
   executeProviderAdapterPlan,
   expectedAuthorizationBinding,
+  operationGrantInvocation,
 };

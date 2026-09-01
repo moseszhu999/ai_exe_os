@@ -13,6 +13,8 @@ const {
   executeProviderAdapterPlan,
   expectedAuthorizationBinding,
 } = require('../src/integrations/provider-runtime/executor.cjs');
+const { createOperationGrant } = require('../src/authorization/execution-operation-grant-v1.cjs');
+const { OperationGrantLedger } = require('../src/authorization/execution-operation-grant-ledger.cjs');
 
 const AT = '2026-08-11T13:00:00.000Z';
 const WINDOW = Object.freeze({
@@ -362,4 +364,25 @@ test('P2 model executor refuses internalWrite/externalAction even if a caller su
     await assert.rejects(() => executeProviderAdapterPlan({ plan: forged, authorizationRequest: authorizationFor(plan), ...deps, at: AT }), /digest mismatch|only permits observe\/draft/);
     assert.equal(deps.calls.transport, 0);
   }
+});
+
+test('operation grant requires exact effect-context digests before provider transport', async () => {
+  const plan = planFor();
+  const deps = dependencies(plan);
+  const context = {
+    automationRef: 'automation.test', jobRef: 'job.test',
+    commandDigest: `sha256:${'a'.repeat(64)}`, cwdDigest: `sha256:${'b'.repeat(64)}`,
+    envDigest: `sha256:${'c'.repeat(64)}`, configDigest: `sha256:${'d'.repeat(64)}`,
+    capabilityDigest: `sha256:${'e'.repeat(64)}`,
+  };
+  const grant = createOperationGrant({
+    grantRef: 'grant.provider-model', sourceApprovalRef: 'approval.provider-model',
+    organizationRef: 'org.test', actorRef: 'agent.runtime', operationRef: 'reason', targetRef: 'prv.openai-primary',
+    ...context, issuedAt: '2026-08-11T12:00:00.000Z', expiresAt: '2026-08-11T14:00:00.000Z', maxUses: 1, status: 'active',
+  });
+  const ledger = new OperationGrantLedger({ sourceApprovalReader: { get: async () => ({ status: 'approved' }) } });
+  ledger.put(grant);
+  const result = await executeProviderAdapterPlan({ plan, authorizationRequest: authorizationFor(plan), ...deps, at: AT, clock: deterministicClock(), operationGrant: grant, operationGrantLedger: ledger, operationGrantContext: context });
+  assert.equal(result.receipt.operationGrantRef, grant.grantRef);
+  await assert.rejects(() => executeProviderAdapterPlan({ plan, authorizationRequest: authorizationFor(plan), ...dependencies(plan), at: AT, operationGrant: grant, operationGrantLedger: ledger, operationGrantContext: { ...context, cwdDigest: `sha256:${'f'.repeat(64)}` } }), /exhausted|cwd digest drift/);
 });
