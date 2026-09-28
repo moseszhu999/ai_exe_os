@@ -1,0 +1,92 @@
+name: Group Federation Mapping Provenance v1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/group-federation-mapping-provenance-v1.yml
+      - docs/architecture/group-federation-mapping-provenance-v1.md
+      - src/group-fabric/federation-mapping-provenance.cjs
+      - tests/group-federation-mapping-provenance.test.cjs
+      - tests/group-federation-mapping-provenance-structure.test.cjs
+      - tests/group-federation-mapping-provenance-attestation-identity.test.cjs
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Check out immutable PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Assert immutable PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          echo "exact-head=$TARGET_SHA"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Resolve pinned development dependencies without install scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Syntax check provenance core
+        run: node --check src/group-fabric/federation-mapping-provenance.cjs
+
+      - name: Run focused provenance contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/group-federation-mapping-provenance.test.cjs | tee /tmp/provenance.tap
+          grep -Eq '# tests[[:space:]]+9$' /tmp/provenance.tap
+          grep -Eq '# pass[[:space:]]+9$' /tmp/provenance.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/provenance.tap
+
+      - name: Run malformed receipt structure contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/group-federation-mapping-provenance-structure.test.cjs | tee /tmp/provenance-structure.tap
+          grep -Eq '# tests[[:space:]]+1$' /tmp/provenance-structure.tap
+          grep -Eq '# pass[[:space:]]+1$' /tmp/provenance-structure.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/provenance-structure.tap
+
+      - name: Run attestation semantic identity contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/group-federation-mapping-provenance-attestation-identity.test.cjs | tee /tmp/provenance-identity.tap
+          grep -Eq '# tests[[:space:]]+1$' /tmp/provenance-identity.tap
+          grep -Eq '# pass[[:space:]]+1$' /tmp/provenance-identity.tap
+          grep -Eq '# fail[[:space:]]+0$' /tmp/provenance-identity.tap
+
+      - name: Run full AIEXE unit suite
+        run: npm test
+
+      - name: Lock correlation-only boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=src/group-fabric/federation-mapping-provenance.cjs
+          grep -F "'group.federation-mapping-provenance-attestation.v1'" "$SRC"
+          grep -F "'group.federation-mapping-provenance-result.v1'" "$SRC"
+          grep -F "'group:federation-provenance-policy:ed25519-provider-verifiable-v1'" "$SRC"
+          grep -F "const SIGNATURE_ALGORITHM = 'Ed25519'" "$SRC"
+          grep -F "'providerAccessGranted'" "$SRC"
+          grep -F "'authorityGrantCreated'" "$SRC"
+          grep -F "'executionAuthorized'" "$SRC"
+          ! grep -E "providerAccessGranted:[[:space:]]*true|authorityGrantCreated:[[:space:]]*true|executionAuthorized:[[:space:]]*true|crossDomainAccessGranted:[[:space:]]*true|externalActionPerformed:[[:space:]]*true" "$SRC"
