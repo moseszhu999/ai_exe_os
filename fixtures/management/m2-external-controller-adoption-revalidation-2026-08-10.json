@@ -1,0 +1,46 @@
+{
+  "schema": "aiexe.external-controller-adoption-revalidation.v1",
+  "evidenceClass": "REAL_EXTERNAL_CONTROLLER_INDEPENDENT_HEAD_REVALIDATION",
+  "observedAt": "2026-08-10T07:37:00Z",
+  "sourceCaptureFixture": "fixtures/management/m2-real-external-controller-adoption-cycle-2026-08-10.json",
+  "readOnly": true,
+  "writeAuthority": "none",
+  "externalDomainCount": 3,
+  "structuredSourceExistenceCount": 3,
+  "acceptedCurrentCount": 2,
+  "rejectedCurrentCount": 1,
+  "firstCycleAcceptanceComplete": false,
+  "g3Verdict": "PARTIAL",
+  "projects": [
+    {
+      "projectId": "trainingos",
+      "repository": "moseszhu999/training-learning-rails",
+      "sourceRef": "https://github.com/moseszhu999/training-learning-rails/issues/477#issuecomment-5236850688",
+      "attestedHeadSha": "8f0d38dca4dcd28883359c427e133d0c1a9eebb8",
+      "providerHeadSha": "8f0d38dca4dcd28883359c427e133d0c1a9eebb8",
+      "providerHeadEvidenceRef": "github:moseszhu999/training-learning-rails:commit:8f0d38dca4dcd28883359c427e133d0c1a9eebb8",
+      "expectedAccepted": true,
+      "expectedReason": "accepted_exact_head_current"
+    },
+    {
+      "projectId": "tradeos",
+      "repository": "moseszhu999/chaintrace-app",
+      "sourceRef": "https://github.com/moseszhu999/chaintrace-app/issues/567#issuecomment-5236890201",
+      "attestedHeadSha": "6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b",
+      "providerHeadSha": "6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b",
+      "providerHeadEvidenceRef": "github:moseszhu999/chaintrace-app:commit:6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b",
+      "expectedAccepted": true,
+      "expectedReason": "accepted_exact_head_current"
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "repository": "moseszhu999/global-tool-radar",
+      "sourceRef": "https://github.com/moseszhu999/global-tool-radar/issues/115#issuecomment-5236897897",
+      "attestedHeadSha": "24996407449df28b2d83fce1a145b3200fff168a",
+      "providerHeadSha": "23d92ffc4674f1581c4191e595d279a20008be53",
+      "providerHeadEvidenceRef": "github:moseszhu999/global-tool-radar:commit:23d92ffc4674f1581c4191e595d279a20008be53",
+      "expectedAccepted": false,
+      "expectedReason": "exact_head_mismatch"
+    }
+  ]
+}

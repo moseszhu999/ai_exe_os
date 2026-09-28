@@ -1,0 +1,219 @@
+{
+  "schema": "aiexe.live-github-observation-capture.v1",
+  "evidenceClass": "REAL_PROVIDER_OBSERVATION",
+  "capturedAt": "2026-08-09T15:31:29Z",
+  "captureMethod": "GitHub connector read-only search_commits plus repository-scoped open pull-request reads on each registered default branch; no Domain OS status or owner scope inferred from repository activity",
+  "domainFactPolicy": "unknown-without-current-explicit-controller-attestation",
+  "openWorkPolicy": "openPullRequests is always explicit; [] means provider-confirmed zero and omission is forbidden in the live-provider wrapper",
+  "ownerScopePolicy": "ownerScope is omitted unless supplied by an explicit authoritative owner source; PR titles are not owner evidence",
+  "observations": [
+    {
+      "projectId": "aiexe",
+      "repository": "moseszhu999/ai_exe_os",
+      "defaultBranch": "main",
+      "headSha": "7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48",
+      "observedAt": "2026-08-09T15:31:29Z",
+      "now": "2026-08-09T15:31:29Z",
+      "openPullRequestsObservedAt": "2026-08-09T15:31:29Z",
+      "openPullRequests": [
+        {
+          "number": 125,
+          "title": "M0-M2.5: establish AIEXE group management-plane foundation",
+          "headSha": "368240b85c1d580648c1db55ffadf8176a097b0d",
+          "draft": true,
+          "updatedAt": "2026-08-09T15:29:44Z"
+        }
+      ],
+      "evidenceRefs": ["github:moseszhu999/ai_exe_os:commit:7fdf410e009ea5a1f25bc03dea3b2e54a83c9d48"]
+    },
+    {
+      "projectId": "trainingos",
+      "repository": "moseszhu999/training-learning-rails",
+      "defaultBranch": "main",
+      "headSha": "0b69d1d7ad2c67c4ba36294ec153280c3da69352",
+      "observedAt": "2026-08-09T15:31:29Z",
+      "now": "2026-08-09T15:31:29Z",
+      "openPullRequestsObservedAt": "2026-08-09T15:31:29Z",
+      "openPullRequests": [
+        {
+          "number": 671,
+          "title": "ci: TradeOS N2 post-656 strict final exact-head acceptance v4",
+          "headSha": "89214b28f8488f01d59e4cf4c41738bf27238dd4",
+          "draft": true,
+          "updatedAt": "2026-08-09T15:21:33Z"
+        },
+        {
+          "number": 665,
+          "title": "ci: TradeOS N2 final exact-head authentic acceptance v1",
+          "headSha": "7767775bd9e07d7fca45fd7e5ae21333231d2c71",
+          "draft": true,
+          "updatedAt": "2026-08-09T14:17:21Z"
+        },
+        {
+          "number": 645,
+          "title": "ci: final TradeOS N1 exact-head authentic acceptance",
+          "headSha": "4ba488789dd6bead2e6c530a6bdb1fe64652727b",
+          "draft": true,
+          "updatedAt": "2026-08-08T21:48:26Z"
+        },
+        {
+          "number": 536,
+          "title": "feat(trainingos): integrate live Marketplace discovery with Agent Workspace",
+          "headSha": "7e617ef198183a6d83d23fa0584b038c61908984",
+          "draft": true,
+          "updatedAt": "2026-08-09T14:30:54Z"
+        }
+      ],
+      "evidenceRefs": ["github:moseszhu999/training-learning-rails:commit:0b69d1d7ad2c67c4ba36294ec153280c3da69352"]
+    },
+    {
+      "projectId": "tradeos",
+      "repository": "moseszhu999/chaintrace-app",
+      "defaultBranch": "main",
+      "headSha": "355a7169bfe8e48c7f78fa874cc422a394553d56",
+      "observedAt": "2026-08-09T15:31:29Z",
+      "now": "2026-08-09T15:31:29Z",
+      "openPullRequestsObservedAt": "2026-08-09T15:31:29Z",
+      "openPullRequests": [
+        {
+          "number": 649,
+          "title": "F1: lock Agentic Trade Execution group target and entry gates",
+          "headSha": "318423f445eaf24ed57814d9b0f7e3bb85ac2a46",
+          "draft": true,
+          "updatedAt": "2026-08-09T11:05:50Z"
+        },
+        {
+          "number": 647,
+          "title": "P2: add Bottom-up Cockpit truth-state read model",
+          "headSha": "dc6fb4901291cfb5d17f674a3143a6b6cd08e33f",
+          "draft": false,
+          "updatedAt": "2026-08-09T10:17:11Z"
+        },
+        {
+          "number": 646,
+          "title": "P1: add backend-neutral BusinessChannel shared contract core",
+          "headSha": "c230d2e36bfe8e7a7678a9cf916392a98659bb73",
+          "draft": false,
+          "updatedAt": "2026-08-09T10:17:00Z"
+        },
+        {
+          "number": 642,
+          "title": "N2 prereq: persist human-confirmed MarketSharedCaseProposal in Neon",
+          "headSha": "1fd5481d6b28c5776445ea241965d081e2393652",
+          "draft": true,
+          "updatedAt": "2026-08-09T15:09:35Z"
+        },
+        {
+          "number": 620,
+          "title": "N3: add RFQ and Shared Case runtime readiness audit",
+          "headSha": "bf73bdf386308f7adfc9d60134f07e09df84fb2c",
+          "draft": true,
+          "updatedAt": "2026-08-09T04:04:16Z"
+        },
+        {
+          "number": 619,
+          "title": "N2: add post-N1 specification sourcing runtime readiness audit",
+          "headSha": "39616855a427de58255ce97ee75595a5103514da",
+          "draft": true,
+          "updatedAt": "2026-08-09T04:56:41Z"
+        },
+        {
+          "number": 467,
+          "title": "F0: Lock supply-chain liquidity product thesis",
+          "headSha": "170d119873fc70ee8ad86c818516d9b382fa6171",
+          "draft": true,
+          "updatedAt": "2026-07-12T20:12:44Z"
+        },
+        {
+          "number": 284,
+          "title": "Docs: deprecate legacy deployment gate",
+          "headSha": "d05fa9e5f77da31e858a5bbe4e04dd3f1af03f92",
+          "draft": false,
+          "updatedAt": "2026-07-07T15:02:49Z"
+        },
+        {
+          "number": 282,
+          "title": "T10: Trade Room runtime orchestrator decision audit",
+          "headSha": "cb1c906769999df521f53a590f1359b2052c5865",
+          "draft": false,
+          "updatedAt": "2026-07-07T14:55:39Z"
+        },
+        {
+          "number": 269,
+          "title": "docs: add post-merge baseline audit",
+          "headSha": "914102e41c68bfd40bde70677db772a16abff9b7",
+          "draft": false,
+          "updatedAt": "2026-07-07T12:53:13Z"
+        },
+        {
+          "number": 124,
+          "title": "WIP: refresh channel-first training evidence prototype",
+          "headSha": "bf69ae19889473b8fd757e7d779ccf14ff64b0d5",
+          "draft": true,
+          "updatedAt": "2026-07-19T00:54:31Z"
+        },
+        {
+          "number": 108,
+          "title": "v2.1 real platform foundation: schema and organization network",
+          "headSha": "690434d2dbc468fd519c5296b3e82cd91b6c5d55",
+          "draft": true,
+          "updatedAt": "2026-07-07T08:24:35Z"
+        },
+        {
+          "number": 83,
+          "title": "Stabilize working-site APIs and production fallbacks",
+          "headSha": "586b7d070138a3c3cd50f8314035d00c6b875526",
+          "draft": false,
+          "updatedAt": "2026-07-07T08:24:38Z"
+        },
+        {
+          "number": 71,
+          "title": "Add review JSON endpoint",
+          "headSha": "301c8c135fb4661533db33ab0c5614ee28503e53",
+          "draft": false,
+          "updatedAt": "2026-07-07T08:24:41Z"
+        }
+      ],
+      "evidenceRefs": ["github:moseszhu999/chaintrace-app:commit:355a7169bfe8e48c7f78fa874cc422a394553d56"]
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "repository": "moseszhu999/global-tool-radar",
+      "defaultBranch": "main",
+      "headSha": "24996407449df28b2d83fce1a145b3200fff168a",
+      "observedAt": "2026-08-09T15:31:29Z",
+      "now": "2026-08-09T15:31:29Z",
+      "openPullRequestsObservedAt": "2026-08-09T15:31:29Z",
+      "openPullRequests": [],
+      "evidenceRefs": [
+        "github:moseszhu999/global-tool-radar:commit:24996407449df28b2d83fce1a145b3200fff168a",
+        "github:moseszhu999/global-tool-radar:docs/video/evidence/m10-explainer-v2-controller-reverification-2026-08-09.md"
+      ]
+    }
+  ],
+  "knownControllerEvidence": [
+    {
+      "projectId": "video-operation-shared-media",
+      "sourceRef": "github:moseszhu999/global-tool-radar:docs/video/evidence/m10-explainer-v2-controller-reverification-2026-08-09.md",
+      "controllerDocumentObservedMain": "7f86239d6e56522d2cec2138defae32116380dc9",
+      "currentProviderHead": "24996407449df28b2d83fce1a145b3200fff168a",
+      "reusableAsCurrentDomainAttestation": false,
+      "reason": "exact_head_mismatch"
+    }
+  ],
+  "controllerAttestations": [],
+  "expected": {
+    "projectCount": 4,
+    "attestedProjectCount": 0,
+    "openPullRequestCounts": {
+      "aiexe": 1,
+      "trainingos": 4,
+      "tradeos": 14,
+      "video-operation-shared-media": 0
+    },
+    "unresolvedProjectIds": ["aiexe", "tradeos", "trainingos", "video-operation-shared-media"],
+    "providerObservationCaptured": true,
+    "providerRunnerProven": false,
+    "scheduledRuntimeProven": false
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "aiexe.management-adversarial-replay.v1",
+  "evidenceClass": "SIMULATED",
+  "capturedAt": "2026-08-09T15:25:00.000Z",
+  "purpose": "Adversarial deterministic replay for management truth, scope and A2 policy boundaries. This corpus is simulation evidence only and must not be presented as real project history.",
+  "cases": [
+    { "id": "owner-conflict", "dimension": "ownership", "expected": "pause" },
+    { "id": "stale-attestation", "dimension": "exact-head-freshness", "expected": "escalate" },
+    { "id": "stale-recovery", "dimension": "exact-head-recovery", "expected": "continue" },
+    { "id": "duplicate-attestation", "dimension": "controller-conflict", "expected": "reject" },
+    { "id": "critical-block-with-active", "dimension": "parallel-work", "expected": "reprioritize" },
+    { "id": "held-incomplete-scope", "dimension": "decision-scope", "expected": "escalate" },
+    { "id": "held-complete-scope", "dimension": "decision-scope", "expected": "pause" },
+    { "id": "unknown-workstream", "dimension": "truth-unknown", "expected": "escalate" },
+    { "id": "a2-forbidden-merge", "dimension": "a2-policy", "expected": "deny" },
+    { "id": "a2-eligible-test", "dimension": "a2-policy", "expected": "eligible_nonbinding" },
+    { "id": "a2-schedule-without-approval", "dimension": "a2-policy", "expected": "deny" }
+  ]
+}

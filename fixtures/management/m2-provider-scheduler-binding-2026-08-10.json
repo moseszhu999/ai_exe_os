@@ -1,0 +1,38 @@
+{
+  "schema": "aiexe.provider-scheduler-binding-source.v1",
+  "evidenceClass": "REAL_NATIVE_AUTOMATION_BINDING_OBSERVATION",
+  "observedAt": "2026-08-10T00:27:22.939529Z",
+  "schedulerRef": "automation:AIEXE-hourly-controlled-progress",
+  "schedulePolicy": {
+    "timezone": "Asia/Shanghai",
+    "cadence": "HOURLY",
+    "minute": 48,
+    "exactSchedule": true
+  },
+  "bindingPolicy": {
+    "existingControllerPromptPreserved": true,
+    "providerIngestionClauseAppended": true,
+    "secondSchedulerCreated": false,
+    "externalDomainCommentsAllowed": false,
+    "aiexePr125EvidenceCommentOnly": true,
+    "domainTruthInferenceAllowed": false,
+    "mergeAllowed": false,
+    "deployAllowed": false,
+    "productionMutationAllowed": false
+  },
+  "readinessInput": {
+    "schedulerObserved": true,
+    "schedulerEnabled": true,
+    "hourlyCadenceObserved": true,
+    "providerIngestionBindingObserved": true,
+    "immutableReceiptPersistenceObserved": false,
+    "successfulScheduledRunObserved": false,
+    "lastRunObservedAt": "2026-08-09T05:52:04.858710Z"
+  },
+  "expected": {
+    "state": "SCHEDULER_BOUND_RECEIPT_PERSISTENCE_UNPROVEN",
+    "scheduledRuntimeProven": false,
+    "recurringIngestionProven": false,
+    "nextEvidenceRequired": "first canonical successful scheduled provider run receipt after binding"
+  }
+}

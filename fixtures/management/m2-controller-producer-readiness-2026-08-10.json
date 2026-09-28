@@ -1,0 +1,100 @@
+{
+  "schema": "aiexe.controller-producer-readiness-source.v1",
+  "evidenceClass": "REAL_CONTROLLER_PRODUCER_TOPOLOGY_READ_ONLY_AUDIT",
+  "observedAt": "2026-08-10T06:36:00Z",
+  "adoptionProjects": [
+    {
+      "projectId": "trainingos",
+      "repository": "moseszhu999/training-learning-rails",
+      "exactHeadSha": "8f0d38dca4dcd28883359c427e133d0c1a9eebb8",
+      "groupAdapterEvidenceRefs": [
+        "github:moseszhu999/training-learning-rails:commit:d75d7cb9c0c3ab6c0af3e2df147ac3f8aeecd5fc"
+      ],
+      "verifiedCurrentEnvelopeEvidenceRefs": [],
+      "markerSearchObserved": true,
+      "markerSearchMatched": false
+    },
+    {
+      "projectId": "tradeos",
+      "repository": "moseszhu999/chaintrace-app",
+      "exactHeadSha": "6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b",
+      "groupAdapterEvidenceRefs": [
+        "github:moseszhu999/chaintrace-app:commit:07daa3b68be5ab1884ea159aa27cd44be12e19a5",
+        "github:moseszhu999/chaintrace-app:commit:c51b766aefecb5fcc49c27c3c51bd982c13a30e0"
+      ],
+      "verifiedCurrentEnvelopeEvidenceRefs": [],
+      "markerSearchObserved": true,
+      "markerSearchMatched": false
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "repository": "moseszhu999/global-tool-radar",
+      "exactHeadSha": "23d92ffc4674f1581c4191e595d279a20008be53",
+      "groupAdapterEvidenceRefs": [
+        "github:moseszhu999/global-tool-radar:commit:9e3391d8d0eea52004026c5643370c72ba0506cb"
+      ],
+      "verifiedCurrentEnvelopeEvidenceRefs": [],
+      "markerSearchObserved": true,
+      "markerSearchMatched": false
+    }
+  ],
+  "producers": [
+    {
+      "projectId": "trainingos",
+      "schedulerRef": "chatgpt-native-task:TrainingOS-hourly-controlled-progress",
+      "schedulerObserved": true,
+      "schedulerEnabled": true,
+      "lastRunAt": "2026-08-10T06:08:29Z",
+      "structuredProducerContractObserved": false,
+      "outOfBandPersistenceChannelObserved": true,
+      "recurringStructuredEvidenceRefs": [],
+      "evidenceRefs": [
+        "github:moseszhu999/training-learning-rails:issue:477",
+        "runtime-observation:trainingos-hourly-task:2026-08-10T06:27:00Z"
+      ],
+      "expectedState": "ACTIVE_STRUCTURED_CONTRACT_MISSING"
+    },
+    {
+      "projectId": "tradeos",
+      "schedulerRef": "chatgpt-native-task:TradeOS-hourly-controlled-progress-chat-only",
+      "schedulerObserved": true,
+      "schedulerEnabled": false,
+      "lastRunAt": "2026-08-09T11:04:45Z",
+      "structuredProducerContractObserved": false,
+      "outOfBandPersistenceChannelObserved": true,
+      "recurringStructuredEvidenceRefs": [],
+      "evidenceRefs": [
+        "github:moseszhu999/chaintrace-app:issue:567",
+        "runtime-observation:tradeos-hourly-task:2026-08-10T06:27:00Z"
+      ],
+      "expectedState": "PRODUCER_DISABLED"
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "schedulerRef": "chatgpt-native-task:Video-Operation-hourly-controlled-progress",
+      "schedulerObserved": true,
+      "schedulerEnabled": true,
+      "lastRunAt": "2026-08-10T05:39:12Z",
+      "structuredProducerContractObserved": false,
+      "outOfBandPersistenceChannelObserved": false,
+      "recurringStructuredEvidenceRefs": [],
+      "evidenceRefs": [
+        "github:moseszhu999/global-tool-radar:search:controller:none",
+        "runtime-observation:video-operation-hourly-task:2026-08-10T06:27:00Z"
+      ],
+      "expectedState": "ACTIVE_CONTRACT_AND_PERSISTENCE_MISSING"
+    }
+  ],
+  "expected": {
+    "externalProjectCount": 3,
+    "structuredAdoptedCount": 0,
+    "groupAdapterReadyCount": 3,
+    "enabledProducerCount": 2,
+    "disabledProducerCount": 1,
+    "contractMissingCount": 3,
+    "persistenceMissingCount": 1,
+    "recurringStructuredProducerCount": 0,
+    "recurringStructuredProducerComplete": false,
+    "g3State": "PARTIAL"
+  }
+}

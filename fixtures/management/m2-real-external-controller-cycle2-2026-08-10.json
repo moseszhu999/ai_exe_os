@@ -1,0 +1,33 @@
+{
+  "schema": "aiexe.real-external-controller-cycle2.v1",
+  "evidenceClass": "REAL_EXTERNAL_STRUCTURED_CONTROLLER_CYCLE_2",
+  "capturedAt": "2026-08-10T09:39:30Z",
+  "readOnly": true,
+  "writeAuthority": "none",
+  "sources": [
+    {
+      "projectId": "trainingos",
+      "sourceKind": "coordinator-issue",
+      "sourceRef": "https://github.com/moseszhu999/training-learning-rails/issues/477#issuecomment-5238479461",
+      "repository": "moseszhu999/training-learning-rails",
+      "providerHeadSha": "8f0d38dca4dcd28883359c427e133d0c1a9eebb8",
+      "body": "## AIEXE structured Controller adoption — TrainingOS cycle 2\n\nSecond independent structured Controller source for AIEXE recurrence acceptance. The marked JSON block is authoritative; surrounding prose is not. This is read-only management truth and grants no TrainingOS write, execution, credential or cross-domain authority.\n\n<!-- aiexe.external-controller-attestation.v1 -->\n```json\n{\n  \"projectId\": \"trainingos\",\n  \"controllerId\": \"trainingos-saas-controller\",\n  \"repository\": \"moseszhu999/training-learning-rails\",\n  \"exactHeadSha\": \"8f0d38dca4dcd28883359c427e133d0c1a9eebb8\",\n  \"domainStatus\": \"active\",\n  \"owner\": \"TrainingOS SaaS controller\",\n  \"milestone\": \"Organization/Membership and governed human CapabilityCredential are merged; TrainingOS is the learning/delivery truth owner for the Golden Customer Journey while Production pilot/release remains separately gated.\",\n  \"blockerCodes\": [\n    \"real_pilot_not_proven\",\n    \"production_release_not_authorized\"\n  ],\n  \"evidenceRefs\": [\n    \"github:moseszhu999/training-learning-rails:commit:8f0d38dca4dcd28883359c427e133d0c1a9eebb8\",\n    \"github:moseszhu999/training-learning-rails:pr:692\",\n    \"github:moseszhu999/training-learning-rails:pr:706\",\n    \"github:moseszhu999/chaintrace-app:issue:672\"\n  ],\n  \"observedAt\": \"2026-08-10T09:28:00Z\"\n}\n```\n<!-- /aiexe.external-controller-attestation.v1 -->\n\nCycle-2 boundary: no Production deploy/migration, no AuthorityGrant, no Agent execution and no cross-domain write are performed by this source."
+    },
+    {
+      "projectId": "tradeos",
+      "sourceKind": "coordinator-issue",
+      "sourceRef": "https://github.com/moseszhu999/chaintrace-app/issues/567#issuecomment-5238481582",
+      "repository": "moseszhu999/chaintrace-app",
+      "providerHeadSha": "6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b",
+      "body": "## AIEXE structured Controller adoption — TradeOS cycle 2\n\nSecond independent structured Controller source for AIEXE recurrence acceptance. The marked JSON block is authoritative; surrounding prose is not. This is read-only management truth and grants no TradeOS write, supplier-award, external-send, payment or cross-domain execution authority.\n\n<!-- aiexe.external-controller-attestation.v1 -->\n```json\n{\n  \"projectId\": \"tradeos\",\n  \"controllerId\": \"tradeos-saas-controller\",\n  \"repository\": \"moseszhu999/chaintrace-app\",\n  \"exactHeadSha\": \"6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b\",\n  \"domainStatus\": \"active\",\n  \"owner\": \"TradeOS SaaS Core controller\",\n  \"milestone\": \"Golden Customer Journey is now the Wave 1 acceptance story; N2 #671 authentic runtime passes the full business/auth matrix through wrong-org denial and is narrowed to acceptance-only rollback tie-out readback before N3 #674 may start.\",\n  \"blockerCodes\": [\n    \"n2_rollback_tieout_readback_pending\",\n    \"n3_blocked_on_n2_acceptance\",\n    \"real_customer_10x_pilot_not_proven\"\n  ],\n  \"evidenceRefs\": [\n    \"github:moseszhu999/chaintrace-app:commit:6958c3b5fb3a8d8b6b70b7a614910b0e1ea9202b\",\n    \"github:moseszhu999/chaintrace-app:pr:671\",\n    \"github:moseszhu999/chaintrace-app:issue:672\",\n    \"github:moseszhu999/chaintrace-app:pr:673\",\n    \"github:moseszhu999/chaintrace-app:issue:674\"\n  ],\n  \"observedAt\": \"2026-08-10T09:28:00Z\"\n}\n```\n<!-- /aiexe.external-controller-attestation.v1 -->\n\nCycle-2 boundary: #671 product head remains unchanged; no Supplier/RFQ external send, supplier award, contract signature, PO issue, payment, Production migration/deploy or Agent consequential execution is performed by this source."
+    },
+    {
+      "projectId": "video-operation-shared-media",
+      "sourceKind": "coordinator-issue",
+      "sourceRef": "https://github.com/moseszhu999/global-tool-radar/issues/115#issuecomment-5238483228",
+      "repository": "moseszhu999/global-tool-radar",
+      "providerHeadSha": "23d92ffc4674f1581c4191e595d279a20008be53",
+      "body": "## AIEXE structured Controller adoption — Shared Media / Video cycle 2\n\nSecond independent structured Controller source for AIEXE recurrence acceptance. The marked JSON block is authoritative; surrounding prose is not. This is read-only management truth and grants no live Mac mutation, render submission, publication or cross-domain execution authority.\n\n<!-- aiexe.external-controller-attestation.v1 -->\n```json\n{\n  \"projectId\": \"video-operation-shared-media\",\n  \"controllerId\": \"shared-media-controller\",\n  \"repository\": \"moseszhu999/global-tool-radar\",\n  \"exactHeadSha\": \"23d92ffc4674f1581c4191e595d279a20008be53\",\n  \"domainStatus\": \"active\",\n  \"owner\": \"Shared Media / Video Operation controller\",\n  \"milestone\": \"Canonical media.render.v1 receipt patch source is merged and exact-SHA rollout-ready; live Mac rollout remains pending, while Video M10 has a preferred v5 static baseline but no final human creative approval.\",\n  \"blockerCodes\": [\n    \"live_mac_canonical_receipt_rollout_pending\",\n    \"video_static_hero_not_human_approved\"\n  ],\n  \"evidenceRefs\": [\n    \"github:moseszhu999/global-tool-radar:commit:23d92ffc4674f1581c4191e595d279a20008be53\",\n    \"github:moseszhu999/global-tool-radar:issue:115\",\n    \"github:moseszhu999/global-tool-radar:pr:117\",\n    \"github:moseszhu999/global-tool-radar:pr:112\"\n  ],\n  \"observedAt\": \"2026-08-10T09:28:00Z\"\n}\n```\n<!-- /aiexe.external-controller-attestation.v1 -->\n\nCycle-2 boundary: liveMutationPerformed=false, serviceRestartPerformed=false, renderSubmitted=false, publicationAllowed=false, publicationPerformed=false, Production business action=false."
+    }
+  ]
+}
